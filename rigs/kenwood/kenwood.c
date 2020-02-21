@@ -3539,6 +3539,68 @@ int kenwood_send_morse(RIG *rig, vfo_t vfo, const char *msg)
 }
 
 /*
+ * kenwood_power2mW
+ */
+
+int kenwood_power2mW(RIG * rig, unsigned int *mwpower, float power, freq_t freq, rmode_t mode)
+{
+	const freq_range_t *txrange;
+	int rig_id;
+	int maxpower;
+	rig_debug(RIG_DEBUG_VERBOSE, "%s called\n", __func__);
+	rig_id =  rig->caps->rig_model;
+
+	rig_debug(RIG_DEBUG_VERBOSE, "%s called\n", __func__);
+	txrange = rig_get_range(rig->state.tx_range_list, freq, mode);
+	if (!txrange)
+		maxpower = 100000;
+	else
+		maxpower = txrange->high_power;
+	switch (rig_id) {
+		default:
+		        
+                        /* Normal 100 Watts */
+                        /* 10W = 5/31 25W = 11/31  50W = 18/31 100W = 26/31 mesaured on tc2000 */
+                        if (power < 0.1668)
+                                *mwpower = power * 0.6 * maxpower;
+                        else if (power < 0.3549)
+                                *mwpower = (power - 0.1668) * 0.775 * maxpower + maxpower / 10;
+                        else if (power < 0.5807)
+                                *mwpower = (power - 0.3549) * 1.107* maxpower + maxpower / 4;
+                        else
+                                *mwpower = (power - 0.5807) * 1.9375 * maxpower + maxpower / 2;
+			break;
+	}
+	return RIG_OK;
+}
+
+/*
+ * kenwood_mW2power
+ */
+
+int kenwood_mW2power(RIG * rig, float *power, unsigned int mwpower, freq_t freq, rmode_t mode)
+{
+	int rig_id;
+
+	rig_debug(RIG_DEBUG_VERBOSE, "%s called\n", __func__);
+	rig_id =  rig->caps->rig_model;
+
+	rig_debug(RIG_DEBUG_TRACE, "%s: passed mwpower = %i\n", __func__, mwpower);
+	rig_debug(RIG_DEBUG_TRACE, "%s: passed freq = %"PRIfreq" Hz\n", __func__, freq);
+	rig_debug(RIG_DEBUG_TRACE, "%s: passed mode = %li\n", __func__, mode);
+
+	if (mwpower > 100000)
+		return -RIG_EINVAL;
+
+	switch (rig_id) {
+		default: /* Default to a 100W radio */
+			*power = ((float)mwpower / 100000);
+			break;
+	}
+
+	return RIG_OK;
+}
+/*
  * kenwood_vfo_op
  */
 int kenwood_vfo_op(RIG *rig, vfo_t vfo, vfo_op_t op)

@@ -29,11 +29,11 @@
 #define _FT847_H 1
 
 
-#define FT847_WRITE_DELAY                    50
+#define FT847_WRITE_DELAY                    20
 
 /* Sequential fast writes may confuse FT847 without this delay */
 
-#define FT847_POST_WRITE_DELAY               50
+#define FT847_POST_WRITE_DELAY               20
 
 
 /* Rough safe value for default timeout */
@@ -201,5 +201,7 @@ static int ft847_set_ctcss_sql (RIG *rig, vfo_t vfo, tone_t tone);
 static int ft847_set_dcs_sql (RIG *rig, vfo_t vfo, tone_t code);
 static int ft847_set_rptr_shift (RIG *rig, vfo_t vfo, rptr_shift_t rptr_shift);
 static int ft847_set_rptr_offs (RIG *rig, vfo_t vfo, shortfreq_t rptr_offs);
+static int ft847_power2mW       (RIG *rig, unsigned int *mwpower, float power,
+                                 freq_t freq, rmode_t mode);
 
 #endif /* _FT847_H */

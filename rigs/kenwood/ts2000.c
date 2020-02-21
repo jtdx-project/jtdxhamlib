@@ -321,6 +321,7 @@ const struct rig_caps ts2000_caps =
     .set_powerstat =  kenwood_set_powerstat,
     .get_powerstat =  kenwood_get_powerstat,
     .get_info =  kenwood_get_info,
+    .power2mW = kenwood_power2mW,
     .reset =  kenwood_reset,
 
 };
@@ -984,7 +985,7 @@ int ts2000_get_level(RIG *rig, vfo_t vfo, setting_t level, value_t *val)
         break;
 
     case RIG_LEVEL_RFPOWER:
-        retval = kenwood_transaction(rig, "PC", lvlbuf, sizeof(lvlbuf));
+        retval = kenwood_transaction(rig, "SM0", lvlbuf, sizeof(lvlbuf));
 
         if (retval != RIG_OK)
         {
@@ -993,7 +994,7 @@ int ts2000_get_level(RIG *rig, vfo_t vfo, setting_t level, value_t *val)
 
         lvl_len = strlen(lvlbuf);
 
-        if (lvl_len != 5)
+        if (lvl_len != 7)
         {
             rig_debug(RIG_DEBUG_ERR, "%s: unexpected answer len=%d\n", __func__,
                       (int)lvl_len);
@@ -1001,7 +1002,7 @@ int ts2000_get_level(RIG *rig, vfo_t vfo, setting_t level, value_t *val)
         }
 
         sscanf(lvlbuf + 3, "%d", &lvl);
-        val->f = lvl / 100.0; /* FIXME: for 1.2GHZ need to divide by 10 */
+        val->f = lvl / 31.0; /* FIXME: for 1.2GHZ need to divide by 10 */
         break;
 
     case RIG_LEVEL_MICGAIN:

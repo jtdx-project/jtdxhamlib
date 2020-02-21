@@ -177,6 +177,8 @@ int kenwood_get_id(RIG *rig, char *buf);
 int kenwood_set_trn(RIG *rig, int trn);
 int kenwood_get_trn(RIG *rig, int *trn);
 
+int kenwood_power2mW(RIG * rig, unsigned int *mwpower, float power, freq_t freq, rmode_t mode);
+int kenwood_mW2power(RIG * rig, float *power, unsigned int mwpower, freq_t freq, rmode_t mode);
 /* only use if returned string has length 6, e.g. 'SQ011;' */
 int get_kenwood_level(RIG *rig, const char *cmd, float *f);
 int get_kenwood_func(RIG *rig, const char *cmd, int *status);

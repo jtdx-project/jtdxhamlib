@@ -175,7 +175,7 @@ static const yaesu_cmd_set_t ncmd[] =
 
 #define FT847_FUNC_ALL (RIG_FUNC_TONE|RIG_FUNC_TSQL)
 
-#define FT847_LEVEL_ALL (RIG_LEVEL_RAWSTR|RIG_LEVEL_STRENGTH|RIG_LEVEL_ALC)
+#define FT847_LEVEL_ALL (RIG_LEVEL_RAWSTR|RIG_LEVEL_STRENGTH|RIG_LEVEL_ALC|RIG_LEVEL_RFPOWER)
 
 #define FT847_VFOS (RIG_VFO_MAIN|RIG_VFO_SUB)
 
@@ -351,6 +351,7 @@ const struct rig_caps ft847_caps =
     .set_func       = ft847_set_func,
     .set_ctcss_tone = ft847_set_ctcss_tone,
     .set_ctcss_sql  = ft847_set_ctcss_sql,
+    .power2mW = ft847_power2mW,
     .set_dcs_sql    = ft847_set_dcs_sql,
     .set_rptr_shift = ft847_set_rptr_shift,
     .set_rptr_offs  = ft847_set_rptr_offs,
@@ -1350,6 +1351,7 @@ int ft847_get_level(RIG *rig, vfo_t vfo, setting_t level, value_t *val)
         return ft847_get_rawstr_level(rig, val);
 
     case RIG_LEVEL_ALC:
+    case RIG_LEVEL_RFPOWER:
         return ft847_get_alc_level(rig, val);
 
     default:
@@ -1519,5 +1521,17 @@ int ft847_set_rptr_offs(RIG *rig, vfo_t vfo, shortfreq_t rptr_offs)
     to_bcd_be(p_cmd, rptr_offs / 10, 8); /* store bcd format in in p_cmd */
 
     return write_block(&rig->state.rigport, (char *)p_cmd, YAESU_CMD_LENGTH);
+}
+
+int ft847_power2mW       (RIG *rig, unsigned int *mwpower, float power,
+                          freq_t freq, rmode_t mode)
+{
+  static const int ft847_pwr_table[] = {
+       0,  2000,  3000,  4000,  5000,  6000,  7000,  8000,  9000, 10000, 11000, 12000, 14000, 16000, 18000, 20000,
+   23000, 26000, 30000, 34000, 39000, 44000, 50000, 56000, 62000, 69000, 76000, 84000, 92000,100000,109000,120000, 
+  };
+    
+    *mwpower = ft847_pwr_table[(int) (power*31)];
+    return RIG_OK;
 }
 

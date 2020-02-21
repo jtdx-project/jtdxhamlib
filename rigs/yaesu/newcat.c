@@ -115,7 +115,7 @@ typedef struct _yaesu_newcat_commands
  */
 static const yaesu_newcat_commands_t valid_commands[] =
 {
-    /*   Command    FT-450  FT-950  FT-891  FT-991  FT-2000 FT-9000 FT-5000 FT-1200 FT-3000 FT-101 */
+/*   Command    FT-450  FT-950  FT-891  FT-991  FT-2000 FT-9000 FT-5000 FT-1200 FT-3000 FT-101 */
     {"AB",      FALSE,  TRUE,   TRUE,   TRUE,   TRUE,   TRUE,   TRUE,   TRUE,   TRUE,   TRUE    },
     {"AC",      TRUE,   TRUE,   TRUE,   TRUE,   TRUE,   TRUE,   TRUE,   TRUE,   TRUE,   TRUE    },
     {"AG",      TRUE,   TRUE,   TRUE,   TRUE,   TRUE,   TRUE,   TRUE,   TRUE,   TRUE,   TRUE    },
@@ -123,7 +123,7 @@ static const yaesu_newcat_commands_t valid_commands[] =
     {"AM",      FALSE,  TRUE,   TRUE,   TRUE,   TRUE,   TRUE,   TRUE,   TRUE,   TRUE,   TRUE    },
     {"AN",      FALSE,  TRUE,   FALSE,  FALSE,  TRUE,   TRUE,   TRUE,   TRUE,   TRUE,   TRUE    },
     {"AO",      FALSE,  FALSE,  FALSE,  FALSE,  FALSE,  FALSE,  FALSE,  FALSE,  FALSE,  TRUE    },
-    {"BA",      FALSE,  FALSE,  TRUE,   TRUE,   FALSE,  FALSE,  FALSE,  TRUE,   TRUE,   TRUE    },
+    {"BA",      FALSE,  FALSE,  TRUE,   TRUE,   FALSE,  FALSE,  TRUE,   TRUE,   TRUE,   TRUE    },
     {"BC",      FALSE,  TRUE,   TRUE,   TRUE,   TRUE,   TRUE,   TRUE,   TRUE,   TRUE,   TRUE    },
     {"BD",      TRUE,   TRUE,   TRUE,   TRUE,   TRUE,   TRUE,   TRUE,   TRUE,   TRUE,   TRUE    },
     {"BI",      TRUE,   TRUE,   TRUE,   TRUE,   TRUE,   TRUE,   TRUE,   TRUE,   TRUE,   TRUE    },
@@ -154,7 +154,7 @@ static const yaesu_newcat_commands_t valid_commands[] =
     {"FS",      TRUE,   TRUE,   TRUE,   TRUE,   TRUE,   TRUE,   TRUE,   TRUE,   TRUE,   TRUE    },
     {"FT",      TRUE,   TRUE,   FALSE,  TRUE,   TRUE,   TRUE,   TRUE,   TRUE,   TRUE,   TRUE    },
     {"GT",      TRUE,   TRUE,   TRUE,   TRUE,   TRUE,   TRUE,   TRUE,   TRUE,   TRUE,   TRUE    },
-    {"ID",      TRUE,   TRUE,   TRUE,   TRUE,   TRUE,   TRUE,   TRUE,   TRUE,   TRUE,   TRUE    },
+    {"ID",      TRUE,   TRUE,   TRUE,   TRUE,   TRUE,   TRUE,   TRUE,   TRUE,   FALSE,  TRUE    },
     {"IF",      TRUE,   TRUE,   TRUE,   TRUE,   TRUE,   TRUE,   TRUE,   TRUE,   TRUE,   TRUE    },
     {"IS",      TRUE,   TRUE,   TRUE,   TRUE,   TRUE,   TRUE,   TRUE,   TRUE,   TRUE,   TRUE    },
     {"KM",      TRUE,   TRUE,   TRUE,   TRUE,   TRUE,   TRUE,   TRUE,   TRUE,   TRUE,   TRUE    },
@@ -747,7 +747,8 @@ int newcat_set_mode(RIG *rig, vfo_t vfo, rmode_t mode, pbwidth_t width)
     /* FT2000 mode only */
     if (newcat_is_rig(rig, RIG_MODEL_FT9000) ||
             newcat_is_rig(rig, RIG_MODEL_FT2000) ||
-            newcat_is_rig(rig, RIG_MODEL_FTDX5000))
+            newcat_is_rig(rig, RIG_MODEL_FTDX5000) ||
+            newcat_is_rig(rig, RIG_MODEL_FTDX3000))
     {
         priv->cmd_str[2] = (RIG_VFO_B == vfo) ? '1' : '0';
     }
@@ -862,7 +863,8 @@ int newcat_get_mode(RIG *rig, vfo_t vfo, rmode_t *mode, pbwidth_t *width)
 
     if (newcat_is_rig(rig, RIG_MODEL_FT9000) ||
             newcat_is_rig(rig, RIG_MODEL_FT2000) ||
-            newcat_is_rig(rig, RIG_MODEL_FTDX5000))
+            newcat_is_rig(rig, RIG_MODEL_FTDX5000) ||
+            newcat_is_rig(rig, RIG_MODEL_FTDX3000))
     {
         main_sub_vfo = RIG_VFO_B == vfo ? '1' : '0';
     }
@@ -1302,7 +1304,8 @@ int newcat_set_rptr_shift(RIG *rig, vfo_t vfo, rptr_shift_t rptr_shift)
 
     if (newcat_is_rig(rig, RIG_MODEL_FT9000) ||
             newcat_is_rig(rig, RIG_MODEL_FT2000) ||
-            newcat_is_rig(rig, RIG_MODEL_FTDX5000))
+            newcat_is_rig(rig, RIG_MODEL_FTDX5000) ||
+            newcat_is_rig(rig, RIG_MODEL_FTDX3000))
     {
         main_sub_vfo = RIG_VFO_B == vfo ? '1' : '0';
     }
@@ -1357,7 +1360,8 @@ int newcat_get_rptr_shift(RIG *rig, vfo_t vfo, rptr_shift_t *rptr_shift)
 
     if (newcat_is_rig(rig, RIG_MODEL_FT9000) ||
             newcat_is_rig(rig, RIG_MODEL_FT2000) ||
-            newcat_is_rig(rig, RIG_MODEL_FTDX5000))
+            newcat_is_rig(rig, RIG_MODEL_FTDX5000) ||
+            newcat_is_rig(rig, RIG_MODEL_FTDX3000))
     {
         main_sub_vfo = (RIG_VFO_B == vfo) ? '1' : '0';
     }
@@ -1926,7 +1930,8 @@ int newcat_set_ctcss_tone(RIG *rig, vfo_t vfo, tone_t tone)
 
     if (newcat_is_rig(rig, RIG_MODEL_FT9000) ||
             newcat_is_rig(rig, RIG_MODEL_FT2000) ||
-            newcat_is_rig(rig, RIG_MODEL_FTDX5000))
+            newcat_is_rig(rig, RIG_MODEL_FTDX5000) ||
+            newcat_is_rig(rig, RIG_MODEL_FTDX3000))
     {
         main_sub_vfo = (RIG_VFO_B == vfo) ? '1' : '0';
     }
@@ -1987,7 +1992,8 @@ int newcat_get_ctcss_tone(RIG *rig, vfo_t vfo, tone_t *tone)
 
     if (newcat_is_rig(rig, RIG_MODEL_FT9000) ||
             newcat_is_rig(rig, RIG_MODEL_FT2000) ||
-            newcat_is_rig(rig, RIG_MODEL_FTDX5000))
+            newcat_is_rig(rig, RIG_MODEL_FTDX5000) ||
+            newcat_is_rig(rig, RIG_MODEL_FTDX3000))
     {
         main_sub_vfo = (RIG_VFO_B == vfo) ? '1' : '0';
     }
@@ -2097,83 +2103,65 @@ int newcat_power2mW(RIG *rig, unsigned int *mwpower, float power, freq_t freq,
                     rmode_t mode)
 {
     int rig_id;
+    int maxpower;
 
     rig_id = newcat_get_rigid(rig);
-
     rig_debug(RIG_DEBUG_VERBOSE, "%s called\n", __func__);
 
     switch (rig_id)
     {
     case NC_RIGID_FT450:
-        /* 100 Watts */
-        *mwpower = power * 100000;
-        rig_debug(RIG_DEBUG_TRACE, "case FT450 - rig_id = %d, *mwpower = %d\n", rig_id,
-                  *mwpower);
+        maxpower = 100000;
         break;
 
     case NC_RIGID_FT950:
-        /* 100 Watts */
-        *mwpower = power * 100000;      /* 0..100 Linear scale */
-        rig_debug(RIG_DEBUG_TRACE,
-                  "case FT950 - rig_id = %d, power = %f, *mwpower = %d\n", rig_id, power,
-                  *mwpower);
+        maxpower = 100000;
         break;
 
     case NC_RIGID_FT2000:
-        /* 100 Watts */
-        *mwpower = power * 100000;
-        rig_debug(RIG_DEBUG_TRACE, "case FT2000 - rig_id = %d, *mwpower = %d\n", rig_id,
-                  *mwpower);
+        maxpower = 100000;
         break;
 
     case NC_RIGID_FT2000D:
-        /* 200 Watts */
-        *mwpower = power * 200000;
-        rig_debug(RIG_DEBUG_TRACE, "case FT2000D - rig_id = %d, *mwpower = %d\n",
-                  rig_id, *mwpower);
+        maxpower = 200000;
         break;
 
     case NC_RIGID_FTDX5000:
-        /* 200 Watts */
-        *mwpower = power * 200000;
-        rig_debug(RIG_DEBUG_TRACE, "case FTDX5000 - rig_id = %d, *mwpower = %d\n",
-                  rig_id, *mwpower);
+        maxpower = 200000;
         break;
 
     case NC_RIGID_FTDX9000D:
-        /* 200 Watts */
-        *mwpower = power * 200000;
-        rig_debug(RIG_DEBUG_TRACE, "case FTDX9000D - rig_id = %d, *mwpower = %d\n",
-                  rig_id, *mwpower);
+        maxpower = 200000;
         break;
 
     case NC_RIGID_FTDX9000Contest:
-        /* 200 Watts */
-        *mwpower = power * 200000;
-        rig_debug(RIG_DEBUG_TRACE,
-                  "case FTDX9000Contest - rig_id = %d, *mwpower = %d\n", rig_id, *mwpower);
+        maxpower = 200000;
         break;
 
     case NC_RIGID_FTDX9000MP:
-        /* 400 Watts */
-        *mwpower = power * 400000;
-        rig_debug(RIG_DEBUG_TRACE, "case FTDX9000MP - rig_id = %d, *mwpower = %d\n",
-                  rig_id, *mwpower);
+        maxpower = 400000;
         break;
 
     case NC_RIGID_FT1200:
-        /* 100 Watts */
-        *mwpower = power * 100000;
-        rig_debug(RIG_DEBUG_TRACE, "case FT1200 - rig_id = %d, *mwpower = %d\n", rig_id,
-                  *mwpower);
+        maxpower = 100000;
         break;
 
     default:
-        /* 100 Watts */
-        *mwpower = power * 100000;
-        rig_debug(RIG_DEBUG_TRACE, "default - rig_id = %d, *mwpower = %d\n", rig_id,
-                  *mwpower);
+        maxpower = 100000;
     }
+    switch (rig_id)
+    {
+    default:
+        /* 20W = 84/255  50W = 148/255, 100W = 208/255 measured in ftdx3000 */
+        if (power < 0.3295)
+            *mwpower = power * 0.6071 * maxpower;
+        else if (power < 0.5804)
+            *mwpower = (power - 0.3295) * 1.196 * maxpower + maxpower / 5;
+        else
+            *mwpower = (power - 0.5804) * 2.125 * maxpower + maxpower / 2;
+        break;
+    }
+    rig_debug(RIG_DEBUG_TRACE, "rig_id = %d, *mwpower = %d\n", rig_id,*mwpower);
 
     return RIG_OK;
 }
@@ -2542,7 +2530,8 @@ int newcat_set_level(RIG *rig, vfo_t vfo, setting_t level, value_t val)
     /* Start with both but mostly FT9000 */
     if (newcat_is_rig(rig, RIG_MODEL_FT9000) ||
             newcat_is_rig(rig, RIG_MODEL_FT2000) ||
-            newcat_is_rig(rig, RIG_MODEL_FTDX5000))
+            newcat_is_rig(rig, RIG_MODEL_FTDX5000) ||
+            newcat_is_rig(rig, RIG_MODEL_FTDX3000))
     {
         main_sub_vfo = (RIG_VFO_B == vfo) ? '1' : '0';
     }
@@ -2901,7 +2890,8 @@ int newcat_set_level(RIG *rig, vfo_t vfo, setting_t level, value_t val)
         }
         else if (newcat_is_rig(rig, RIG_MODEL_FT2000) ||
                  newcat_is_rig(rig, RIG_MODEL_FT9000) ||
-                 newcat_is_rig(rig, RIG_MODEL_FTDX5000))
+                 newcat_is_rig(rig, RIG_MODEL_FTDX5000) ||
+                 newcat_is_rig(rig, RIG_MODEL_FTDX3000))
         {
             if (val.i < 1)
             {
@@ -2952,7 +2942,8 @@ int newcat_set_level(RIG *rig, vfo_t vfo, setting_t level, value_t val)
         }
         else if (newcat_is_rig(rig, RIG_MODEL_FT2000) ||
                  newcat_is_rig(rig, RIG_MODEL_FT9000) ||
-                 newcat_is_rig(rig, RIG_MODEL_FTDX5000))
+                 newcat_is_rig(rig, RIG_MODEL_FTDX5000) ||
+                 newcat_is_rig(rig, RIG_MODEL_FTDX3000))
         {
             if (val.i < 0)
             {
@@ -3065,22 +3056,14 @@ int newcat_get_level(RIG *rig, vfo_t vfo, setting_t level, value_t *val)
 
     if (newcat_is_rig(rig, RIG_MODEL_FT9000) ||
             newcat_is_rig(rig, RIG_MODEL_FT2000) ||
-            newcat_is_rig(rig, RIG_MODEL_FTDX5000))
+            newcat_is_rig(rig, RIG_MODEL_FTDX5000) ||
+            newcat_is_rig(rig, RIG_MODEL_FTDX3000))
     {
         main_sub_vfo = (RIG_VFO_B == vfo) ? '1' : '0';
     }
 
     switch (level)
     {
-    case RIG_LEVEL_RFPOWER:
-        if (!newcat_valid_command(rig, "PC"))
-        {
-            return -RIG_ENAVAIL;
-        }
-
-        snprintf(priv->cmd_str, sizeof(priv->cmd_str), "PC%c", cat_term);
-        break;
-
     case RIG_LEVEL_PREAMP:
         if (!newcat_valid_command(rig, "PA"))
         {
@@ -3268,6 +3251,23 @@ int newcat_get_level(RIG *rig, vfo_t vfo, setting_t level, value_t *val)
 
         snprintf(priv->cmd_str, sizeof(priv->cmd_str), "SM%c%c", main_sub_vfo,
                  cat_term);
+        break;
+
+    case RIG_LEVEL_RFPOWER:
+        if (!newcat_valid_command(rig, "RM"))
+        {
+            return -RIG_ENAVAIL;
+        }
+
+        if (newcat_is_rig(rig, RIG_MODEL_FT9000))
+        {
+            snprintf(priv->cmd_str, sizeof(priv->cmd_str), "RM08%c", cat_term);
+        }
+        else
+        {
+            snprintf(priv->cmd_str, sizeof(priv->cmd_str), "RM5%c", cat_term);
+        }
+
         break;
 
     case RIG_LEVEL_SWR:
@@ -3522,7 +3522,8 @@ int newcat_set_func(RIG *rig, vfo_t vfo, setting_t func, int status)
 
     if (newcat_is_rig(rig, RIG_MODEL_FT9000) ||
             newcat_is_rig(rig, RIG_MODEL_FT2000) ||
-            newcat_is_rig(rig, RIG_MODEL_FTDX5000))
+            newcat_is_rig(rig, RIG_MODEL_FTDX5000) ||
+            newcat_is_rig(rig, RIG_MODEL_FTDX3000))
     {
         main_sub_vfo = (RIG_VFO_B == vfo) ? '1' : '0';
     }
@@ -4095,7 +4096,8 @@ int newcat_vfo_op(RIG *rig, vfo_t vfo, vfo_op_t op)
 
     if (newcat_is_rig(rig, RIG_MODEL_FT9000) ||
             newcat_is_rig(rig, RIG_MODEL_FT2000) ||
-            newcat_is_rig(rig, RIG_MODEL_FTDX5000))
+            newcat_is_rig(rig, RIG_MODEL_FTDX5000) ||
+            newcat_is_rig(rig, RIG_MODEL_FTDX3000))
     {
         main_sub_vfo = (RIG_VFO_B == vfo) ? '1' : '0';
     }

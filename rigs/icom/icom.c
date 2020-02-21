@@ -5809,18 +5809,32 @@ int icom_send_morse(RIG *rig, vfo_t vfo, const char *msg)
 int icom_power2mW(RIG *rig, unsigned int *mwpower, float power, freq_t freq,
                   rmode_t mode)
 {
+    const freq_range_t *txrange;
     int rig_id;
+    int maxpower;
 
-    rig_debug(RIG_DEBUG_VERBOSE, "%s called\n", __func__);
     rig_id = rig->caps->rig_model;
-
     rig_debug(RIG_DEBUG_VERBOSE, "%s called\n", __func__);
+    
+    txrange = rig_get_range(rig->state.tx_range_list, freq, mode);
+    rig_debug(RIG_DEBUG_VERBOSE, "%s called\n", __func__);
+
+    if (!txrange)
+	maxpower = 100000;
+    else
+	maxpower = txrange->high_power;
 
     switch (rig_id)
     {
     default:
         /* Normal 100 Watts */
-        *mwpower = power * 100000;
+        /* 25W = 92/255  50W = 143/255, 100W = 213/255 taken from IC7100 spec */
+        if (power < 0.3608)
+            *mwpower = power * 0.69294 * maxpower;
+        else if (power < 0.5608)
+            *mwpower = (power - 0.3608) * 1.25 * maxpower + maxpower / 4;
+        else
+            *mwpower = (power - 0.5608) * 1.82142 * maxpower + maxpower / 2;
         break;
     }
 

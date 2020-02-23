@@ -767,8 +767,25 @@ icom_rig_open(RIG *rig)
 int
 icom_rig_close(RIG *rig)
 {
+    int retval = RIG_OK;
     // Nothing to do yet
     rig_debug(RIG_DEBUG_TRACE, "%s: called\n", __func__);
+    // maybe we need power off?
+    rig_debug(RIG_DEBUG_VERBOSE, "%s trying power off\n", __func__);
+    retval = abs(rig_set_powerstat(rig, 0));
+
+    // this is only a fatal error if powerstat is implemented
+    // if not iplemented than we're at an error here
+    if (retval != RIG_OK && retval != RIG_ENIMPL && retval != RIG_ENAVAIL)
+    {
+        rig_debug(RIG_DEBUG_WARN, "%s: unexpected retval here: %s\n",
+                  __func__, rigerror(retval));
+
+        rig_debug(RIG_DEBUG_WARN, "%s: rig_set_powerstat failed: =%s\n", __func__,
+                  rigerror(retval));
+        return retval;
+    }
+
     return RIG_OK;
 }
 

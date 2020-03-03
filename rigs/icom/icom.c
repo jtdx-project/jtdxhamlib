@@ -773,7 +773,7 @@ icom_rig_open(RIG *rig)
         priv->tx_vfo = RIG_VFO_MAIN;
     }
 
-    return retval;
+    return RIG_OK;
 }
 
 /*

@@ -1391,7 +1391,8 @@ int icom_set_mode_with_data(RIG *rig, vfo_t vfo, rmode_t mode,
             // since width_icom is 0-2 for rigs that need this here we have to make it 1-3
             datamode[1] = datamode[0] ? width_icom : 0;
             retval =
-                icom_transaction(rig, C_CTL_MEM, dm_sub_cmd, datamode, 2, ackbuf,
+                icom_transaction(rig, C_CTL_MEM, dm_sub_cmd, datamode, width_icom == -1 ? 1 : 2,
+                                 ackbuf,
                                  &ack_len);
         }
         else
@@ -1771,6 +1772,10 @@ int icom_set_vfo(RIG *rig, vfo_t vfo)
 
     case RIG_VFO_SUB:
         icvfo = S_SUB;
+
+        // If split is on these rigs can only split on Main/VFOB
+        if (VFO_HAS_MAIN_SUB_A_B_ONLY && priv->split_on) { icvfo = S_VFOB; }
+
         break;
 
     case RIG_VFO_TX:
@@ -3608,6 +3613,8 @@ int icom_set_split_freq(RIG *rig, vfo_t vfo, freq_t tx_freq)
     if (VFO_HAS_MAIN_SUB_A_B_ONLY)
     {
         // Then we return the VFO to where it was
+        if (save_vfo == RIG_VFO_MAIN && priv->split_on) { save_vfo = RIG_VFO_A; }
+
         rig_debug(RIG_DEBUG_TRACE, "%s: SATMODE rig so setting vfo to %s\n", __func__,
                   rig_strvfo(save_vfo));
 
@@ -4230,14 +4237,23 @@ int icom_set_split_vfo(RIG *rig, vfo_t vfo, split_t split, vfo_t tx_vfo)
             priv->tx_vfo = RIG_VFO_A;
             priv->rx_vfo = RIG_VFO_A;
         }
-        // otherwise if Main or Sub we set Main as the current vfo
+        // otherwise if Main or Sub we set Main or VFOA as the current vfo
         else if (tx_vfo == RIG_VFO_MAIN || tx_vfo == RIG_VFO_SUB)
         {
             rig_debug(RIG_DEBUG_TRACE, "%s: set_vfo to VFO_MAIN because tx_vfo=%s\n",
                       __func__, rig_strvfo(tx_vfo));
             rig_set_vfo(rig, RIG_VFO_MAIN);
-            priv->tx_vfo = RIG_VFO_MAIN;
-            priv->rx_vfo = RIG_VFO_MAIN;
+
+            if (VFO_HAS_A_B_ONLY)
+            {
+                priv->tx_vfo = RIG_VFO_A;
+                priv->rx_vfo = RIG_VFO_A;
+            }
+            else
+            {
+                priv->tx_vfo = RIG_VFO_MAIN;
+                priv->rx_vfo = RIG_VFO_MAIN;
+            }
         }
 
         split_sc = S_SPLT_OFF;
@@ -4248,7 +4264,7 @@ int icom_set_split_vfo(RIG *rig, vfo_t vfo, split_t split, vfo_t tx_vfo)
 
         /* If asking for Sub or Main on rig that doesn't have it map it */
         if (VFO_HAS_A_B_ONLY && ((tx_vfo == RIG_VFO_MAIN || tx_vfo == RIG_VFO_SUB)
-                            || vfo == RIG_VFO_MAIN || vfo == RIG_VFO_SUB))
+                                 || vfo == RIG_VFO_MAIN || vfo == RIG_VFO_SUB))
         {
             if (tx_vfo == RIG_VFO_MAIN) { tx_vfo = RIG_VFO_A; }
             else if (tx_vfo == RIG_VFO_SUB) { tx_vfo = RIG_VFO_B; }
@@ -4278,11 +4294,16 @@ int icom_set_split_vfo(RIG *rig, vfo_t vfo, split_t split, vfo_t tx_vfo)
             priv->tx_vfo = RIG_VFO_B;
             priv->rx_vfo = RIG_VFO_A;
             rig_debug(RIG_DEBUG_TRACE,
-                      "%s: tx=%s, rx=%s because tx_vfo=%s, charing tx_vfo to Main\n", __func__,
+                      "%s: tx=%s, rx=%s because tx_vfo=%s, changing tx_vfo to Main\n", __func__,
                       rig_strvfo(priv->tx_vfo), rig_strvfo(priv->rx_vfo), rig_strvfo(tx_vfo));
             tx_vfo = RIG_VFO_B;
 
+            // make sure we're on Main/VFOA
             if (RIG_OK != (rc = icom_set_vfo(rig, RIG_VFO_MAIN)))
+            {
+                return rc;
+            }
+            if (RIG_OK != (rc = icom_set_vfo(rig, RIG_VFO_A)))
             {
                 return rc;
             }
@@ -6511,6 +6532,15 @@ int icom_send_voice_mem(RIG *rig, vfo_t vfo, int ch)
     return RIG_OK;
 }
 
+/*
+ * icom_get_freq_range
+ * Assumes rig!=NULL, rig->state.priv!=NULL
+ */
+int icom_get_freq_range(RIG *rig, vfo_t vfo, int ch)
+{
+    // Automatically fill in the freq range for this rig if available 
+}
+
 // Sets rig vfo && priv->curr_vfo to default VFOA, or current vfo, or the vfo requested
 static int set_vfo_curr(RIG *rig, vfo_t vfo, vfo_t curr_vfo)
 {
@@ -6542,7 +6572,7 @@ static int set_vfo_curr(RIG *rig, vfo_t vfo, vfo_t curr_vfo)
 
     /* This method works also in memory mode(RIG_VFO_MEM) */
     // first time we will set default to VFOA or Main as
-    // So if you ask for frequency or such without setting VFO first you'll get VFOA
+    // So if you ask for frequency or such without setting VFO first you'll get Main/VFOA
     if (priv->curr_vfo == RIG_VFO_NONE && vfo == RIG_VFO_CURR)
     {
 

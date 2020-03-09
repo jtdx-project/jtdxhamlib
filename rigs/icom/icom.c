@@ -731,31 +731,33 @@ icom_rig_open(RIG *rig)
               rig->caps->version);
     retval = icom_get_usb_echo_off(rig);
 
-    if (retval >= 0) { return RIG_OK; }
-
-    // maybe we need power on?
-    rig_debug(RIG_DEBUG_VERBOSE, "%s trying power on\n", __func__);
-    retval = abs(rig_set_powerstat(rig, 1));
-
-    // this is only a fatal error if powerstat is implemented
-    // if not iplemented than we're at an error here
-    if (retval != RIG_OK && retval != RIG_ENIMPL && retval != RIG_ENAVAIL)
+    if (retval != RIG_OK)
     {
-        rig_debug(RIG_DEBUG_WARN, "%s: unexpected retval here: %s\n",
-                  __func__, rigerror(retval));
 
-        rig_debug(RIG_DEBUG_WARN, "%s: rig_set_powerstat failed: =%s\n", __func__,
-                  rigerror(retval));
-        return retval;
-    }
+        // maybe we need power on?
+        rig_debug(RIG_DEBUG_VERBOSE, "%s trying power on\n", __func__);
+        retval = abs(rig_set_powerstat(rig, 1));
 
-    // Now that we're powered up let's try again
-    retval = icom_get_usb_echo_off(rig);
+        // this is only a fatal error if powerstat is implemented
+        // if not iplemented than we're at an error here
+        if (retval != RIG_OK && retval != RIG_ENIMPL && retval != RIG_ENAVAIL)
+        {
+            rig_debug(RIG_DEBUG_WARN, "%s: unexpected retval here: %s\n",
+                      __func__, rigerror(retval));
 
-    if (retval < 0)
-    {
-        rig_debug(RIG_DEBUG_ERR, "%s: Unable to determine USB echo status\n", __func__);
-        return retval;
+            rig_debug(RIG_DEBUG_WARN, "%s: rig_set_powerstat failed: =%s\n", __func__,
+                      rigerror(retval));
+            return retval;
+        }
+
+        // Now that we're powered up let's try again
+        retval = icom_get_usb_echo_off(rig);
+
+        if (retval < 0)
+        {
+            rig_debug(RIG_DEBUG_ERR, "%s: Unable to determine USB echo status\n", __func__);
+            return retval;
+        }
     }
 
     retval = rig_get_func(rig, RIG_VFO_CURR, RIG_FUNC_SATMODE, &satmode);
@@ -773,6 +775,8 @@ icom_rig_open(RIG *rig)
         priv->rx_vfo = RIG_VFO_MAIN;
         priv->tx_vfo = RIG_VFO_MAIN;
     }
+
+    icom_get_freq_range(rig); // try get to get rig range capability dyamically
 
     return RIG_OK;
 }
@@ -4214,6 +4218,7 @@ int icom_set_split_vfo(RIG *rig, vfo_t vfo, split_t split, vfo_t tx_vfo)
     unsigned char ackbuf[MAXFRAMELEN];
     int ack_len = sizeof(ackbuf), rc;
     int split_sc;
+    vfo_t vfo_final = RIG_VFO_NONE;  // where does the VFO end up?
 
     rig_debug(RIG_DEBUG_VERBOSE,
               "%s called vfo='%s', split=%d, tx_vfo=%s, curr_vfo=%s\n", __func__,
@@ -4233,9 +4238,7 @@ int icom_set_split_vfo(RIG *rig, vfo_t vfo, split_t split, vfo_t tx_vfo)
         {
             rig_debug(RIG_DEBUG_TRACE, "%s: set_vfo to VFO_A because tx_vfo=%s\n", __func__,
                       rig_strvfo(tx_vfo));
-            rig_set_vfo(rig, RIG_VFO_A);
-            priv->tx_vfo = RIG_VFO_A;
-            priv->rx_vfo = RIG_VFO_A;
+            vfo_final = RIG_VFO_A;
         }
         // otherwise if Main or Sub we set Main or VFOA as the current vfo
         else if (tx_vfo == RIG_VFO_MAIN || tx_vfo == RIG_VFO_SUB)
@@ -4243,6 +4246,7 @@ int icom_set_split_vfo(RIG *rig, vfo_t vfo, split_t split, vfo_t tx_vfo)
             rig_debug(RIG_DEBUG_TRACE, "%s: set_vfo to VFO_MAIN because tx_vfo=%s\n",
                       __func__, rig_strvfo(tx_vfo));
             rig_set_vfo(rig, RIG_VFO_MAIN);
+            vfo_final = RIG_VFO_MAIN;
 
             if (VFO_HAS_A_B_ONLY)
             {
@@ -4266,16 +4270,19 @@ int icom_set_split_vfo(RIG *rig, vfo_t vfo, split_t split, vfo_t tx_vfo)
         if (VFO_HAS_A_B_ONLY && ((tx_vfo == RIG_VFO_MAIN || tx_vfo == RIG_VFO_SUB)
                                  || vfo == RIG_VFO_MAIN || vfo == RIG_VFO_SUB))
         {
+            rig_debug(RIG_DEBUG_TRACE,"%s: vfo clause 1\n", __func__);
             if (tx_vfo == RIG_VFO_MAIN) { tx_vfo = RIG_VFO_A; }
             else if (tx_vfo == RIG_VFO_SUB) { tx_vfo = RIG_VFO_B; }
 
             if (vfo == RIG_VFO_MAIN) { vfo = RIG_VFO_A; }
             else if (vfo == RIG_VFO_SUB) { vfo = RIG_VFO_B; }
+            vfo_final = RIG_VFO_A;
         }
 
         /* ensure VFO A is Rx and VFO B is Tx as we assume that elsewhere */
         if (VFO_HAS_A_B && (tx_vfo == RIG_VFO_A || tx_vfo == RIG_VFO_B))
         {
+            rig_debug(RIG_DEBUG_TRACE,"%s: vfo clause 2\n", __func__);
             rig_debug(RIG_DEBUG_TRACE, "%s: set_vfo to VFO_A because tx_vfo=%s\n", __func__,
                       rig_strvfo(tx_vfo));
 
@@ -4286,10 +4293,12 @@ int icom_set_split_vfo(RIG *rig, vfo_t vfo, split_t split, vfo_t tx_vfo)
 
             priv->tx_vfo = RIG_VFO_B;
             priv->rx_vfo = RIG_VFO_A;
+            vfo_final = RIG_VFO_A;
         }
         else if (VFO_HAS_MAIN_SUB_A_B_ONLY && (tx_vfo == RIG_VFO_MAIN
                                                || tx_vfo == RIG_VFO_SUB))
         {
+            rig_debug(RIG_DEBUG_TRACE,"%s: vfo clause 3\n", __func__);
             // if we're asking for split in this case we split Main on A/B
             priv->tx_vfo = RIG_VFO_B;
             priv->rx_vfo = RIG_VFO_A;
@@ -4303,6 +4312,7 @@ int icom_set_split_vfo(RIG *rig, vfo_t vfo, split_t split, vfo_t tx_vfo)
             {
                 return rc;
             }
+
             if (RIG_OK != (rc = icom_set_vfo(rig, RIG_VFO_A)))
             {
                 return rc;
@@ -4310,6 +4320,7 @@ int icom_set_split_vfo(RIG *rig, vfo_t vfo, split_t split, vfo_t tx_vfo)
         }
         else if (VFO_HAS_MAIN_SUB && (tx_vfo == RIG_VFO_MAIN || tx_vfo == RIG_VFO_SUB))
         {
+            rig_debug(RIG_DEBUG_TRACE,"%s: vfo clause 4\n", __func__);
             rig_debug(RIG_DEBUG_TRACE, "%s: set_vfo because tx_vfo=%s\n", __func__,
                       rig_strvfo(tx_vfo));
 
@@ -4320,6 +4331,7 @@ int icom_set_split_vfo(RIG *rig, vfo_t vfo, split_t split, vfo_t tx_vfo)
 
             priv->rx_vfo = vfo;
             priv->tx_vfo = tx_vfo;
+            vfo_final = RIG_VFO_MAIN;
 
             split_sc = S_SPLT_ON;
         }
@@ -4351,8 +4363,16 @@ int icom_set_split_vfo(RIG *rig, vfo_t vfo, split_t split, vfo_t tx_vfo)
     }
 
     priv->split_on = RIG_SPLIT_ON == split;
-    rig_debug(RIG_DEBUG_VERBOSE, "%s: vfo=%s rx_vfo=%s tx_vfo=%s split=%d\n",
-              __func__, rig_strvfo(vfo), rig_strvfo(priv->rx_vfo),
+
+    if (vfo_final != RIG_VFO_NONE && vfo_final != priv->curr_vfo) {
+        rig_debug(RIG_DEBUG_TRACE,"%s: vfo_final set %s\n", __func__, rig_strvfo(vfo_final));
+        rc = rig_set_vfo(rig, vfo_final);
+        if (rc != RIG_OK) {
+            rig_debug(RIG_DEBUG_TRACE,"%s: vfo_final set failed? err=%s\n", __func__, rigerror(rc));
+        }
+    }
+    rig_debug(RIG_DEBUG_VERBOSE, "%s: vfo=%s curr_vfo=%s rx_vfo=%s tx_vfo=%s split=%d\n",
+              __func__, rig_strvfo(vfo), rig_strvfo(priv->curr_vfo), rig_strvfo(priv->rx_vfo),
               rig_strvfo(priv->tx_vfo), split);
     return RIG_OK;
 }
@@ -6535,10 +6555,69 @@ int icom_send_voice_mem(RIG *rig, vfo_t vfo, int ch)
 /*
  * icom_get_freq_range
  * Assumes rig!=NULL, rig->state.priv!=NULL
+ * Always returns RIG_OK
  */
-int icom_get_freq_range(RIG *rig, vfo_t vfo, int ch)
+int icom_get_freq_range(RIG *rig)
 {
-    // Automatically fill in the freq range for this rig if available 
+    int nrange = 0;
+    int ack_len;
+    int i;
+    int cmd, subcmd;
+    int retval;
+    unsigned char cmdbuf[MAXFRAMELEN];
+    unsigned char ackbuf[MAXFRAMELEN];
+    struct icom_priv_data *priv = (struct icom_priv_data *) rig->state.priv;
+    int freq_len = priv->civ_731_mode ? 4 : 5;
+
+    cmd = C_CTL_EDGE;
+    subcmd = 0;
+    retval = icom_transaction(rig, cmd, subcmd, NULL, 0, ackbuf, &ack_len);
+
+    if (retval != RIG_OK)
+    {
+        rig_debug(RIG_DEBUG_TRACE,
+                  "%s: rig does not have 0x1e command so skipping this check\n", __func__);
+        return RIG_OK;
+    }
+
+    rig_debug(RIG_DEBUG_TRACE, "%s: ackbuf[0]=%02x, ackbuf[1]=%02x\n", __func__, ackbuf[0], ackbuf[1]);
+    nrange = from_bcd(&ackbuf[2], 2);
+    rig_debug(RIG_DEBUG_TRACE, "%s: nrange=%d\n", __func__, nrange);
+
+    for (i = 0; i < nrange; ++i)
+    {
+        cmd = C_CTL_EDGE;
+        subcmd = 1;
+        retval = icom_transaction(rig, cmd, subcmd, cmdbuf, sizeof(cmdbuf), ackbuf,
+                                  &ack_len);
+
+        if (retval == RIG_OK)
+        {
+            freq_t freqlo, freqhi;
+            rig_debug(RIG_DEBUG_TRACE, "%s: cmdbuf= %02x %02x %02x %02x...\n", __func__,
+                      cmdbuf[0], cmdbuf[1], cmdbuf[2], cmdbuf[3]);
+            freqlo = from_bcd(&cmdbuf[2], freq_len * 2);
+            freqhi = from_bcd(&cmdbuf[2 + freq_len], freq_len * 2);
+            rig_debug(RIG_DEBUG_TRACE, "%s: rig chan %d, low=%.0f, high=%.0f\n", __func__,
+                      i, freqlo, freqhi);
+        }
+        else
+        {
+            rig_debug(RIG_DEBUG_ERR, "%s: error from C_CTL_EDGE?  err=%s\n", __func__,
+                      rigerror(retval));
+        }
+    }
+
+    // To be implemented
+    // Automatically fill in the freq range for this rig if available
+    rig_debug(RIG_DEBUG_TRACE, "%s: Hamlib ranges\n", __func__);
+
+    for (i = 0; i < FRQRANGESIZ && !RIG_IS_FRNG_END(rig->caps->rx_range_list1[i]); i++)
+    {
+        rig_debug(RIG_DEBUG_TRACE,"%s: rig chan %d, low=%.0f, high=%.0f\n", __func__, i, (double)rig->caps->rx_range_list1[i].startf, (double)rig->caps->rx_range_list1[i].endf);
+    }
+
+    return RIG_OK;
 }
 
 // Sets rig vfo && priv->curr_vfo to default VFOA, or current vfo, or the vfo requested

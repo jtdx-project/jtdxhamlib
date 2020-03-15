@@ -820,14 +820,14 @@ int icom_set_default_vfo(RIG *rig)
     int retval;
     struct icom_priv_data *priv = (struct icom_priv_data *) rig->state.priv;
 
-    rig_debug(RIG_DEBUG_TRACE,"%s: called, curr_vfo=%s\n", __func__, rig_strvfo(priv->curr_vfo));
+    rig_debug(RIG_DEBUG_TRACE, "%s: called, curr_vfo=%s\n", __func__,
+              rig_strvfo(priv->curr_vfo));
 
     if (VFO_HAS_MAIN_SUB_A_B_ONLY)
     {
         rig_debug(RIG_DEBUG_TRACE, "%s: setting default as MAIN/VFOA\n",
                   __func__);
         retval = rig_set_vfo(rig, RIG_VFO_MAIN);  // we'll default to Main in this case
-        priv->curr_vfo = RIG_VFO_MAIN;
 
         if (retval != RIG_OK)
         {
@@ -840,6 +840,8 @@ int icom_set_default_vfo(RIG *rig)
         {
             return retval;
         }
+
+        priv->curr_vfo = RIG_VFO_MAIN;
     }
 
     if (VFO_HAS_MAIN_SUB_ONLY)
@@ -3633,8 +3635,10 @@ int icom_set_split_freq(RIG *rig, vfo_t vfo, freq_t tx_freq)
     struct icom_priv_data *priv;
     struct rig_state *rs;
     unsigned char ackbuf[MAXFRAMELEN];
+    unsigned char freqbuf[32];
     int ack_len = sizeof(ackbuf);
     vfo_t save_vfo;
+    int cmd, subcmd, freq_len;
 
     rig_debug(RIG_DEBUG_VERBOSE, "%s called for %s\n", __func__, rig_strvfo(vfo));
     rs = &rig->state;
@@ -3647,6 +3651,37 @@ int icom_set_split_freq(RIG *rig, vfo_t vfo, freq_t tx_freq)
 
     set_vfo_curr(rig, RIG_VFO_CURR, RIG_VFO_CURR);
     save_vfo = priv->curr_vfo;
+
+    // If the rigs supports the 0x25 command we'll use it
+    // This eliminates VFO swapping and improves split operations
+    if (priv->x25cmdfails == 0)
+    {
+        int satmode = 0;
+        rc = rig_get_func(rig, RIG_VFO_CURR, RIG_FUNC_SATMODE, &satmode);
+        rig_debug(RIG_DEBUG_VERBOSE, "%s: satmode=%d\n", __func__, satmode);
+
+        if (satmode == 0) // only worth trying if not in satmode
+        {
+            freq_len = priv->civ_731_mode ? 4 : 5;
+            /*
+             * to_bcd requires nibble len
+             */
+            to_bcd(freqbuf, tx_freq, freq_len * 2);
+
+            cmd = C_SEND_SEL_FREQ;
+            subcmd = 0x01; // set the unselected vfo
+            rc = icom_transaction(rig, cmd, subcmd, freqbuf, freq_len, ackbuf,
+                                  &ack_len);
+
+            if (rc == RIG_OK) // then we're done!!
+            {
+                return rc;
+            }
+        }
+
+        priv->x25cmdfails = 1;
+    }
+
 
     if (!priv->no_xchg && rig_has_vfo_op(rig, RIG_OP_XCHG))
     {
@@ -3715,11 +3750,12 @@ int icom_set_split_freq(RIG *rig, vfo_t vfo, freq_t tx_freq)
 
     if (VFO_HAS_MAIN_SUB_A_B_ONLY)
     {
-        // Then we return the VFO to where it was
-        if (save_vfo == RIG_VFO_MAIN && priv->split_on) { save_vfo = RIG_VFO_A; }
+        // Then we return the VFO to the rx_vfo
+        save_vfo = rx_vfo;
 
-        rig_debug(RIG_DEBUG_TRACE, "%s: SATMODE rig so setting vfo to %s\n", __func__,
-                  rig_strvfo(save_vfo));
+        rig_debug(RIG_DEBUG_TRACE, "%s: SATMODE split_on=%d rig so setting vfo to %s\n",
+                  __func__,
+                  priv->split_on, rig_strvfo(save_vfo));
 
         if (RIG_OK != (rc = icom_set_vfo(rig, save_vfo)))
         {
@@ -3770,18 +3806,47 @@ int icom_get_split_freq(RIG *rig, vfo_t vfo, freq_t *tx_freq)
     unsigned char ackbuf[MAXFRAMELEN];
     int ack_len = sizeof(ackbuf);
     vfo_t save_vfo;
-
+    int cmd, subcmd;
 
     rig_debug(RIG_DEBUG_VERBOSE, "%s called %s\n", __func__, rig_strvfo(vfo));
 
     rs = &rig->state;
     priv = (struct icom_priv_data *) rs->priv;
 
-    rig_debug(RIG_DEBUG_VERBOSE, "%s curr_vfo=%s\n", __func__, rig_strvfo(priv->curr_vfo));
+    rig_debug(RIG_DEBUG_VERBOSE, "%s curr_vfo=%s\n", __func__,
+              rig_strvfo(priv->curr_vfo));
+
     if (priv->curr_vfo == RIG_VFO_NONE)
     {
         icom_set_default_vfo(rig);
     }
+
+    // If the rigs supports the 0x25 command we'll use it
+    // This eliminates VFO swapping and improves split operations
+    // This does not work in satellite mode for the 9700
+    if (priv->x25cmdfails == 0)
+    {
+        int satmode = 0;
+        rc = rig_get_func(rig, RIG_VFO_CURR, RIG_FUNC_SATMODE, &satmode);
+        rig_debug(RIG_DEBUG_VERBOSE, "%s: satmode=%d\n", __func__, satmode);
+
+        if (satmode == 0) // only worth trying if not in satmode
+        {
+            cmd = C_SEND_SEL_FREQ;
+            subcmd = 0x01; // get the unselected vfo
+            rc = icom_transaction(rig, cmd, subcmd, NULL, 0, ackbuf,
+                                  &ack_len);
+
+            if (rc == RIG_OK) // then we're done!!
+            {
+                *tx_freq = from_bcd(ackbuf + 2, (priv->civ_731_mode ? 4 : 5) * 2);
+                return rc;
+            }
+        }
+
+        priv->x25cmdfails = 1;
+    }
+
     save_vfo = priv->curr_vfo; // so we can restore it later
 
     /* This method works also in memory mode(RIG_VFO_MEM) */
@@ -4102,6 +4167,7 @@ int icom_set_split_freq_mode(RIG *rig, vfo_t vfo, freq_t tx_freq,
     {
         icom_set_default_vfo(rig);
     }
+
     /* This method works also in memory mode(RIG_VFO_MEM) */
     if (!priv->no_xchg && rig_has_vfo_op(rig, RIG_OP_XCHG))
     {
@@ -4516,6 +4582,7 @@ int icom_get_split_vfo(RIG *rig, vfo_t vfo, split_t *split, vfo_t *tx_vfo)
     rig_debug(RIG_DEBUG_VERBOSE, "%s called\n", __func__);
     retval = icom_transaction(rig, C_CTL_SPLT, -1, NULL, 0,
                               splitbuf, &split_len);
+
     if (retval != RIG_OK)
     {
         rig_debug(RIG_DEBUG_ERR, "%s: CTL_SPLT failed?\n", __func__);
@@ -4715,6 +4782,8 @@ int icom_set_func(RIG *rig, vfo_t vfo, setting_t func, int status)
     unsigned char fctbuf[MAXFRAMELEN], ackbuf[MAXFRAMELEN];
     int fct_len, acklen, retval;
     int fct_cn, fct_sc;       /* Command Number, Subcommand */
+    struct rig_state *rs = &rig->state;
+    struct icom_priv_data *priv = (struct icom_priv_data *) rs->priv;
 
     rig_debug(RIG_DEBUG_VERBOSE, "%s called\n", __func__);
 
@@ -4900,6 +4969,7 @@ int icom_set_func(RIG *rig, vfo_t vfo, setting_t func, int status)
             fct_cn = C_CTL_FUNC;
             fct_sc = S_MEM_SATMODE;
         }
+        priv->x25cmdfails = 0; // we reset this to try it again
 
         break;
 
@@ -6689,8 +6759,9 @@ int icom_get_freq_range(RIG *rig)
     unsigned char cmdbuf[MAXFRAMELEN];
     unsigned char ackbuf[MAXFRAMELEN];
     int ack_len = sizeof(ackbuf);
-    struct icom_priv_data *priv = (struct icom_priv_data *) rig->state.priv;
-    int freq_len = priv->civ_731_mode ? 4 : 5;
+//    struct icom_priv_data *priv = (struct icom_priv_data *) rig->state.priv;
+//    int freq_len = priv->civ_731_mode ? 4 : 5;
+    int freq_len = 5;
 
     cmd = C_CTL_EDGE;
     subcmd = 0;
@@ -6708,7 +6779,7 @@ int icom_get_freq_range(RIG *rig)
     nrange = from_bcd(&ackbuf[2], 2);
     rig_debug(RIG_DEBUG_TRACE, "%s: nrange=%d\n", __func__, nrange);
 
-    for (i = 0; i < nrange; ++i)
+    for (i = 1; i <= nrange; ++i)
     {
         cmd = C_CTL_EDGE;
         subcmd = 1;
@@ -6719,10 +6790,10 @@ int icom_get_freq_range(RIG *rig)
         if (retval == RIG_OK)
         {
             freq_t freqlo, freqhi;
-            rig_debug(RIG_DEBUG_TRACE, "%s: cmdbuf= %02x %02x %02x %02x...\n", __func__,
-                      cmdbuf[0], cmdbuf[1], cmdbuf[2], cmdbuf[3]);
-            freqlo = from_bcd(&cmdbuf[2], freq_len * 2);
-            freqhi = from_bcd(&cmdbuf[2 + freq_len], freq_len * 2);
+            rig_debug(RIG_DEBUG_TRACE, "%s: ackbuf= %02x %02x %02x %02x...\n", __func__,
+                      ackbuf[0], ackbuf[1], ackbuf[2], ackbuf[3]);
+            freqlo = from_bcd(&ackbuf[3], freq_len * 2);
+            freqhi = from_bcd(&ackbuf[3 + freq_len + 1], freq_len * 2);
             rig_debug(RIG_DEBUG_TRACE, "%s: rig chan %d, low=%.0f, high=%.0f\n", __func__,
                       i, freqlo, freqhi);
         }

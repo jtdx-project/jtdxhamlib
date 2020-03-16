@@ -631,6 +631,7 @@ int main(int argc, char *argv[])
     rig_debug(RIG_DEBUG_VERBOSE, "Backend version: %s, Status: %s\n",
               my_rig->caps->version, rig_strstatus(my_rig->caps->status));
 
+#if 0
     rig_close(my_rig);          /* we will reopen for clients */
 
     if (verbose > RIG_DEBUG_ERR)
@@ -639,6 +640,8 @@ int main(int argc, char *argv[])
                my_rig->caps->rig_model,
                my_rig->caps->model_name);
     }
+
+#endif
 
 #ifdef __MINGW32__
 #  ifndef SO_OPENTYPE
@@ -977,6 +980,9 @@ void *handle_socket(void *arg)
 #ifdef HAVE_PTHREAD
     sync_callback(1);
 
+//    ++client_count;
+#if 0
+
     if (!client_count++)
     {
         retcode = rig_open(my_rig);
@@ -988,6 +994,8 @@ void *handle_socket(void *arg)
                    my_rig->caps->model_name);
         }
     }
+
+#endif
 
     sync_callback(0);
 #else
@@ -1021,6 +1029,7 @@ void *handle_socket(void *arg)
     while (retcode == 0 || retcode == 2 || retcode == -RIG_ENAVAIL);
 
 #ifdef HAVE_PTHREAD
+#if 0
     sync_callback(1);
 
     /* Release rig if there are no clients */
@@ -1037,6 +1046,7 @@ void *handle_socket(void *arg)
     }
 
     sync_callback(0);
+#endif
 #else
     rig_close(my_rig);
 
@@ -1083,7 +1093,7 @@ handle_exit:
 #ifndef __MINGW32__
     retcode = close(handle_data_arg->sock);
 
-    if (retcode != 0) { rig_debug(RIG_DEBUG_ERR, "%s: close(handle_data_arg->sock) %s\n", __func__, strerror(retcode)); }
+    if (retcode != 0 && errno != EBADF) { rig_debug(RIG_DEBUG_ERR, "%s: close(handle_data_arg->sock) %s\n", __func__, strerror(errno)); }
 
 #endif
 

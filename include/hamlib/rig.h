@@ -162,7 +162,7 @@ struct rig_state;
 /**
  * \brief Rig structure definition (see rig for details).
  */
-typedef struct rig RIG;
+typedef struct s_rig RIG;
 
 #define RIGNAMSIZ 30
 #define RIGVERSIZ 8
@@ -1382,9 +1382,10 @@ typedef int (* confval_cb_t)(RIG *,
  * sharing the struct rig_caps of the backend, while keeping their own
  * customized data.
  *
- * NB: Don't move fields around, as the backends depend on it when
- *     initializing their caps.
+ * mdblack: Don't move or add fields around without bumping the version numbers
+ *          DLL or shared library replacement depends on order
  */
+#define RIG_MODEL(arg) .rig_model=arg,.macro_name=#arg
 struct rig_caps {
     rig_model_t rig_model;      /*!< Rig model. */
     const char *model_name;     /*!< Model name. */
@@ -1643,6 +1644,7 @@ struct rig_caps {
 
     const char *clone_combo_set;    /*!< String describing key combination to enter load cloning mode */
     const char *clone_combo_get;    /*!< String describing key combination to enter save cloning mode */
+    const char *macro_name;     /*!< Rig model macro name */
 };
 
 
@@ -1852,7 +1854,7 @@ struct rig_callbacks {
  *
  * \sa rig_init(), rig_caps(), rig_state()
  */
-struct rig {
+struct s_rig {
     struct rig_caps *caps;          /*!< Pointer to rig capabilities (read only) */
     struct rig_state state;         /*!< Rig state */
     struct rig_callbacks callbacks; /*!< registered event callbacks */
@@ -2378,7 +2380,7 @@ extern HAMLIB_EXPORT(const struct rig_caps *)
 rig_get_caps HAMLIB_PARAMS((rig_model_t rig_model));
 
 extern HAMLIB_EXPORT(const freq_range_t *)
-rig_get_range HAMLIB_PARAMS((const freq_range_t range_list[],
+rig_get_range HAMLIB_PARAMS((const freq_range_t *range_list,
                              freq_t freq,
                              rmode_t mode));
 

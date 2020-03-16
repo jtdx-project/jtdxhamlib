@@ -636,8 +636,13 @@ int kenwood_open(RIG *rig)
 
     rig_debug(RIG_DEBUG_VERBOSE, "%s called\n", __func__);
 
-    // Ensure rig is on
-    rig_set_powerstat(rig, 1);
+    err = kenwood_get_id(rig, id);
+
+    if (err == -RIG_ETIMEOUT)
+    {
+        // Ensure rig is on
+        rig_set_powerstat(rig, 1);
+    }
 
 
     if (RIG_MODEL_TS590S == rig->caps->rig_model)
@@ -3344,7 +3349,8 @@ int kenwood_get_trn(RIG *rig, int *trn)
  */
 int kenwood_set_powerstat(RIG *rig, powerstat_t status)
 {
-    int retval = kenwood_transaction(rig, (status == RIG_POWER_ON) ? "PS1" : "PS0",
+    int retval = kenwood_transaction(rig,
+                                     (status == RIG_POWER_ON) ? ";;;;PS1;" : "PS0",
                                      NULL, 0);
     int i = 0;
     int retry = 3 / rig->state.rigport.retry;

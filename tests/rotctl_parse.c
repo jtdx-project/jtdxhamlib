@@ -258,6 +258,7 @@ struct mod_lst
     char model_name[32];    /* caps->model_name */
     char version[32];       /* caps->version */
     char status[32];        /* caps->status */
+    char macro_name[32];    /* caps->macro_name */
     UT_hash_handle hh;      /* makes this structure hashable */
 };
 
@@ -270,7 +271,8 @@ void hash_add_model(int id,
                     const char *mfg_name,
                     const char *model_name,
                     const char *version,
-                    const char *status)
+                    const char *status,
+                    const char *macro_name)
 {
     struct mod_lst *s;
 
@@ -281,6 +283,7 @@ void hash_add_model(int id,
     snprintf(s->model_name, sizeof(s->model_name), "%s", model_name);
     snprintf(s->version, sizeof(s->version), "%s", version);
     snprintf(s->status, sizeof(s->status), "%s", status);
+    snprintf(s->macro_name, sizeof(s->macro_name), "%s", macro_name);
 
     HASH_ADD_INT(models, id, s);    /* id: name of key field */
 }
@@ -1559,6 +1562,10 @@ int print_conf_list(const struct confparams *cfp, rig_ptr_t data)
                cfp->u.n.step);
         break;
 
+    case RIG_CONF_CHECKBUTTON:
+        printf("\tCheckbox: 0,1\n");
+        break;
+
     case RIG_CONF_COMBO:
         if (!cfp->u.c.combostr[0])
         {
@@ -1589,7 +1596,8 @@ static int hash_model_list(const struct rot_caps *caps, void *data)
                    caps->mfg_name,
                    caps->model_name,
                    caps->version,
-                   rig_strstatus(caps->status));
+                   rig_strstatus(caps->status),
+                   caps->macro_name);
 
     return 1;  /* !=0, we want them all ! */
 }
@@ -1600,12 +1608,13 @@ void print_model_list()
 
     for (s = models; s != NULL; s = (struct mod_lst *)(s->hh.next))
     {
-        printf("%6d  %-23s%-24s%-16s%s\n",
+        printf("%6d  %-23s%-24s%-16s%-14s%s\n",
                s->id,
                s->mfg_name,
                s->model_name,
                s->version,
-               s->status);
+               s->status,
+               s->macro_name);
     }
 }
 
@@ -1616,7 +1625,7 @@ void list_models()
 
     rot_load_all_backends();
 
-    printf(" Rot #  Mfg                    Model                   Version         Status\n");
+    printf(" Rot #  Mfg                    Model                   Version         Status        Macro\n");
     status = rot_list_foreach(hash_model_list, NULL);
 
     if (status != RIG_OK)
@@ -1648,14 +1657,14 @@ int set_conf(ROT *my_rot, char *conf_parms)
         if (!q)
         {
             return RIG_EINVAL;
+        }
 
-            *q++ = '\0';
-            n = strchr(q, ',');
+        *q++ = '\0';
+        n = strchr(q, ',');
 
-            if (n)
-            {
-                *n++ = '\0';
-            }
+        if (n)
+        {
+            *n++ = '\0';
         }
 
         rig_debug(RIG_DEBUG_TRACE, "%s: token=%s, val=%s\n", __func__, p, q);
@@ -1856,28 +1865,28 @@ declare_proto_rot(dump_state)
         fprintf(fout, "Minimum Azimuth: ");
     }
 
-    fprintf(fout, "%lf%c", rs->min_az, resp_sep);
+    fprintf(fout, "%lf%c", rs->min_az + rot->state.az_offset, resp_sep);
 
     if ((interactive && prompt) || (interactive && !prompt && ext_resp))
     {
         fprintf(fout, "Maximum Azimuth: ");
     }
 
-    fprintf(fout, "%lf%c", rs->max_az, resp_sep);
+    fprintf(fout, "%lf%c", rs->max_az + rot->state.az_offset, resp_sep);
 
     if ((interactive && prompt) || (interactive && !prompt && ext_resp))
     {
         fprintf(fout, "Minimum Elevation: ");
     }
 
-    fprintf(fout, "%lf%c", rs->min_el, resp_sep);
+    fprintf(fout, "%lf%c", rs->min_el + rot->state.el_offset, resp_sep);
 
     if ((interactive && prompt) || (interactive && !prompt && ext_resp))
     {
         fprintf(fout, "Maximum Elevation: ");
     }
 
-    fprintf(fout, "%lf%c", rs->max_el, resp_sep);
+    fprintf(fout, "%lf%c", rs->max_el + rot->state.el_offset, resp_sep);
 
     if ((interactive && prompt) || (interactive && !prompt && ext_resp))
     {

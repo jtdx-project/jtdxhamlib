@@ -52,7 +52,7 @@ struct rot_state;
  *  \typedef typedef struct rot ROT
  *  \brief Rotator structure definition (see rot for details).
  */
-typedef struct rot ROT;
+typedef struct s_rot ROT;
 
 
 /**
@@ -213,9 +213,10 @@ typedef enum {
  * sharing the struct rot_caps of the backend, while keeping their own
  * customized data.
  *
- * n.b.: Don't move fields around, as the backends depend on it when
- *       initializing their caps.
+ * mdblack: Careful movinf fields around, as the backends depend on it when
+ *       initializing their caps in shared libraries and dlls.
  */
+#define ROT_MODEL(arg) .rot_model=arg,.macro_name=#arg
 struct rot_caps {
     rot_model_t rot_model;                      /*!< Rotator model. */
     const char *model_name;                     /*!< Model name. */
@@ -284,6 +285,7 @@ struct rot_caps {
     /* get firmware info, etc. */
     const char * (*get_info)(ROT *rot);
 
+    const char *macro_name;                     /*!< Macro name. */
     /* more to come... */
 };
 
@@ -336,7 +338,7 @@ struct rot_state {
  *
  * \sa rot_init(), rot_caps(), rot_state()
  */
-struct rot {
+struct s_rot {
     struct rot_caps *caps;      /*!< Rotator caps. */
     struct rot_state state;     /*!< Rotator state. */
 };

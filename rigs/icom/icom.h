@@ -30,7 +30,7 @@
 #include <sys/time.h>
 #endif
 
-#define BACKEND_VER "0.32"
+#define BACKEND_VER "0.38"
 
 /*
  * defines used by comp_cal_str in rig.c
@@ -186,6 +186,8 @@ struct icom_priv_data
     freq_t curr_freq; // our current freq depending on which vfo is selected
     freq_t main_freq; // track last setting of main -- not being used yet
     freq_t sub_freq;  // track last setting of sub -- not being used yet
+    int x25cmdfails;  // This will get set if the 0x25 command fails so we try just once
+    int x1cx03cmdfails;  // This will get set if the 0x1c 0x03 command fails so we try just once
 };
 
 extern const struct ts_sc_list r8500_ts_sc_list[];
@@ -309,6 +311,7 @@ int icom_set_custom_parm_time(RIG *rig, int parmbuflen, unsigned char *parmbuf,
                               int seconds);
 int icom_get_custom_parm_time(RIG *rig, int parmbuflen, unsigned char *parmbuf,
                               int *seconds);
+int icom_get_freq_range(RIG *rig);
 
 extern const struct confparams icom_cfg_params[];
 extern const struct confparams icom_ext_levels[];

@@ -802,6 +802,8 @@ int kenwood_close(RIG *rig)
         kenwood_set_trn(rig, priv->trn_state); /* ignore status in case
                                                  it's not supported */
     }
+    // Ensure rig is on
+    rig_set_powerstat(rig, 0);
 
     return RIG_OK;
 }

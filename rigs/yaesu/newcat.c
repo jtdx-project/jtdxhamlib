@@ -395,6 +395,9 @@ int newcat_close(RIG *rig)
                                                    case it's not
                                                    supported */
     }
+    /* Ensure rig is powered off */
+    rig_set_powerstat(rig, 0);
+
 
     return RIG_OK;
 }

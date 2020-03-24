@@ -351,7 +351,7 @@ int csv_parm_save(RIG *rig, const char *outfilename)
 {
     int i, ret;
     FILE *f;
-    setting_t parm, get_parm = all ? 0x7fffffff : rig->state.has_get_parm;
+    setting_t get_parm = all ? 0x7fffffff : rig->state.has_get_parm;
 
     f = fopen(outfilename, "w");
 
@@ -379,6 +379,7 @@ int csv_parm_save(RIG *rig, const char *outfilename)
     {
         const char *ms;
         value_t val;
+        setting_t parm;
 
         parm = get_parm & rig_idx2setting(i);
         ms = rig_strparm(parm);
@@ -600,7 +601,7 @@ int dump_csv_chan(RIG *rig,
 
     if (mem_caps->ant)
     {
-        fprintf(f, "%d%c", chan.ant, csv_sep);
+        fprintf(f, "%u%c", chan.ant, csv_sep);
     }
 
     if (mem_caps->freq)
@@ -675,22 +676,22 @@ int dump_csv_chan(RIG *rig,
 
     if (mem_caps->ctcss_tone)
     {
-        fprintf(f, "%d%c", chan.ctcss_tone, csv_sep);
+        fprintf(f, "%u%c", chan.ctcss_tone, csv_sep);
     }
 
     if (mem_caps->ctcss_sql)
     {
-        fprintf(f, "%d%c", chan.ctcss_sql, csv_sep);
+        fprintf(f, "%u%c", chan.ctcss_sql, csv_sep);
     }
 
     if (mem_caps->dcs_code)
     {
-        fprintf(f, "%d%c", chan.dcs_code, csv_sep);
+        fprintf(f, "%u%c", chan.dcs_code, csv_sep);
     }
 
     if (mem_caps->dcs_sql)
     {
-        fprintf(f, "%d%c", chan.dcs_sql, csv_sep);
+        fprintf(f, "%u%c", chan.dcs_sql, csv_sep);
     }
 
     if (mem_caps->scan_group)

@@ -715,6 +715,8 @@ static int handle_ts2000(void *arg)
         int p15 = 0;            // P15 Shift status dummy value for now
         int retval = rig_get_freq(my_rig, RIG_VFO_A, &freq);
         char response[64];
+        // cppcheck-suppress *
+        char *fmt = "IF%011"PRIll"%04d+%05d%1d%1d%1d%02d%1d%1"PRIll"%1d%1d%1d%1d%02d%1d;";
 
         if (retval != RIG_OK)
         {
@@ -759,7 +761,7 @@ static int handle_ts2000(void *arg)
 
         snprintf(response,
                  sizeof(response),
-                 "IF%011"PRIll"%04d+%05d%1d%1d%1d%02d%1d%1"PRIll"%1d%1d%1d%1d%02d%1d;",
+                 fmt,
                  (uint64_t)freq,
                  freq_step,
                  rit_xit_freq,

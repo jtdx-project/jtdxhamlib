@@ -151,7 +151,7 @@ const struct rig_caps ts440_caps =
 
     .rig_init = kenwood_init,
     .rig_cleanup = kenwood_cleanup,
-    .set_freq =  kenwood_set_freq,
+    .set_freq =  ic10_set_freq,
     .get_freq =  ic10_get_freq,
     .set_rit =  kenwood_set_rit,
     .get_rit =  kenwood_get_rit,
@@ -163,7 +163,7 @@ const struct rig_caps ts440_caps =
     .get_vfo =  ic10_get_vfo,
     .set_split_vfo =  ic10_set_split_vfo,
     .get_split_vfo =  ic10_get_split_vfo,
-    .set_ptt =  kenwood_set_ptt,
+    .set_ptt =  ic10_set_ptt,
     .get_ptt =  ic10_get_ptt,
     .set_func =  kenwood_set_func,
     .vfo_op =  kenwood_vfo_op,

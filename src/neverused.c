@@ -24,6 +24,7 @@ void never_used()
     amp_token_foreach();
     amp_unregister();
     cm108_dcd_get();
+    CtrlHandler();
     elad_close();
     elad_get_channel();
     elad_get_ctcss_sql();
@@ -126,6 +127,9 @@ void never_used()
     rot_probe_all();
     rot_unregister();
     set_parm_all_cb_generic();
+    sprintf_level();
+    sprintf_level_ext();
+    sprintf_parm();
     tentec_trx_open();
     thd72_get_chan_all_cb();
     thd74_get_chan_all_cb();

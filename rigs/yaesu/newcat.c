@@ -601,6 +601,7 @@ int newcat_set_freq(RIG *rig, vfo_t vfo, freq_t freq)
         newcat_get_vfo_mode(rig, &vfo_mode);
     }
 
+    // cppcheck-suppress *
     snprintf(priv->cmd_str, sizeof(priv->cmd_str), "F%c%0*"PRIll"%c", c,
              priv->width_frequency, (int64_t)freq, cat_term);
     rig_debug(RIG_DEBUG_TRACE, "%s:%d cmd_str = %s\n", __func__, __LINE__,
@@ -2912,7 +2913,7 @@ int newcat_set_level(RIG *rig, vfo_t vfo, setting_t level, value_t val)
                  cat_term);
         break;
 
-    case RIG_LEVEL_VOX:
+    case RIG_LEVEL_VOXDELAY:
         if (!newcat_valid_command(rig, "VD"))
         {
             return -RIG_ENAVAIL;
@@ -3213,7 +3214,7 @@ int newcat_get_level(RIG *rig, vfo_t vfo, setting_t level, value_t *val)
                  cat_term);
         break;
 
-    case RIG_LEVEL_VOX:
+    case RIG_LEVEL_VOXDELAY:
 
         /* VOX delay, arg int (tenth of seconds) */
         if (!newcat_valid_command(rig, "VD"))
@@ -3441,7 +3442,7 @@ int newcat_get_level(RIG *rig, vfo_t vfo, setting_t level, value_t *val)
 
         break;
 
-    case RIG_LEVEL_VOX:
+    case RIG_LEVEL_VOXDELAY:
         /* VOX delay, arg int (tenth of seconds), 100ms intervals */
         val->i = atoi(retlvl) / 100;
         break;

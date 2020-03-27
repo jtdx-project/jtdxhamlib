@@ -463,6 +463,7 @@ static struct
     { RIG_VFO_SUB_A, "SubA" },
     { RIG_VFO_SUB_B, "SubB" },
     { RIG_VFO_NONE, "None" },
+    { 0xffffff, "" },
 };
 
 
@@ -503,12 +504,13 @@ const char *HAMLIB_API rig_strvfo(vfo_t vfo)
     int i;
 
     //a bit too verbose
-    //rig_debug(RIG_DEBUG_TRACE, "%s called\n", __func__);
+    rig_debug(RIG_DEBUG_TRACE, "%s called\n", __func__);
 
     for (i = 0 ; vfo_str[i].str[0] != '\0'; i++)
     {
         if (vfo == vfo_str[i].vfo)
         {
+    rig_debug(RIG_DEBUG_TRACE, "%s returning %s\n", __func__, vfo_str[i].str);
             return vfo_str[i].str;
         }
     }
@@ -571,6 +573,7 @@ static struct
  * utility function to convert index to bit value
  *
  */
+// cppcheck-suppress *
 uint64_t rig_idx2setting(int i)
 {
     return ((uint64_t)1) << i;

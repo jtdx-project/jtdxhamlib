@@ -398,8 +398,8 @@ int ic10_get_freq(RIG *rig, vfo_t vfo, freq_t *freq)
  */
 int ic10_set_freq(RIG *rig, vfo_t vfo, freq_t freq)
 {
-    char freqbuf[64], ackbuf[64];
-    int freq_len, ack_len, retval;
+    char freqbuf[64];
+    int freq_len, retval;
     unsigned char vfo_letter;
     vfo_t   tvfo;
 
@@ -428,7 +428,7 @@ int ic10_set_freq(RIG *rig, vfo_t vfo, freq_t freq)
 
     // cppcheck-suppress *
     freq_len = sprintf(freqbuf, "F%c%011"PRIll";", vfo_letter, (int64_t)freq);
-    retval = ic10_transaction(rig, freqbuf, freq_len, ackbuf, &ack_len);
+    retval = ic10_transaction(rig, freqbuf, freq_len, NULL, 0);
 
     return retval;
 }
@@ -582,7 +582,7 @@ int ic10_set_mem(RIG *rig, vfo_t vfo, int ch)
     char membuf[8], ackbuf[64];
     int mem_len, ack_len, retval;
 
-    mem_len = sprintf(membuf, "MC %02d;", ch);
+    mem_len = sprintf(membuf, "MC%02d;", ch);
 
     retval = ic10_transaction(rig, membuf, mem_len, ackbuf, &ack_len);
 
@@ -595,7 +595,7 @@ int ic10_get_channel(RIG *rig, channel_t *chan)
     char membuf[16], infobuf[32];
     int retval, info_len, len;
 
-    len = sprintf(membuf, "MR0 %02d;", chan->channel_num);
+    len = sprintf(membuf, "MR0%02d;", chan->channel_num);
     info_len = 24;
     retval = ic10_transaction(rig, membuf, len, infobuf, &info_len);
 
@@ -629,13 +629,11 @@ int ic10_get_channel(RIG *rig, channel_t *chan)
 
     chan->width = rig_passband_normal(rig, chan->mode);
 
-    /*  infobuf[17] = ' '; */
-    infobuf[17] = '\0';
     sscanf(infobuf + 6, "%011"SCNfreq, &chan->freq);
     chan->vfo = RIG_VFO_MEM;
 
     /* TX VFO (Split channel only) */
-    len = sprintf(membuf, "MR1 %02d;", chan->channel_num);
+    len = sprintf(membuf, "MR1%02d;", chan->channel_num);
     info_len = 24;
     retval = ic10_transaction(rig, membuf, len, infobuf, &info_len);
 
@@ -666,9 +664,6 @@ int ic10_get_channel(RIG *rig, channel_t *chan)
         }
 
         chan->tx_width = rig_passband_normal(rig, chan->tx_mode);
-
-        /*  infobuf[17] = ' '; */
-        infobuf[17] = '\0';
 
         sscanf(infobuf + 6, "%011"SCNfreq, &chan->tx_freq);
     }

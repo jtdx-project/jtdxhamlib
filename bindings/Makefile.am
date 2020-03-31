@@ -19,7 +19,6 @@ else
 	echo Default install=$(PERLINSTALL)
 endif
 
-
 AM_CPPFLAGS = @AM_CPPFLAGS@ -I$(top_srcdir)/bindings $(PYTHON_CPPFLAGS) \
 	$(TCL_INCLUDE_SPEC)
 
@@ -87,7 +86,7 @@ distcheck-perl: Hamlib-pl.mk
 	$(AM_V_at)$(MAKE) $(AM_MAKEFLAGS) -f Hamlib-pl.mk distcheck
 
 install-perl: Hamlib-pl.mk
-	$(AM_V_at)$(MAKE) $(AM_MAKEFLAGS) -f Hamlib-pl.mk $(PERLINSTALL)
+	$(AM_V_at)$(MAKE) $(AM_MAKEFLAGS) -f Hamlib-pl.mk install_site
 
 ## ExtUtils::MakeMaker says uninstall is deprecated and won't remove the files
 ## anyway, so we'll have to figure out another way to remove the installed files.

@@ -34,7 +34,7 @@
 #define TS440_OTHER_TX_MODES (RIG_MODE_CW|RIG_MODE_SSB|RIG_MODE_FM|RIG_MODE_RTTY)
 #define TS440_AM_TX_MODES RIG_MODE_AM
 
-#define TS440_FUNC_ALL RIG_FUNC_LOCK
+#define TS440_FUNC_ALL (RIG_FUNC_LOCK|RIG_FUNC_RIT|RIG_FUNC_XIT)
 
 #define TS440_LEVEL_ALL RIG_LEVEL_NONE
 
@@ -52,8 +52,6 @@ static struct kenwood_priv_caps  ts440_priv_caps  =
 /*
  * ts440 rig capabilities.
  *
- * TODO: scan, get/set_channel, RIT/XIT, Voice Recall, split
- *
  * part of infos comes from .http = //www.n7uic.net/radio/kenwood/ts440/specs.htm
  * .http = //public.srce.hr/9A1CDD/mods/kenwood/knwdif.mod
  * .http = //www.ifrance.fr/clucas/modposte/ts440/mod440.htm
@@ -64,7 +62,7 @@ const struct rig_caps ts440_caps =
     RIG_MODEL(RIG_MODEL_TS440),
     .model_name = "TS-440",
     .mfg_name =  "Kenwood",
-    .version =  IC10_VER ".0",
+    .version =  IC10_VER ".2",
     .copyright =  "LGPL",
     .status =  RIG_STATUS_BETA,
     .rig_type =  RIG_TYPE_TRANSCEIVER,
@@ -155,8 +153,8 @@ const struct rig_caps ts440_caps =
     .get_freq =  ic10_get_freq,
     .set_rit =  kenwood_set_rit,
     .get_rit =  kenwood_get_rit,
-    .set_xit =  kenwood_set_xit,
-    .get_xit =  kenwood_get_xit,
+    .set_rit =  kenwood_set_xit,
+    .get_rit =  kenwood_get_xit,
     .set_mode =  kenwood_set_mode,
     .get_mode =  ic10_get_mode,
     .set_vfo =  ic10_set_vfo,

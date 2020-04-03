@@ -586,7 +586,7 @@ int kenwood_init(RIG *rig)
     struct kenwood_priv_data *priv;
     struct kenwood_priv_caps *caps = kenwood_caps(rig);
 
-    rig_debug(RIG_DEBUG_VERBOSE, "%s called, version %s\n", __func__, BACKEND_VER);
+    rig_debug(RIG_DEBUG_VERBOSE, "%s called, version %s/%s\n", __func__, BACKEND_VER, rig->caps->version);
 
     rig->state.priv = malloc(sizeof(struct kenwood_priv_data));
 
@@ -1316,12 +1316,14 @@ int kenwood_set_freq(RIG *rig, vfo_t vfo, freq_t freq)
     int err;
     struct kenwood_priv_data *priv = rig->state.priv;
 
-    rig_debug(RIG_DEBUG_VERBOSE, "%s called\n", __func__);
+    rig_debug(RIG_DEBUG_VERBOSE, "%s called vfo=%s freq=%.0f\n", __func__, rig_strvfo(vfo), freq);
 
     tvfo = (vfo == RIG_VFO_CURR
             || vfo == RIG_VFO_VFO) ? rig->state.current_vfo : vfo;
 
-    if (RIG_VFO_CURR == tvfo)
+    rig_debug(RIG_DEBUG_TRACE, "%s: tvfo=%s\n", __func__, rig_strvfo(vfo));
+
+    if (tvfo == RIG_VFO_CURR || tvfo == RIG_VFO_NONE)
     {
         /* fetch from rig */
         err = rig_get_vfo(rig, &tvfo);
@@ -1578,7 +1580,7 @@ int kenwood_set_rit(RIG *rig, vfo_t vfo, shortfreq_t rit)
 
     snprintf(buf, sizeof(buf), "R%c", (rit > 0) ? 'U' : 'D');
 
-    diff = abs((rit + 5) / 10); // round to nearest
+    diff = labs((rit + 5) / 10); // round to nearest
     rig_debug(RIG_DEBUG_TRACE, "%s: rit change loop=%d\n", __func__, diff);
 
     for (i = 0; i < diff; i++)
@@ -1678,7 +1680,7 @@ int kenwood_set_mode(RIG *rig, vfo_t vfo, rmode_t mode, pbwidth_t width)
 
     rig_debug(RIG_DEBUG_VERBOSE, "%s called\n", __func__);
 
-    if (RIG_IS_TS590S || RIG_IS_TS590SG)
+    if (RIG_IS_TS590S || RIG_IS_TS590SG || RIG_IS_TS950S || RIG_IS_TS950SDX)
     {
         /* supports DATA sub modes */
         switch (mode)
@@ -1955,7 +1957,7 @@ int kenwood_get_mode(RIG *rig, vfo_t vfo, rmode_t *mode, pbwidth_t *width)
         if (RIG_MODE_RTTYR == *mode) { *mode = RIG_MODE_PKTUSB; }
     }
 
-    if (RIG_IS_TS590S || RIG_IS_TS590SG)
+    if (RIG_IS_TS590S || RIG_IS_TS590SG || RIG_IS_TS950S || RIG_IS_TS950SDX)
     {
         /* supports DATA sub-modes */
         retval = kenwood_safe_transaction(rig, "DA", modebuf, 6, 3);

@@ -6154,7 +6154,7 @@ int newcat_get_cmd(RIG *rig)
 
         /* Check that command termination is correct - alternative is
            response is longer that the buffer */
-        if (!strchr(&cat_term, priv->ret_data[strlen(priv->ret_data) - 1]))
+        if (cat_term  != priv->ret_data[strlen(priv->ret_data) - 1])
         {
             rig_debug(RIG_DEBUG_ERR, "%s: Command is not correctly terminated '%s'\n",
                       __func__, priv->ret_data);
@@ -6339,7 +6339,7 @@ int newcat_set_cmd(RIG *rig)
                correct - alternative is response is longer that the
                buffer */
             if (strncmp(verify_cmd, priv->ret_data, strlen(verify_cmd) - 1)
-                    || !strchr(&cat_term, priv->ret_data[strlen(priv->ret_data) - 1]))
+                    || (cat_term != priv->ret_data[strlen(priv->ret_data) - 1]))
             {
                 rig_debug(RIG_DEBUG_ERR, "%s: Unexpected verify command response '%s'\n",
                           __func__, priv->ret_data);

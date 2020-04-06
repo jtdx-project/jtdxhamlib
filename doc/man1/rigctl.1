@@ -27,6 +27,7 @@ rigctl \- control radio transceivers and receivers
 .OP \-c id
 .OP \-t char
 .OP \-C parm=val
+.RG \-Y
 .RB [ \-v [ \-Z ]]
 .RB [ command | \- ]
 .YS
@@ -281,6 +282,9 @@ is used.
 Set verbose mode, cumulative (see
 .B DIAGNOSTICS
 below).
+.TP
+.BR \-Y "," \-\-\ignore\-err
+Ignores rig open errors 
 .
 .TP
 .BR \-Z ", " \-\-debug\-time\-stamps
@@ -939,7 +943,7 @@ Set memory
 .RI \(aq Channel \(aq
 data.
 .IP
-Not implemented yet.
+Sets memory channel information
 .
 .TP
 .BR h ", " get_channel
@@ -947,7 +951,7 @@ Get memory
 .RI \(aq Channel \(aq
 data.
 .IP
-Not implemented yet.
+Returns programmed channel information for specified channel
 .
 .TP
 .BR A ", " set_trn " \(aq" \fITransceive\fP \(aq

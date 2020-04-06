@@ -96,9 +96,27 @@ int ic10_transaction(RIG *rig, const char *cmd, int cmd_len, char *data,
         return retval;
     }
 
-    if (!data || !data_len)
+    if (!data)
     {
-        return 0;
+        char buffer[50];
+        struct kenwood_priv_data *priv = rig->state.priv;
+
+        if (RIG_OK != (retval = write_block(&rs->rigport, priv->verify_cmd
+                                            , strlen(priv->verify_cmd))))
+        {
+            return retval;
+        }
+
+        // this should be the ID response
+        retval = read_string(&rs->rigport, buffer, sizeof(buffer), ";", 1);
+
+        if (strncmp("ID", buffer, 2))
+        {
+            rig_debug(RIG_DEBUG_ERR, "%s: expected ID reponse and got %s\n", __func__,
+                      buffer);
+        }
+
+        return retval;
     }
 
     retval = read_string(&rs->rigport, data, 50, ";", 1);
@@ -611,16 +629,17 @@ int ic10_get_channel(RIG *rig, channel_t *chan)
     char membuf[16], infobuf[32];
     int retval, info_len, len;
 
-    len = sprintf(membuf, "MR0%02d;", chan->channel_num);
+    len = sprintf(membuf, "MR00%02d;", chan->channel_num);
     info_len = 24;
     retval = ic10_transaction(rig, membuf, len, infobuf, &info_len);
 
-    if (retval != RIG_OK && info_len > 17)
+    if (retval != RIG_OK)
     {
         return retval;
     }
 
-    /* MRn rrggmmmkkkhhhdz    ; */
+    /* MRs-ccfffffffffffml----; */
+    /* 012345678901234567890123 */
     switch (infobuf[17])
     {
     case MD_CW  :   chan->mode = RIG_MODE_CW; break;
@@ -649,7 +668,7 @@ int ic10_get_channel(RIG *rig, channel_t *chan)
     chan->vfo = RIG_VFO_MEM;
 
     /* TX VFO (Split channel only) */
-    len = sprintf(membuf, "MR1%02d;", chan->channel_num);
+    len = sprintf(membuf, "MR10%02d;", chan->channel_num);
     info_len = 24;
     retval = ic10_transaction(rig, membuf, len, infobuf, &info_len);
 
@@ -690,8 +709,8 @@ int ic10_get_channel(RIG *rig, channel_t *chan)
 
 int ic10_set_channel(RIG *rig, const channel_t *chan)
 {
-    char membuf[32], ackbuf[64];
-    int retval, ack_len, len, md;
+    char membuf[32];
+    int retval, len, md;
     int64_t freq;
 
     freq = (int64_t) chan->freq;
@@ -724,7 +743,7 @@ int ic10_set_channel(RIG *rig, const channel_t *chan)
                   freq,
                   md
                  );
-    retval = ic10_transaction(rig, membuf, len, ackbuf, &ack_len);
+    retval = ic10_transaction(rig, membuf, len, NULL, 0);
 
     if (retval != RIG_OK)
     {
@@ -762,7 +781,7 @@ int ic10_set_channel(RIG *rig, const channel_t *chan)
                   freq,
                   md
                  );
-    retval = ic10_transaction(rig, membuf, len, ackbuf, &ack_len);
+    retval = ic10_transaction(rig, membuf, len, NULL, 0);
 
     // I assume we need to check the retval here -- W9MDB
     // This was found from cppcheck

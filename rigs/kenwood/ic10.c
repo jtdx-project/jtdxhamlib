@@ -123,9 +123,10 @@ transaction:
         {
             rig_debug(RIG_DEBUG_ERR, "%s: expected ID reponse and got %s\n", __func__,
                       buffer);
+            return retval;
         }
 
-        return retval;
+        return RIG_OK;
     }
 
     retval = read_string(&rs->rigport, data, 50, ";", 1);
@@ -676,40 +677,44 @@ int ic10_get_channel(RIG *rig, channel_t *chan)
     sscanf(infobuf + 6, "%011"SCNfreq, &chan->freq);
     chan->vfo = RIG_VFO_MEM;
 
-    /* TX VFO (Split channel only) */
-    len = sprintf(membuf, "MR10%02d;", chan->channel_num);
-    info_len = 24;
-    retval = ic10_transaction(rig, membuf, len, infobuf, &info_len);
-
-    if (retval == RIG_OK && info_len > 17)
+    if (chan->channel_num >= 90)
     {
+        chan->split = 1;
+        /* TX VFO (Split channel only) */
+        len = sprintf(membuf, "MR10%02d;", chan->channel_num);
+        info_len = 24;
+        retval = ic10_transaction(rig, membuf, len, infobuf, &info_len);
 
-        /* MRn rrggmmmkkkhhhdz    ; */
-        switch (infobuf[17])
+        if (retval == RIG_OK && info_len > 17)
         {
-        case MD_CW  :   chan->tx_mode = RIG_MODE_CW; break;
 
-        case MD_USB :   chan->tx_mode = RIG_MODE_USB; break;
+            /* MRn rrggmmmkkkhhhdz    ; */
+            switch (infobuf[17])
+            {
+            case MD_CW  :   chan->tx_mode = RIG_MODE_CW; break;
 
-        case MD_LSB :   chan->tx_mode = RIG_MODE_LSB; break;
+            case MD_USB :   chan->tx_mode = RIG_MODE_USB; break;
 
-        case MD_FM  :   chan->tx_mode = RIG_MODE_FM; break;
+            case MD_LSB :   chan->tx_mode = RIG_MODE_LSB; break;
 
-        case MD_AM  :   chan->tx_mode = RIG_MODE_AM; break;
+            case MD_FM  :   chan->tx_mode = RIG_MODE_FM; break;
 
-        case MD_FSK :   chan->tx_mode = RIG_MODE_RTTY; break;
+            case MD_AM  :   chan->tx_mode = RIG_MODE_AM; break;
 
-        case MD_NONE:   chan->tx_mode = RIG_MODE_NONE; break;
+            case MD_FSK :   chan->tx_mode = RIG_MODE_RTTY; break;
 
-        default:
-            rig_debug(RIG_DEBUG_ERR, "%s: unsupported mode '%c'\n",
-                      __func__, infobuf[17]);
-            return -RIG_EINVAL;
+            case MD_NONE:   chan->tx_mode = RIG_MODE_NONE; break;
+
+            default:
+                rig_debug(RIG_DEBUG_ERR, "%s: unsupported mode '%c'\n",
+                          __func__, infobuf[17]);
+                return -RIG_EINVAL;
+            }
+
+            chan->tx_width = rig_passband_normal(rig, chan->tx_mode);
+
+            sscanf(infobuf + 6, "%011"SCNfreq, &chan->tx_freq);
         }
-
-        chan->tx_width = rig_passband_normal(rig, chan->tx_mode);
-
-        sscanf(infobuf + 6, "%011"SCNfreq, &chan->tx_freq);
     }
 
     return RIG_OK;
@@ -718,12 +723,16 @@ int ic10_get_channel(RIG *rig, channel_t *chan)
 
 int ic10_set_channel(RIG *rig, const channel_t *chan)
 {
-    char membuf[32];
+    char membuf[64];
     int retval, len, md;
     int64_t freq;
 
     freq = (int64_t) chan->freq;
 
+    if (chan->channel_num < 90 &&  chan->tx_freq != 0) {
+        rig_debug(RIG_DEBUG_ERR,"%s: Transmit/split can only be on channels 90-99\n", __func__);
+        return -RIG_EINVAL;
+    }
     switch (chan->mode)
     {
     case RIG_MODE_CW  : md = MD_CW; break;
@@ -784,21 +793,24 @@ int ic10_set_channel(RIG *rig, const channel_t *chan)
         return -RIG_EINVAL;
     }
 
-    /* MWnxrrggmmmkkkhhhdzxxxx; */
-    len = sprintf(membuf, "MW1 %02d%011"PRIll"%c0    ;",
-                  chan->channel_num,
-                  freq,
-                  md
-                 );
-    retval = ic10_transaction(rig, membuf, len, NULL, 0);
-
-    // I assume we need to check the retval here -- W9MDB
-    // This was found from cppcheck
-    if (retval != RIG_OK)
+    if (chan->channel_num >= 90)
     {
-        rig_debug(RIG_DEBUG_ERR, "%s: transaction failed: %s\n", __func__,
-                  strerror(retval));
-        return retval;
+        /* MWnxrrggmmmkkkhhhdzxxxx; */
+        len = sprintf(membuf, "MW1 %02d%011"PRIll"%c0    ;",
+                      chan->channel_num,
+                      freq,
+                      md
+                     );
+        retval = ic10_transaction(rig, membuf, len, NULL, 0);
+
+        // I assume we need to check the retval here -- W9MDB
+        // This was found from cppcheck
+        if (retval != RIG_OK)
+        {
+            rig_debug(RIG_DEBUG_ERR, "%s: transaction failed: %s\n", __func__,
+                      strerror(retval));
+            return retval;
+        }
     }
 
     return RIG_OK;

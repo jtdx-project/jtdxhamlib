@@ -586,7 +586,8 @@ int kenwood_init(RIG *rig)
     struct kenwood_priv_data *priv;
     struct kenwood_priv_caps *caps = kenwood_caps(rig);
 
-    rig_debug(RIG_DEBUG_VERBOSE, "%s called, version %s/%s\n", __func__, BACKEND_VER, rig->caps->version);
+    rig_debug(RIG_DEBUG_VERBOSE, "%s called, version %s/%s\n", __func__,
+              BACKEND_VER, rig->caps->version);
 
     rig->state.priv = malloc(sizeof(struct kenwood_priv_data));
 
@@ -1316,7 +1317,8 @@ int kenwood_set_freq(RIG *rig, vfo_t vfo, freq_t freq)
     int err;
     struct kenwood_priv_data *priv = rig->state.priv;
 
-    rig_debug(RIG_DEBUG_VERBOSE, "%s called vfo=%s freq=%.0f\n", __func__, rig_strvfo(vfo), freq);
+    rig_debug(RIG_DEBUG_VERBOSE, "%s called vfo=%s freq=%.0f\n", __func__,
+              rig_strvfo(vfo), freq);
 
     tvfo = (vfo == RIG_VFO_CURR
             || vfo == RIG_VFO_VFO) ? rig->state.current_vfo : vfo;
@@ -1794,7 +1796,8 @@ int kenwood_set_mode(RIG *rig, vfo_t vfo, rmode_t mode, pbwidth_t width)
 
     if (RIG_PASSBAND_NOCHANGE == width) { return RIG_OK; }
 
-    if (RIG_IS_TS450S || RIG_IS_TS690S || RIG_IS_TS850 || RIG_IS_TS950S || RIG_IS_TS950SDX)
+    if (RIG_IS_TS450S || RIG_IS_TS690S || RIG_IS_TS850 || RIG_IS_TS950S
+            || RIG_IS_TS950SDX)
     {
 
         if (RIG_PASSBAND_NORMAL == width)
@@ -2013,7 +2016,8 @@ int kenwood_get_mode_if(RIG *rig, vfo_t vfo, rmode_t *mode, pbwidth_t *width)
 
     *width = rig_passband_normal(rig, *mode);
 
-    if (RIG_IS_TS450S || RIG_IS_TS690S || RIG_IS_TS850 || RIG_IS_TS950S || RIG_IS_TS950SDX)
+    if (RIG_IS_TS450S || RIG_IS_TS690S || RIG_IS_TS850 || RIG_IS_TS950S
+            || RIG_IS_TS950SDX)
     {
 
         kenwood_get_filter(rig, width);

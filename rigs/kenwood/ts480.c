@@ -631,12 +631,12 @@ const struct rig_caps ts480_caps =
  */
 const struct rig_caps pt8000a_caps =
 {
-    RIG_MODEL(RIG_MODEL_HILBERLING_PT8000A),
+    RIG_MODEL(RIG_MODEL_PT8000A),
     .model_name = "PT-8000A",
     .mfg_name = "Hilberling",
-    .version = BACKEND_VER ".0",
+    .version = BACKEND_VER ".1",
     .copyright = "LGPL",
-    .status = RIG_STATUS_ALPHA,
+    .status = RIG_STATUS_BETA,
     .rig_type = RIG_TYPE_TRANSCEIVER,
     .ptt_type = RIG_PTT_RIG_MICDATA,
     .dcd_type = RIG_DCD_RIG,
@@ -648,7 +648,7 @@ const struct rig_caps pt8000a_caps =
     .serial_parity = RIG_PARITY_NONE,
     .serial_handshake = RIG_HANDSHAKE_NONE,
     .write_delay = 0,
-    .post_write_delay = 0,
+    .post_write_delay = 20,
     .timeout = 200,
     .retry = 10,
     .preamp = {12, RIG_DBLST_END,},
@@ -907,6 +907,7 @@ const struct rig_caps ts890s_caps =
     },
     .priv = (void *)& ts890s_priv_caps,
     .rig_init = kenwood_init,
+    .rig_open = kenwood_open,
     .rig_cleanup = kenwood_cleanup,
     .set_freq = kenwood_set_freq,
     .get_freq = kenwood_get_freq,

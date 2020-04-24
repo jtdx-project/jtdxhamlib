@@ -489,6 +489,7 @@ int main(int argc, char *argv[])
 
         case 'o':
             vfo_mode++;
+            rig_debug(RIG_DEBUG_ERR, "%s: #0 vfo_mode=%d\n", __func__, vfo_mode);
             break;
 
         case 'v':
@@ -526,6 +527,8 @@ int main(int argc, char *argv[])
             exit(1);
         }
     }
+
+    rig_debug(RIG_DEBUG_ERR, "%s: #1 vfo_mode=%d\n", __func__, vfo_mode);
 
     if (!vfo_mode)
     {
@@ -862,6 +865,7 @@ int main(int argc, char *argv[])
         {
             arg->rig = my_rig;
             arg->clilen = sizeof(arg->cli_addr);
+            rig_debug(RIG_DEBUG_ERR, "%s: #2 vfo_mode=%d\n", __func__, vfo_mode);
             arg->vfo_mode = vfo_mode;
             arg->sock = accept(sock_listen,
                                (struct sockaddr *)&arg->cli_addr,
@@ -1019,20 +1023,32 @@ void *handle_socket(void *arg)
 
     do
     {
+        rig_debug(RIG_DEBUG_ERR, "%s: vfo_mode=%d\n", __func__,
+                  handle_data_arg->vfo_mode);
         retcode = rigctl_parse(handle_data_arg->rig, fsockin, fsockout, NULL, 0,
                                sync_callback,
                                1, 0, handle_data_arg->vfo_mode, send_cmd_term, &ext_resp, &resp_sep);
 
-        if (ferror(fsockin) || ferror(fsockout))
+        if (retcode != 0) { rig_debug(RIG_DEBUG_ERR, "%s: rigctl_parse retcode=%d\n", __func__, retcode); }
+
+        if (retcode == -1)
         {
-            retcode = 1;
+            sleep(1);
+            continue;
         }
 
-        if (retcode == 1)
+        if (ferror(fsockin) || ferror(fsockout))
         {
+            rig_debug(RIG_DEBUG_ERR, "%s: socket error in=%d, out=%d\n", __func__,
+                      ferror(fsockin), ferror(fsockout));
+
+            retcode = rig_close(my_rig);
+            rig_debug(RIG_DEBUG_ERR, "%s: rig_close retcode=%d\n", __func__, retcode);
             retcode = rig_open(my_rig);
+            rig_debug(RIG_DEBUG_ERR, "%s: rig_open retcode=%d\n", __func__, retcode);
         }
     }
+
     while (retcode == 0 || retcode == 2 || retcode == -RIG_ENAVAIL);
 
 #ifdef HAVE_PTHREAD

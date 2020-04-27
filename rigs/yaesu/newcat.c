@@ -755,6 +755,7 @@ int newcat_set_mode(RIG *rig, vfo_t vfo, rmode_t mode, pbwidth_t width)
 
 
     priv->cmd_str[3] = newcat_modechar(mode);
+
     if (priv->cmd_str[3] == '0')
     {
         return -RIG_EINVAL;
@@ -3854,7 +3855,7 @@ int newcat_set_mem(RIG *rig, vfo_t vfo, int ch)
     /* Test for valid usable channel, skip if empty */
     memset(&valid_chan, 0, sizeof(channel_t));
     valid_chan.channel_num = ch;
-    err = newcat_get_channel(rig, &valid_chan);
+    err = newcat_get_channel(rig, &valid_chan, 1);
 
     if (err < 0)
     {
@@ -4292,7 +4293,7 @@ int newcat_set_channel(RIG *rig, const channel_t *chan)
 }
 
 
-int newcat_get_channel(RIG *rig, channel_t *chan)
+int newcat_get_channel(RIG *rig, channel_t *chan, int read_only)
 {
     struct newcat_priv_data *priv = (struct newcat_priv_data *)rig->state.priv;
     char *retval;
@@ -4439,6 +4440,13 @@ int newcat_get_channel(RIG *rig, channel_t *chan)
     /* Frequency P2 ************************** */
     retval = priv->ret_data + 5;
     chan->freq = atof(retval);
+
+#warning Need to add setting rig to channel values
+
+    if (!read_only)
+    {
+        // Set rig to channel values
+    }
 
     return RIG_OK;
 }
@@ -5929,6 +5937,25 @@ int newcat_get_cmd(RIG *rig)
     int retry_count = 0;
     int rc = -RIG_EPROTO;
 
+    // try to cache rapid repeats of the IF command
+    // this is for WSJT-X/JTDX sequence of v/f/m/t
+    // should reduce 3 IF requests to 1 request and 2 cache hits
+    if (strncmp(priv->cmd_str, "IF", 2) == 0 && priv->cache_start.tv_sec != 0)
+    {
+        int cache_age_ms;
+
+        cache_age_ms = elapsed_ms(&priv->cache_start, 0);
+
+        if (cache_age_ms < 500) // 500ms cache time
+        {
+            rig_debug(RIG_DEBUG_TRACE, "%s: cache hit, age=%dms\n", __func__, cache_age_ms);
+            strcpy(priv->ret_data, priv->last_if_response);
+            return RIG_OK;
+        }
+
+        // else we drop through and do the real IF command
+    }
+
     while (rc != RIG_OK && retry_count++ <= state->rigport.retry)
     {
         if (rc != -RIG_BUSBUSY)
@@ -6020,6 +6047,13 @@ int newcat_get_cmd(RIG *rig)
                       __func__, priv->ret_data, priv->cmd_str);
             rc = -RIG_BUSBUSY;    /* retry read only */
         }
+    }
+
+    // update the cache
+    if (strncmp(priv->cmd_str, "IF", 2) == 0)
+    {
+        elapsed_ms(&priv->cache_start, 1);
+        strcpy(priv->last_if_response, priv->ret_data);
     }
 
     return rc;
@@ -6154,7 +6188,8 @@ int newcat_set_cmd(RIG *rig)
     return rc;
 }
 
-struct {
+struct
+{
     rmode_t mode;
     char modechar;
     ncboolean chk_width;
@@ -6189,10 +6224,10 @@ rmode_t newcat_rmode(char mode)
             rig_debug(RIG_DEBUG_TRACE, "%s: %s for %c\n", __func__,
                       rig_strrmode(newcat_mode_conv[i].mode), mode);
             return (newcat_mode_conv[i].mode);
-	}
-   }
+        }
+    }
 
-   return (RIG_MODE_NONE);
+    return (RIG_MODE_NONE);
 }
 
 char newcat_modechar(rmode_t rmode)
@@ -6206,9 +6241,9 @@ char newcat_modechar(rmode_t rmode)
         if (newcat_mode_conv[i].mode == rmode)
         {
             rig_debug(RIG_DEBUG_TRACE, "%s: return %c for %s\n", __func__,
-                     newcat_mode_conv[i].modechar, rig_strrmode(rmode));
+                      newcat_mode_conv[i].modechar, rig_strrmode(rmode));
             return (newcat_mode_conv[i].modechar);
-	}
+        }
     }
 
     return ('0');
@@ -6221,8 +6256,10 @@ rmode_t newcat_rmode_width(RIG *rig, vfo_t vfo, char mode, pbwidth_t *width)
 
     rig_debug(RIG_DEBUG_VERBOSE, "%s called\n", __func__);
 
-    if(width != NULL)
+    if (width != NULL)
+    {
         *width = RIG_PASSBAND_NORMAL;
+    }
 
     for (i = 0; i < sizeof(newcat_mode_conv) / sizeof(newcat_mode_conv[0]); i++)
     {
@@ -6230,16 +6267,25 @@ rmode_t newcat_rmode_width(RIG *rig, vfo_t vfo, char mode, pbwidth_t *width)
         {
             if (newcat_mode_conv[i].chk_width == TRUE && width != NULL)
             {
-                 if(newcat_get_narrow(rig, vfo, &narrow) != RIG_OK)
-                     return (newcat_mode_conv[i].mode);
-                 if (narrow == TRUE)
+                if (newcat_get_narrow(rig, vfo, &narrow) != RIG_OK)
+                {
+                    return (newcat_mode_conv[i].mode);
+                }
+
+                if (narrow == TRUE)
+                {
                     *width = rig_passband_narrow(rig, mode);
-                 else
+                }
+                else
+                {
                     *width = rig_passband_normal(rig, mode);
+                }
             }
+
             return (newcat_mode_conv[i].mode);
-	}
+        }
     }
+
     rig_debug(RIG_DEBUG_VERBOSE, "%s fell out the bottom %c %s\n", __func__,
               mode, rig_strrmode(mode));
 

@@ -27,7 +27,7 @@
 #include <string.h>
 #include "token.h"
 
-#define BACKEND_VER "20200413"
+#define BACKEND_VER "20200426"
 
 #define EOM_KEN ';'
 #define EOM_TH '\r'
@@ -124,6 +124,8 @@ struct kenwood_priv_data
     int is_590s;
     int is_590sg;
     int is_950;
+    struct timespec cache_start;
+    char last_if_response[KENWOOD_MAX_BUF_LEN];
 };
 
 
@@ -192,7 +194,7 @@ int kenwood_vfo_op(RIG *rig, vfo_t vfo, vfo_op_t op);
 int kenwood_set_mem(RIG *rig, vfo_t vfo, int ch);
 int kenwood_get_mem(RIG *rig, vfo_t vfo, int *ch);
 int kenwood_get_mem_if(RIG *rig, vfo_t vfo, int *ch);
-int kenwood_get_channel(RIG *rig, channel_t *chan);
+int kenwood_get_channel(RIG *rig, channel_t *chan, int read_only);
 int kenwood_set_channel(RIG *rig, const channel_t *chan);
 int kenwood_scan(RIG *rig, vfo_t vfo, scan_t scan, int ch);
 const char *kenwood_get_info(RIG *rig);

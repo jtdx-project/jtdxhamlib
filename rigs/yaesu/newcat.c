@@ -869,6 +869,8 @@ int newcat_set_vfo(RIG *rig, vfo_t vfo)
 
     priv = (struct newcat_priv_data *)rig->state.priv;
     state = &rig->state;
+    priv->cache_start.tv_sec = 0; // invalidate the cache
+
 
     rig_debug(RIG_DEBUG_TRACE, "%s: called, passed vfo = %s\n", __func__,
               rig_strvfo(vfo));
@@ -1059,6 +1061,8 @@ int newcat_set_ptt(RIG *rig, vfo_t vfo, ptt_t ptt)
     int err;
     char txon[] = "TX1;";
     char txoff[] = "TX0;";
+
+    priv->cache_start.tv_sec = 0; // invalidate the cache
 
     if (!newcat_valid_command(rig, "TX"))
     {
@@ -5942,8 +5946,9 @@ int newcat_get_cmd(RIG *rig)
 
     // try to cache rapid repeats of the IF command
     // this is for WSJT-X/JTDX sequence of v/f/m/t
-    // should reduce 3 IF requests to 1 request and 2 cache hits
-    if (strncmp(priv->cmd_str, "IF", 2) == 0 && priv->cache_start.tv_sec != 0)
+    // should allow rapid repeat of any call using the IF; cmd
+    // Any call that changes something in the IF response should invalidate the cache
+    if (strcmp(priv->cmd_str, "IF;") == 0 && priv->cache_start.tv_sec != 0)
     {
         int cache_age_ms;
 
@@ -5955,9 +5960,14 @@ int newcat_get_cmd(RIG *rig)
             strcpy(priv->ret_data, priv->last_if_response);
             return RIG_OK;
         }
-
-        // else we drop through and do the real IF command
+        // we drop through and do the real IF command
     }
+    if (priv->cmd_str[2] != ';') // then we must be setting something so we'll invalidate the cache
+    {
+        rig_debug(RIG_DEBUG_TRACE, "%s: cache invalidated\n", __func__);
+        priv->cache_start.tv_sec = 0;
+    }
+
 
     while (rc != RIG_OK && retry_count++ <= state->rigport.retry)
     {
@@ -6053,7 +6063,7 @@ int newcat_get_cmd(RIG *rig)
     }
 
     // update the cache
-    if (strncmp(priv->cmd_str, "IF", 2) == 0)
+    if (strncmp(priv->cmd_str, "IF;", 3) == 0)
     {
         elapsed_ms(&priv->cache_start, 1);
         strcpy(priv->last_if_response, priv->ret_data);

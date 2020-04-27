@@ -29,7 +29,7 @@
 #define _FT847_H 1
 
 
-#define FT847_WRITE_DELAY                    0
+#define FT847_WRITE_DELAY                    4
 
 /* Sequential fast writes may confuse FT847 without this delay */
 

@@ -343,8 +343,8 @@ transaction_write:
     }
 
 transaction_read:
-    /* allow one extra byte for terminator we don't return */
-    len = min(datasize ? datasize + 1 : strlen(priv->verify_cmd) + 13,
+    /* allow room for most any response */
+    len = min(datasize ? datasize + 1 : strlen(priv->verify_cmd) + 32,
               KENWOOD_MAX_BUF_LEN);
     retval = read_string(&rs->rigport, buffer, len, cmdtrm, strlen(cmdtrm));
     rig_debug(RIG_DEBUG_TRACE, "%s: read_string(len=%d)='%s'\n", __func__,
@@ -491,6 +491,15 @@ transaction_read:
                   __func__,
                   priv->verify_cmd, buffer);
 
+        // seems some rigs will send back an IF response to RX/TX when it changes the status
+        // normally RX/TX returns nothing when it's a null effect
+        // TS-950SDX is known to behave this way
+        if (strncmp(cmdstr,"RX",2)==0 || strncmp(cmdstr,"TX",2)==0) {
+            if (strncmp(priv->verify_cmd,"IF",2)==0) {
+                rig_debug(RIG_DEBUG_TRACE,"%s: RX/TX got IF response so we're good\n", __func__);
+                goto transaction_quit;
+            }
+        }
         if (priv->verify_cmd[0] != buffer[0]
                 || (priv->verify_cmd[1] && priv->verify_cmd[1] != buffer[1]))
         {
@@ -523,7 +532,7 @@ transaction_quit:
     if (strcmp(cmdstr, "IF") == 0)
     {
         elapsed_ms(&priv->cache_start, 1);
-        strncpy(priv->last_if_response, buffer, sizeof(priv->last_if_response));
+        strncpy(priv->last_if_response, buffer, caps->if_len);
     }
 
     rs->hold_decode = 0;
@@ -589,7 +598,7 @@ int kenwood_safe_transaction(RIG *rig, const char *cmd, char *buf,
                       "%s: wrong answer; len for cmd %s: expected = %d, got %d\n",
                       __func__, cmd, (int)expected, (int)length);
             err =  -RIG_EPROTO;
-            hl_usleep(rig->caps->timeout * 1000);
+            hl_usleep(50 * 1000); // let's do a short wait
         }
     }
     while (err != RIG_OK && ++retry < rig->state.rigport.retry);

@@ -699,12 +699,28 @@ int kenwood_open(RIG *rig)
 
     err = kenwood_get_id(rig, id);
 
+    if (err == RIG_OK) { // some rigs give ID while in standby
+        powerstat_t powerstat = 0;
+        rig_debug(RIG_DEBUG_TRACE, "%s: got ID so try PS\n", __func__);
+        err = rig_get_powerstat(rig, &powerstat);
+        if (err == RIG_OK && powerstat == 0)
+        {
+            rig_debug(RIG_DEBUG_TRACE, "%s: got PS0 so powerup\n", __func__);
+            rig_set_powerstat(rig, 1);
+        }
+    }
+
     if (err == -RIG_ETIMEOUT)
     {
         // Ensure rig is on
         rig_set_powerstat(rig, 1);
+        /* Try get id again */
+        err = kenwood_get_id(rig, id);
+        if (RIG_OK != err)
+        {
+            rig_debug(RIG_DEBUG_ERR, "%s: no response to get_id from rig...contintuing anyways.\n", __func__);
+        }
     }
-
 
     if (RIG_IS_TS590S)
     {
@@ -738,9 +754,6 @@ int kenwood_open(RIG *rig)
         rig_debug(RIG_DEBUG_TRACE, "%s: found f/w version %s\n", __func__,
                   priv->fw_rev);
     }
-
-    /* get id in buffer, will be null terminated */
-    err = kenwood_get_id(rig, id);
 
     if (!RIG_IS_XG3 && -RIG_ETIMEOUT == err)
     {

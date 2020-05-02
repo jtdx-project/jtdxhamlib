@@ -1112,6 +1112,17 @@ int icom_get_freq(RIG *rig, vfo_t vfo, freq_t *freq)
     rig_debug(RIG_DEBUG_VERBOSE, "%s: using vfo=%s\n", __func__,
               rig_strvfo(vfo));
 
+    if (priv->curr_vfo == RIG_VFO_NONE)
+    {
+        retval = rig_set_vfo(rig, vfo);
+
+        if (retval != RIG_OK)
+        {
+            rig_debug(RIG_DEBUG_ERR, "%s: set_vfo failed? retval=%s\n", __func__,
+                      strerror(retval));
+        }
+    }
+
     retval = icom_transaction(rig, cmd, subcmd, NULL, 0, freqbuf, &freq_len);
 
     if (retval != RIG_OK)
@@ -1883,7 +1894,8 @@ int icom_set_vfo(RIG *rig, vfo_t vfo)
     if ((vfo == RIG_VFO_A || vfo == RIG_VFO_B) && !VFO_HAS_A_B)
     {
         rig_debug(RIG_DEBUG_ERR, "%s: Rig does not have VFO A/B?\n", __func__);
-        return -RIG_EINVAL;
+        rig_debug(RIG_DEBUG_ERR, "%s: Mapping VFOA=Main, VFOB=Sub\n", __func__);
+        vfo = vfo == RIG_VFO_A ? RIG_VFO_A : RIG_VFO_B;
     }
 
     if ((vfo == RIG_VFO_MAIN || vfo == RIG_VFO_SUB) && !VFO_HAS_MAIN_SUB)

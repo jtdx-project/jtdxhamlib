@@ -1023,11 +1023,11 @@ void *handle_socket(void *arg)
 
     do
     {
-        rig_debug(RIG_DEBUG_ERR, "%s: vfo_mode=%d\n", __func__,
+        rig_debug(RIG_DEBUG_TRACE, "%s: vfo_mode=%d\n", __func__,
                   handle_data_arg->vfo_mode);
         retcode = rigctl_parse(handle_data_arg->rig, fsockin, fsockout, NULL, 0,
                                sync_callback,
-                               1, 0, handle_data_arg->vfo_mode, send_cmd_term, &ext_resp, &resp_sep);
+                               1, 0, &handle_data_arg->vfo_mode, send_cmd_term, &ext_resp, &resp_sep);
 
         if (retcode != 0) { rig_debug(RIG_DEBUG_ERR, "%s: rigctl_parse retcode=%d\n", __func__, retcode); }
 

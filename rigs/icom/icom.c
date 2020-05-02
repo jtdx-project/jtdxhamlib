@@ -1590,7 +1590,8 @@ int icom_set_mode(RIG *rig, vfo_t vfo, rmode_t mode, pbwidth_t width)
     signed char icmode_ext;
     int ack_len = sizeof(ackbuf), retval, err;
 
-    rig_debug(RIG_DEBUG_VERBOSE, "%s called\n", __func__);
+    rig_debug(RIG_DEBUG_VERBOSE, "%s called vfo=%s, mode=%s, width=%d\n", __func__,
+              rig_strvfo(vfo), rig_strrmode(mode), (int)width);
     rs = &rig->state;
     priv = (struct icom_priv_data *) rs->priv;
 
@@ -1760,7 +1761,7 @@ int icom_get_mode(RIG *rig, vfo_t vfo, rmode_t *mode, pbwidth_t *width)
     const struct icom_priv_caps *priv_caps;
     int mode_len, retval;
 
-    rig_debug(RIG_DEBUG_VERBOSE, "%s called\n", __func__);
+    rig_debug(RIG_DEBUG_VERBOSE, "%s called vfo=%s\n", __func__, rig_strvfo(vfo));
     priv_caps = (const struct icom_priv_caps *) rig->caps->priv;
 
     retval = icom_transaction(rig, C_RD_MODE, -1, NULL, 0, modebuf, &mode_len);
@@ -1818,6 +1819,8 @@ int icom_get_mode(RIG *rig, vfo_t vfo, rmode_t *mode, pbwidth_t *width)
         *width = retval;
     }
 
+    rig_debug(RIG_DEBUG_TRACE, "%s: vfo=%s returning mode=%s, width=%d\n", __func__,
+              rig_strvfo(vfo), rig_strrmode(*mode), (int)*width);
     return RIG_OK;
 }
 

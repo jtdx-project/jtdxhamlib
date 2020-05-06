@@ -4449,11 +4449,12 @@ int newcat_get_channel(RIG *rig, channel_t *chan, int read_only)
     retval = priv->ret_data + 5;
     chan->freq = atof(retval);
 
-#warning Need to add setting rig to channel values
-
     if (!read_only)
     {
         // Set rig to channel values
+        rig_debug(RIG_DEBUG_ERR, "%s: please contact hamlib mailing list to implement this\n", __func__);
+        rig_debug(RIG_DEBUG_ERR, "%s: need to know if rig updates when channel read or not\n", __func__);
+        return -RIG_ENIMPL;
     }
 
     return RIG_OK;
@@ -5199,7 +5200,7 @@ int newcat_set_rx_bandwidth(RIG *rig, vfo_t vfo, rmode_t mode, pbwidth_t width)
 
         case RIG_MODE_AM:
 
-        //case RIG_MODE_FM: // Can you set passband on FM or FMN for FT991? Returns error for now.
+        case RIG_MODE_FM:
         case RIG_MODE_PKTFM:
             if (width < rig_passband_normal(rig, mode))
             {

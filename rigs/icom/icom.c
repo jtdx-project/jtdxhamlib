@@ -3713,7 +3713,6 @@ int icom_set_split_freq(RIG *rig, vfo_t vfo, freq_t tx_freq)
     }
 
     set_vfo_curr(rig, RIG_VFO_CURR, RIG_VFO_CURR);
-    save_vfo = priv->curr_vfo;
 
     // If the rigs supports the 0x25 command we'll use it
     // This eliminates VFO swapping and improves split operations
@@ -5093,6 +5092,8 @@ int icom_set_func(RIG *rig, vfo_t vfo, setting_t func, int status)
 
         if (retval != RIG_OK) { return retval; }
 
+        priv->tx_vfo = RIG_VFO_A;
+
         if (priv->split_on)   // must have turned off satmode
         {
             priv->tx_vfo = RIG_VFO_B;
@@ -5100,10 +5101,6 @@ int icom_set_func(RIG *rig, vfo_t vfo, setting_t func, int status)
         else if (status)   // turned on satmode so tx is always Sub
         {
             priv->tx_vfo = RIG_VFO_SUB;
-        }
-        else if (!priv->split_on) // turned off satmode
-        {
-            priv->tx_vfo = RIG_VFO_A;
         }
     }
 

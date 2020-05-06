@@ -283,8 +283,8 @@ static struct test_table test_list[] =
     { 't',  "get_ptt",          ACTION(get_ptt),        ARG_OUT, "PTT" },
     { 'E',  "set_mem",          ACTION(set_mem),        ARG_IN, "Memory#" },
     { 'e',  "get_mem",          ACTION(get_mem),        ARG_OUT, "Memory#" },
-    { 'H',  "set_channel",      ACTION(set_channel),    ARG_IN  | ARG_NOVFO, "Channel" },
-    { 'h',  "get_channel",      ACTION(get_channel),    ARG_IN  | ARG_NOVFO, "Channel" },
+    { 'H',  "set_channel",      ACTION(set_channel),    ARG_IN  | ARG_NOVFO, "Channel"},
+    { 'h',  "get_channel",      ACTION(get_channel),    ARG_IN  | ARG_NOVFO, "Channel", "Read Only" },
     { 'B',  "set_bank",         ACTION(set_bank),       ARG_IN, "Bank" },
     { '_',  "get_info",         ACTION(get_info),       ARG_OUT | ARG_NOVFO, "Info" },
     { 'J',  "set_rit",          ACTION(set_rit),        ARG_IN, "RIT" },
@@ -925,15 +925,15 @@ int rigctl_parse(RIG *my_rig, FILE *fin, FILE *fout, char *argv[], int argc,
             {
                 rig_debug(RIG_DEBUG_TRACE, "%s: debug4\n", __func__);
 
+                if (prompt)
+                {
+                    fprintf_flush(fout, "%s: ", cmd_entry->arg1);
+                }
+
                 if (scanfc(fin, "%s", arg1) < 1)
                 {
                     rig_debug(RIG_DEBUG_WARN, "%s: nothing to scan#8?\n", __func__);
                     return -1;
-                }
-
-                if (prompt && *arg1 == 0x0a)
-                {
-                    fprintf_flush(fout, "%s: ", cmd_entry->arg1);
                 }
 
                 p1 = arg1;
@@ -3607,6 +3607,7 @@ declare_proto_rig(set_channel)
 declare_proto_rig(get_channel)
 {
     int status;
+    int read_only = 0;
     channel_t chan;
 
     memset(&chan, 0, sizeof(channel_t));
@@ -3622,7 +3623,9 @@ declare_proto_rig(get_channel)
         chan.channel_num = 0;
     }
 
-    status = rig_get_channel(rig, &chan, 0);
+    CHKSCN1ARG(sscanf(arg2, "%d", &read_only));
+
+    status = rig_get_channel(rig, &chan, read_only);
 
     if (status != RIG_OK)
     {

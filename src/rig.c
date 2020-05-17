@@ -1150,7 +1150,7 @@ int HAMLIB_API rig_get_twiddle(RIG *rig, int *seconds)
 // detect if somebody is twiddling the VFO
 // indicator is last set freq doesn't match current freq
 // so we have to query freq every time we set freq or vfo to handle this
-static int twiddling(RIG *rig)
+int twiddling(RIG *rig)
 {
     const struct rig_caps *caps;
 
@@ -1274,7 +1274,7 @@ int HAMLIB_API rig_set_freq(RIG *rig, vfo_t vfo, freq_t freq)
 
         if (retcode != RIG_OK)
         {
-            rig_debug(RIG_DEBUG_ERR,"%s: set_vfo err %s\n", __func__, rigerror(retcode));
+            rig_debug(RIG_DEBUG_ERR, "%s: set_vfo err %s\n", __func__, rigerror(retcode));
             return retcode;
         }
 
@@ -1830,7 +1830,15 @@ int HAMLIB_API rig_set_vfo(RIG *rig, vfo_t vfo)
 
     // we need to update our internal freq to avoid getting detected as twiddling
     // we only get the freq if we set the vfo OK
-    if (retcode == RIG_OK && caps->get_freq) { retcode = rig_get_freq(rig, vfo, &curr_freq); }
+    if (retcode == RIG_OK && caps->get_freq)
+    {
+        if (caps->get_freq) {
+            retcode = caps->get_freq(rig, vfo, &curr_freq);
+            rig_debug(RIG_DEBUG_TRACE, "%s: retcode from rig_get_freq = %s\n", __func__,
+                  rigerror(retcode));
+	}
+    }
+
 
     // expire several cached items when we switch VFOs
     elapsed_ms(&rig->state.cache.time_vfo, ELAPSED_INVALIDATE);

@@ -6,15 +6,15 @@
 
 BUILT_SOURCES = hamlibdatetime.h
 
-DISTCLEANFILES = rigctl.log rigctl.sum testbcd.log testbcd.sum datebuilt.h
+DISTCLEANFILES = rigctl.log rigctl.sum testbcd.log testbcd.sum hamlibdatetime.h
 
 bin_PROGRAMS = rigctl rigctld rigmem rigsmtr rigswr rotctl rotctld rigctlcom ampctl ampctld
 
 check_PROGRAMS = dumpmem testrig testtrn testbcd testfreq listrigs testloc rig_bench cachetest cachetest2
 
-RIGCOMMONSRC = rigctl_parse.c rigctl_parse.h dumpcaps.c sprintflst.c sprintflst.h uthash.h datebuilt.h
-ROTCOMMONSRC = rotctl_parse.c rotctl_parse.h dumpcaps_rot.c uthash.h datebuilt.h
-AMPCOMMONSRC = ampctl_parse.c ampctl_parse.h dumpcaps_amp.c sprintflst.c sprintflst.h uthash.h datebuilt.h
+RIGCOMMONSRC = rigctl_parse.c rigctl_parse.h dumpcaps.c sprintflst.c sprintflst.h uthash.h hamlibdatetime.h
+ROTCOMMONSRC = rotctl_parse.c rotctl_parse.h dumpcaps_rot.c uthash.h hamlibdatetime.h
+AMPCOMMONSRC = ampctl_parse.c ampctl_parse.h dumpcaps_amp.c sprintflst.c sprintflst.h uthash.h hamlibdatetime.h
 
 rigctl_SOURCES = rigctl.c $(RIGCOMMONSRC)
 rigctld_SOURCES = rigctld.c $(RIGCOMMONSRC)
@@ -98,8 +98,8 @@ testloc.sh:
 
 # If we have a .git directory then we will update the hamlibdate.h file
 hamlibdatetime.h: FORCE
-	test ! -x ../.git || echo // This date time is from the last commit to hamlib > hamlibdatetime.h 
-	test ! -x ../.git || echo "#define HAMLIBDATETIME "\"`git log -n 1 | grep Date:|cut -c9-`"\"" >> hamlibdatetime.h
+	test ! -x $(top_srcdir)/.git || echo // This date time is from the last commit to hamlib > $(builddir)/hamlibdatetime.h
+	test ! -x $(top_srcdir)/.git || echo "#define HAMLIBDATETIME "\"$$(git --git-dir=$(top_srcdir)/.git log -n 1 | grep Date:|cut -c9-)"\"" >> $(builddir)/hamlibdatetime.h
 
 FORCE: ;
 

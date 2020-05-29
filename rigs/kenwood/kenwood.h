@@ -27,7 +27,7 @@
 #include <string.h>
 #include "token.h"
 
-#define BACKEND_VER "20200508"
+#define BACKEND_VER "20200528"
 
 #define EOM_KEN ';'
 #define EOM_TH '\r'
@@ -256,6 +256,7 @@ extern const struct rig_caps thf6a_caps;
 extern const struct rig_caps transfox_caps;
 
 extern const struct rig_caps f6k_caps;
+extern const struct rig_caps powersdr_caps;
 extern const struct rig_caps pihpsdr_caps;
 extern const struct rig_caps ts890s_caps;
 extern const struct rig_caps pt8000a_caps;

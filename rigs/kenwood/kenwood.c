@@ -275,7 +275,7 @@ int kenwood_transaction(RIG *rig, const char *cmdstr, char *data,
     }
 
     if (strlen(cmdstr) > 2 || strcmp(cmdstr, "RX") == 0
-            || strcmp(cmdstr, "TX") == 0)
+            || strcmp(cmdstr, "TX") == 0 || strcmp(cmdstr, "ZZTX") == 0)
     {
         // then we must be setting something so we'll invalidate the cache
         rig_debug(RIG_DEBUG_TRACE, "%s: cache invalidated\n", __func__);
@@ -360,9 +360,16 @@ transaction_read:
                   retval, retry_read, rs->rigport.retry);
 
         // only retry if we expect a response from the command
-        if (datasize && retry_read++ < rs->rigport.retry)
+        if (retry_read++ < rs->rigport.retry)
         {
-            goto transaction_write;
+            if (datasize)
+            {
+                goto transaction_write;
+            }
+            else if (-RIG_ETIMEOUT == retval)
+            {
+                goto transaction_read;
+            }
         }
 
         goto transaction_quit;
@@ -4409,6 +4416,7 @@ DECLARE_INITRIG_BACKEND(kenwood)
     rig_register(&transfox_caps);
 
     rig_register(&f6k_caps);
+    rig_register(&powersdr_caps);
     rig_register(&pihpsdr_caps);
     rig_register(&ts890s_caps);
     rig_register(&pt8000a_caps);

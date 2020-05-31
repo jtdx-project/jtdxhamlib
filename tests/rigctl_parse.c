@@ -769,7 +769,7 @@ int rigctl_parse(RIG *my_rig, FILE *fin, FILE *fout, char *argv[], int argc,
             }
 
             my_rig->state.vfo_opt = *vfo_opt;
-            rig_debug(RIG_DEBUG_ERR, "%s: vfo_opt=%d\n", __func__, *vfo_opt);
+            rig_debug(RIG_DEBUG_TRACE, "%s: vfo_opt=%d\n", __func__, *vfo_opt);
 
             if (cmd == 'Q' || cmd == 'q')
             {
@@ -4080,6 +4080,7 @@ declare_proto_rig(dump_state)
     // protocol 1 fields can be multi-line -- just write the thing to allow for it
     // backward compatible as new values will just generate warnings
     fprintf(fout, "vfo_ops=0x%x\n", rig->caps->vfo_ops);
+    fprintf(fout, "ptt_type=0x%x\n", rig->caps->ptt_type);
     fprintf(fout, "done\n");
 
 #if 0 // why isn't this implemented?  Does anybody care?

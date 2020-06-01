@@ -67,12 +67,13 @@ rigmatrix_LDFLAGS = -lgd -lz
 rigmatrix.html: rigmatrix_head.html rigmatrix listrigs
 	mkdir -p sup-info/support
 	( cat $(srcdir)/rigmatrix_head.html && cd sup-info && ../rigmatrix ) > sup-info/rigmatrix.html
-	for f in `./listrigs | tail -n +2 | cut -f1` ; do ( ./rigctl -m $$f -u > sup-info/support/model$$f.txt || exit 0 ) ; done
+	for f in $$(./listrigs | tail -n +2 | cut -f1) ; do ( ./rigctl -m $$f -u > sup-info/support/model$$f.txt || exit 0 ) ; done
 	./rigctl -l |sort -n | $(srcdir)/rig_split_lst.awk -v lst_dir="sup-info"
 endif
 
 
-EXTRA_DIST = rigmatrix_head.html rig_split_lst.awk testctld.pl testrotctld.pl
+EXTRA_DIST = rigmatrix_head.html rig_split_lst.awk testctld.pl testrotctld.pl \
+	hamlibdatetime.h.in
 
 # Support 'make check' target for simple tests
 check_SCRIPTS = testrig.sh testfreq.sh testbcd.sh testloc.sh
@@ -99,9 +100,9 @@ testloc.sh:
 # If we have a .git directory then we will generate the hamlibdate.h file.
 # if not, then copy the placeholder.
 hamlibdatetime.h: FORCE
-	test -x $(top_srcdir)/.git || cp $(srcdir)/hamlibdatetime.h.in $(srcdir)/hamlibdatetime.h
 	test ! -x $(top_srcdir)/.git || echo "/* This date time is from the last non-merge commit to Hamlib. */" > $(srcdir)/hamlibdatetime.h
 	test ! -x $(top_srcdir)/.git || echo "#define HAMLIBDATETIME "\"$$(TZ=UTC git --git-dir=$(top_srcdir)/.git log --no-merges --date='format-local:%a %b %d %H:%M:%S %Y %z' --format='%cd' -n 1)\""" >> $(srcdir)/hamlibdatetime.h
+	test -f $(srcdir)/hamlibdatetime.h || cp $(srcdir)/hamlibdatetime.h.in $(srcdir)/hamlibdatetime.h
 
 FORCE: ;
 

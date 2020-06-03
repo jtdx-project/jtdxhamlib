@@ -78,7 +78,7 @@ static int ic706_r2i_mode(RIG *rig, rmode_t mode, pbwidth_t width,
 
 #define IC706IIG_FUNC_ALL (RIG_FUNC_NB|RIG_FUNC_COMP|RIG_FUNC_VOX|RIG_FUNC_TONE|RIG_FUNC_TSQL|RIG_FUNC_SBKIN|RIG_FUNC_FBKIN)
 
-#define IC706IIG_LEVEL_ALL (RIG_LEVEL_PREAMP|RIG_LEVEL_ATT|RIG_LEVEL_AGC|RIG_LEVEL_RAWSTR)
+#define IC706IIG_LEVEL_ALL (RIG_LEVEL_PREAMP|RIG_LEVEL_ATT|RIG_LEVEL_AGC|RIG_LEVEL_RAWSTR|RIG_LEVEL_RFPOWER_METER)
 
 #define IC706_VFO_ALL (RIG_VFO_A|RIG_VFO_B|RIG_VFO_MEM)
 
@@ -132,6 +132,14 @@ static int ic706_r2i_mode(RIG *rig, rmode_t mode, pbwidth_t width,
         { 192, 50 }, /* +50 */ \
         { 204, 60 }  /* +60 */ \
     } }
+
+#define IC706IIG_RFPOWER_METER_CAL { 3, \
+    { \
+         { 0, 0.0f }, \
+         { 143, 0.5f }, \
+         { 213, 1.0f } \
+    } }
+
 
 /*
  * ic706 rigs capabilities.
@@ -574,6 +582,7 @@ const struct rig_caps ic706mkiig_caps =
         RIG_FLT_END,
     },
     .str_cal = IC706IIG_STR_CAL,
+    .rfpower_meter_cal = IC706IIG_RFPOWER_METER_CAL,
 
     .cfgparams =  icom_cfg_params,
     .set_conf =  icom_set_conf,

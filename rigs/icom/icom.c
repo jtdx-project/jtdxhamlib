@@ -2725,7 +2725,8 @@ int icom_get_level(RIG *rig, vfo_t vfo, setting_t level, value_t *val)
 
     case RIG_LEVEL_RFPOWER_METER:
         lvl_cn = C_RD_SQSM;
-        lvl_sc = S_RFML;
+        if(rig->caps->rig_model == RIG_MODEL_IC706MKIIG) lvl_sc = S_SML;
+        else lvl_sc = S_RFML;
         break;
 
     case RIG_LEVEL_COMP_METER:

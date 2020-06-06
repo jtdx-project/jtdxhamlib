@@ -2219,7 +2219,7 @@ int HAMLIB_API rig_set_ptt(RIG *rig, vfo_t vfo, ptt_t ptt)
 
     case RIG_PTT_SERIAL_RTS:
 
-        rig_debug(RIG_DEBUG_ERR, "%s: PTT RTS\n", __func__);
+//        rig_debug(RIG_DEBUG_ERR, "%s: PTT RTS\n", __func__);
 
         /* when the PTT port is not the control port we want to free the
            port when PTT is reset and seize the port when PTT is set,
@@ -2229,7 +2229,7 @@ int HAMLIB_API rig_set_ptt(RIG *rig, vfo_t vfo, ptt_t ptt)
                 && rs->pttport.fd < 0
                 && RIG_PTT_OFF != ptt)
         {
-            rig_debug(RIG_DEBUG_ERR, "%s: PTT RTS debug#1\n", __func__);
+//            rig_debug(RIG_DEBUG_ERR, "%s: PTT RTS debug#1\n", __func__);
 
             rs->pttport.fd = ser_open(&rs->pttport);
 
@@ -2254,7 +2254,7 @@ int HAMLIB_API rig_set_ptt(RIG *rig, vfo_t vfo, ptt_t ptt)
             }
         }
 
-        rig_debug(RIG_DEBUG_ERR, "%s: PTT RTS debug#2\n", __func__);
+//        rig_debug(RIG_DEBUG_ERR, "%s: PTT RTS debug#2\n", __func__);
         retcode = ser_set_rts(&rig->state.pttport, ptt != RIG_PTT_OFF);
 
         if (strcmp(rs->pttport.pathname, rs->rigport.pathname)

@@ -234,7 +234,7 @@ static int meade_open(ROT *rot)
     {
         retval = meade_transaction(rot, ":AL#:So00#:Sh90#", NULL, 0, 0);
     }
-
+    else
     {
         // Audiostar elevation is in arcminutes
         retval = meade_transaction(rot, ":So00#:Sh5400#", NULL, 0, 0);
@@ -460,7 +460,7 @@ const struct rot_caps meade_caps =
     ROT_MODEL(ROT_MODEL_MEADE),
     .model_name =       "LX200/Autostar",
     .mfg_name =         "Meade",
-    .version =          "20200531.0",
+    .version =          "20200610.0",
     .copyright =        "LGPL",
     .status =           RIG_STATUS_STABLE,
     .rot_type =         ROT_TYPE_AZEL,

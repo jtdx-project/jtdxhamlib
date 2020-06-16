@@ -71,6 +71,7 @@
 #endif
 
 #include <hamlib/rig.h>
+#include "hamlibdatetime.h"
 #include "misc.h"
 #include "iofunc.h"
 #include "serial.h"
@@ -527,8 +528,6 @@ int main(int argc, char *argv[])
         }
     }
 
-    rig_debug(RIG_DEBUG_ERR, "%s: #1 vfo_mode=%d\n", __func__, vfo_mode);
-
     if (!vfo_mode)
     {
         printf("Recommend using --vfo switch for rigctld if client supports it\n");
@@ -537,7 +536,8 @@ int main(int argc, char *argv[])
 
     rig_set_debug(verbose);
 
-    rig_debug(RIG_DEBUG_VERBOSE, "rigctld, %s\n", hamlib_version);
+    rig_debug(RIG_DEBUG_VERBOSE, "rigctld %s\nLast commit was %s\n", hamlib_version,
+              HAMLIBDATETIME);
     rig_debug(RIG_DEBUG_VERBOSE, "%s",
               "Report bugs to <hamlib-developer@lists.sourceforge.net>\n\n");
 

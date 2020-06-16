@@ -544,6 +544,11 @@ dnl Determine whether to install pytest.py or py3test.py to $(docdir)/examples
 AM_PYTHON_CHECK_VERSION([${PYTHON}], [3.0], [pyver_3="yes"], [pyver_3="no"])
 AM_CONDITIONAL([PYVER_3], [test x"${pyver_3}" = x"yes"])
 
+dnl Determine whether to link libpython as it is unneeded for Python >= 3.8
+AM_PYTHON_CHECK_VERSION([${PYTHON}], [3.8], [pyver_3_8="yes"], [pyver_3_8="no"])
+AS_IF([test x"${pyver_3_8}" = "xyes"],[
+    PYTHON_LIBS=""
+])
 
 # Tcl binding
 AC_MSG_CHECKING([Whether to build Tcl bindings])
@@ -734,7 +739,7 @@ AC_SUBST([BACKENDEPS])
 ## ---------------------------------- ##
 
 for be in ${RIG_BACKEND_LIST} ; do
-        RIGDIR=`echo $be | awk -F "/" '{print $2}'`
+        RIGDIR=$(echo $be | awk -F "/" '{print $2}')
         RIG_BACKENDEPS="${RIG_BACKENDEPS} \$(top_builddir)/rigs/${RIGDIR}/libhamlib-${RIGDIR}.la"
 done
 
@@ -749,7 +754,7 @@ AC_SUBST([RIG_BACKENDEPS])
 # otherwise parallel 'make -jn' will fail
 
 for be in ${ROT_BACKEND_LIST} ; do
-        ROTDIR=`echo $be | awk -F "/" '{print $2}'`
+        ROTDIR=$(echo $be | awk -F "/" '{print $2}')
         ROT_BACKENDEPS="${ROT_BACKENDEPS} \$(top_builddir)/rotators/${ROTDIR}/libhamlib-${ROTDIR}.la"
 done
 
@@ -763,7 +768,7 @@ AC_SUBST([ROT_BACKENDEPS])
 # otherwise parallel 'make -jn' will fail
 
 for be in ${AMP_BACKEND_LIST} ; do
-        AMPDIR=`echo $be | awk -F "/" '{print $2}'`
+        AMPDIR=$(echo $be | awk -F "/" '{print $2}')
         AMP_BACKENDEPS="${AMP_BACKENDEPS} \$(top_builddir)/amplifiers/${AMPDIR}/libhamlib-${AMPDIR}.la"
 done
 

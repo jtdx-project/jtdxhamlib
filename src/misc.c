@@ -1254,7 +1254,7 @@ void HAMLIB_API rig_no_restore_ai()
 }
 
 //! @cond Doxygen_Suppress
-int HAMLIB_API elapsed_ms(struct timespec *start, int option)
+double HAMLIB_API elapsed_ms(struct timespec *start, int option)
 {
     // If option then we are starting the timing, else we get elapsed
     struct timespec stop;
@@ -1289,15 +1289,15 @@ int HAMLIB_API elapsed_ms(struct timespec *start, int option)
         break;
 
     case ELAPSED_INVALIDATE:
-        start->tv_sec -= 3600 * 24 *
-                         365; // let's back off 1 year -- should expire most elapsed measurements
+        clock_gettime(CLOCK_REALTIME, start);
+        start->tv_sec -= 3600;
         break;
     }
 
     elapsed_msec = ((stop.tv_sec - start->tv_sec) + (stop.tv_nsec / 1e9 -
                     start->tv_nsec / 1e9)) * 1e3;
 
-    rig_debug(RIG_DEBUG_TRACE, "%s: elapsed_secs=%g\n", __func__, elapsed_msec);
+    rig_debug(RIG_DEBUG_TRACE, "%s: elapsed_msecs=%g\n", __func__, elapsed_msec);
 
     if (elapsed_msec < 0 || option == ELAPSED_INVALIDATE) { return 1000000; }
 
@@ -1317,6 +1317,65 @@ int HAMLIB_API rig_set_cache_timeout_ms(RIG *rig, cache_t selection, int ms)
     rig->state.cache.timeout_ms = ms;
     return RIG_OK;
 }
+
+
+vfo_t HAMLIB_API vfo_fixup(RIG *rig, vfo_t vfo)
+{
+    rig_debug(RIG_DEBUG_TRACE, "%s: vfo=%s\n", __func__, rig_strvfo(vfo));
+
+    if (vfo == RIG_VFO_CURR)
+    {
+        rig_debug(RIG_DEBUG_TRACE, "%s: Leaving currVFO alone\n", __func__);
+        return vfo;  // don't modify vfo for RIG_VFO_CURR
+    }
+
+    if (vfo == RIG_VFO_RX)
+    {
+        vfo = RIG_VFO_A;
+
+        if (VFO_HAS_MAIN_SUB_ONLY) { vfo = RIG_VFO_MAIN; }
+
+        if (VFO_HAS_MAIN_SUB_A_B_ONLY) { vfo = RIG_VFO_MAIN; }
+    }
+
+    if (vfo == RIG_VFO_TX)
+    {
+        int retval;
+        split_t split = 0;
+        // get split if we can -- it will default to off otherwise
+        // maybe split/satmode/vfo/freq/mode can be cached for rigs
+        // that don't have read capability or get_vfo like Icom?
+        // Icom's lack of get_vfo is problematic in this respect
+        // If we cache vfo or others than twiddling the rig may cause problems
+        retval = rig_get_split(rig, vfo, &split);
+
+        if (retval != RIG_OK)
+        {
+            split = rig->state.cache.split;
+        }
+
+        int satmode = rig->state.cache.satmode;
+        vfo = RIG_VFO_A;
+
+        if (split) { vfo = RIG_VFO_B; }
+
+        if (VFO_HAS_MAIN_SUB_ONLY && !split && !satmode) { vfo = RIG_VFO_MAIN; }
+
+        if (VFO_HAS_MAIN_SUB_ONLY && (split || satmode)) { vfo = RIG_VFO_SUB; }
+
+        if (VFO_HAS_MAIN_SUB_A_B_ONLY && split) { vfo = RIG_VFO_B; }
+
+        if (VFO_HAS_MAIN_SUB_A_B_ONLY && satmode) { vfo = RIG_VFO_SUB; }
+
+        rig_debug(RIG_DEBUG_TRACE,
+                  "%s: RIG_VFO_TX changed to %s, split=%d, satmode=%d\n", __func__,
+                  rig_strvfo(vfo), split, satmode);
+    }
+
+    rig_debug(RIG_DEBUG_TRACE, "%s: final vfo=%s\n", __func__, rig_strvfo(vfo));
+    return vfo;
+}
+
 
 //! @endcond
 

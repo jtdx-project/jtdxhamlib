@@ -275,7 +275,7 @@ int kenwood_transaction(RIG *rig, const char *cmdstr, char *data,
     }
 
     if (strlen(cmdstr) > 2 || strcmp(cmdstr, "RX") == 0
-            || strcmp(cmdstr, "TX") == 0)
+            || strcmp(cmdstr, "TX") == 0 || strcmp(cmdstr, "ZZTX") == 0)
     {
         // then we must be setting something so we'll invalidate the cache
         rig_debug(RIG_DEBUG_TRACE, "%s: cache invalidated\n", __func__);
@@ -360,9 +360,16 @@ transaction_read:
                   retval, retry_read, rs->rigport.retry);
 
         // only retry if we expect a response from the command
-        if (datasize && retry_read++ < rs->rigport.retry)
+        if (retry_read++ < rs->rigport.retry)
         {
-            goto transaction_write;
+            if (datasize)
+            {
+                goto transaction_write;
+            }
+            else if (-RIG_ETIMEOUT == retval)
+            {
+                goto transaction_read;
+            }
         }
 
         goto transaction_quit;
@@ -712,11 +719,14 @@ int kenwood_open(RIG *rig)
         rig_debug(RIG_DEBUG_TRACE, "%s: got ID so try PS\n", __func__);
         err = rig_get_powerstat(rig, &powerstat);
 
-        if (err == RIG_OK && powerstat == 0)
+        if (err == RIG_OK && powerstat == 0 && priv->poweron == 0)
         {
             rig_debug(RIG_DEBUG_TRACE, "%s: got PS0 so powerup\n", __func__);
             rig_set_powerstat(rig, 1);
         }
+
+        priv->poweron = 1;
+
         err = RIG_OK;  // reset our err back to OK for later checks
     }
 
@@ -1369,6 +1379,9 @@ int kenwood_get_vfo_if(RIG *rig, vfo_t *vfo)
     {
     case '0':
         *vfo = priv->tx_vfo = split_and_transmitting ? RIG_VFO_B : RIG_VFO_A;
+
+        if (priv->info[32] == '1') { priv->tx_vfo = RIG_VFO_B; }
+
         break;
 
     case '1':
@@ -2143,8 +2156,14 @@ int kenwood_set_level(RIG *rig, vfo_t vfo, setting_t level, value_t val)
         break;
 
     case RIG_LEVEL_AF:
-        snprintf(levelbuf, sizeof(levelbuf), "AG%03d", kenwood_val);
-        break;
+    {
+        // some rigs only recognize 0 for vfo_set
+        // hopefully they are asking for VFOA or Main otherwise this might not work
+        // https://github.com/Hamlib/Hamlib/issues/304
+        int vfo_set = vfo == RIG_VFO_A || vfo == RIG_VFO_MAIN ? 0 : 1;
+        snprintf(levelbuf, sizeof(levelbuf), "AG%1d%03d", vfo_set, kenwood_val);
+    }
+    break;
 
     case RIG_LEVEL_RF:
         /* XXX check level range */
@@ -3985,8 +4004,10 @@ int kenwood_get_channel(RIG *rig, channel_t *chan, int read_only)
     if (!read_only)
     {
         // Set rig to channel values
-        rig_debug(RIG_DEBUG_ERR, "%s: please contact hamlib mailing list to implement this\n", __func__);
-        rig_debug(RIG_DEBUG_ERR, "%s: need to know if rig updates when channel read or not\n", __func__);
+        rig_debug(RIG_DEBUG_ERR,
+                  "%s: please contact hamlib mailing list to implement this\n", __func__);
+        rig_debug(RIG_DEBUG_ERR,
+                  "%s: need to know if rig updates when channel read or not\n", __func__);
         return -RIG_ENIMPL;
     }
 
@@ -4381,6 +4402,7 @@ DECLARE_INITRIG_BACKEND(kenwood)
     rig_register(&k3s_caps);
     rig_register(&kx2_caps);
     rig_register(&kx3_caps);
+    rig_register(&k4_caps);
     rig_register(&xg3_caps);
 
     rig_register(&ts440_caps);
@@ -4407,6 +4429,7 @@ DECLARE_INITRIG_BACKEND(kenwood)
     rig_register(&transfox_caps);
 
     rig_register(&f6k_caps);
+    rig_register(&powersdr_caps);
     rig_register(&pihpsdr_caps);
     rig_register(&ts890s_caps);
     rig_register(&pt8000a_caps);

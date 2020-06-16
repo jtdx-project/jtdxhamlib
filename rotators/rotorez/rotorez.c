@@ -134,7 +134,7 @@ const struct rot_caps rotorez_rot_caps =
     ROT_MODEL(ROT_MODEL_ROTOREZ),
     .model_name =       "Rotor-EZ",
     .mfg_name =         "Idiom Press",
-    .version =          "2010-02-14",
+    .version =          "20100214.0",
     .copyright =        "LGPL",
     .status =           RIG_STATUS_BETA,
     .rot_type =         ROT_TYPE_OTHER,
@@ -179,7 +179,7 @@ const struct rot_caps rotorcard_rot_caps =
     ROT_MODEL(ROT_MODEL_ROTORCARD),
     .model_name =       "RotorCard",
     .mfg_name =         "Idiom Press",
-    .version =          "2010-02-14",
+    .version =          "20100214.0",
     .copyright =        "LGPL",
     .status =           RIG_STATUS_UNTESTED,
     .rot_type =         ROT_TYPE_OTHER,
@@ -223,9 +223,9 @@ const struct rot_caps dcu_rot_caps =
     ROT_MODEL(ROT_MODEL_DCU),
     .model_name =       "DCU-1/DCU-1X",
     .mfg_name =         "Hy-Gain",
-    .version =          "2010-08-23",
+    .version =          "20100823.0",
     .copyright =        "LGPL",
-    .status =           RIG_STATUS_UNTESTED,
+    .status =           RIG_STATUS_STABLE,
     .rot_type =         ROT_TYPE_OTHER,
     .port_type =        RIG_PORT_SERIAL,
     .serial_rate_min =  4800,
@@ -267,7 +267,7 @@ const struct rot_caps erc_rot_caps =
     ROT_MODEL(ROT_MODEL_ERC),
     .model_name =       "ERC",
     .mfg_name =         "DF9GR",
-    .version =          "2010-08-23b",      /* second revision on 23 Aug 2010 */
+    .version =          "20100823.2",      /* second revision on 23 Aug 2010 */
     .copyright =        "LGPL",
     .status =           RIG_STATUS_ALPHA,
     .rot_type =         ROT_TYPE_OTHER,
@@ -309,7 +309,7 @@ const struct rot_caps rt21_rot_caps =
     ROT_MODEL(ROT_MODEL_RT21),
     .model_name =       "RT-21",
     .mfg_name =     "Green Heron",
-    .version =      "2014-09-14",
+    .version =      "20140914.0",
     .copyright =        "LGPL",
     .status =       RIG_STATUS_ALPHA,
     .rot_type =     ROT_TYPE_OTHER,
@@ -1009,7 +1009,7 @@ static int rotorez_send_priv_cmd(ROT *rot, const char *cmdstr)
  *
  * If the RotorEZ should receive an invalid command, such as an the ';'
  * character while the rotor is not in motion, as sent by the rotorez_rot_stop
- * function or the 'S' command from `rotctl', it will output the following
+ * function or the 'S' command from 'rotctl', it will output the following
  * string, "C2000 IDIOM V1.4S " into the input buffer.  This function flushes
  * the buffer by reading it until a timeout occurs.  Once the timeout occurs,
  * this function returns and the buffer is presumed to be empty.

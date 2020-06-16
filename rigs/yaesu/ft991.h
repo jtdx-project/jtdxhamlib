@@ -39,10 +39,10 @@
 
 #define FT991_ALL_RX_MODES (RIG_MODE_AM|RIG_MODE_CW|RIG_MODE_CWR|RIG_MODE_SSB|\
         RIG_MODE_RTTY|RIG_MODE_RTTYR|RIG_MODE_PKTLSB|RIG_MODE_PKTUSB|RIG_MODE_PKTFM|\
-        RIG_MODE_C4FM|RIG_MODE_FM)
+        RIG_MODE_C4FM|RIG_MODE_FM|RIG_MODE_AMN)
 #define FT991_SSB_CW_RX_MODES (RIG_MODE_CW|RIG_MODE_CWR|RIG_MODE_SSB|\
         RIG_MODE_RTTY|RIG_MODE_RTTYR|RIG_MODE_PKTLSB|RIG_MODE_PKTUSB)
-#define FT991_AM_RX_MODES (RIG_MODE_AM)
+#define FT991_AM_RX_MODES (RIG_MODE_AM|RIG_MODE_AMN)
 #define FT991_FM_RX_MODES (RIG_MODE_FM|RIG_MODE_PKTFM|RIG_MODE_C4FM)
 #define FT991_CW_RX_MODES (RIG_MODE_CW|RIG_MODE_CWR)
 #define FT991_CW_RTTY_PKT_RX_MODES (RIG_MODE_RTTY|RIG_MODE_RTTYR|\
@@ -51,7 +51,7 @@
 /* TRX caps */
 
 #define FT991_OTHER_TX_MODES (RIG_MODE_CW| RIG_MODE_USB| RIG_MODE_LSB | RIG_MODE_PKTUSB | RIG_MODE_PKTLSB ) /* 100 W class */
-#define FT991_AM_TX_MODES (RIG_MODE_AM)    /* set 25W max */
+#define FT991_AM_TX_MODES (RIG_MODE_AM|RIG_MODE_AMN)    /* set 25W max */
 
 #define FT991_LEVELS (RIG_LEVEL_ATT|RIG_LEVEL_PREAMP|RIG_LEVEL_STRENGTH|\
                RIG_LEVEL_ALC|RIG_LEVEL_RAWSTR|RIG_LEVEL_SWR|\
@@ -153,4 +153,12 @@ static int ft991_set_split_mode(RIG *rig, vfo_t vfo, rmode_t tx_mode,
 static int ft991_set_split_freq(RIG *rig, vfo_t vfo, freq_t tx_freq);
 static int ft991_get_split_freq(RIG *rig, vfo_t vfo, freq_t *tx_freq);
 static void debug_ft991info_data(const ft991info *rdata);
+static int ft991_set_ctcss_tone(RIG *rig, vfo_t vfo, tone_t tone);
+static int ft991_get_ctcss_tone(RIG *rig, vfo_t vfo, tone_t *tone);
+static int ft991_set_dcs_code(RIG *rig, vfo_t vfo, tone_t code);
+static int ft991_get_dcs_code(RIG *rig, vfo_t vfo, tone_t *code);
+static int ft991_set_ctcss_sql(RIG *rig, vfo_t vfo, tone_t tone);
+static int ft991_get_ctcss_sql(RIG *rig, vfo_t vfo, tone_t *tone);
+static int ft991_get_dcs_sql(RIG *rig, vfo_t vfo, tone_t *code);
+static int ft991_set_dcs_sql(RIG *rig, vfo_t vfo, tone_t code);
 #endif /* _FT991_H */

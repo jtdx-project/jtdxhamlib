@@ -230,7 +230,15 @@ static int meade_open(ROT *rot)
 
     /* Set Telescope to Land alignment mode to deactivate sloping */
     /* Allow 0-90 Degree Elevation */
-    retval = meade_transaction(rot, ":AL#:So00#:Sh90#", NULL, 0, 0);
+    if (strcmp(priv->product_name, "Autostar"))  // if we're not an audiostar
+    {
+        retval = meade_transaction(rot, ":AL#:So00#:Sh90#", NULL, 0, 0);
+    }
+    else
+    {
+        // Audiostar elevation is in arcminutes
+        retval = meade_transaction(rot, ":So00#:Sh5400#", NULL, 0, 0);
+    }
 
     if (retval != RIG_OK) { rig_debug(RIG_DEBUG_ERR, "%s: meade_transaction %s\n", __func__, rigerror(retval)); }
 
@@ -299,6 +307,7 @@ static int meade_set_position(ROT *rot, azimuth_t az, elevation_t el)
     meade_transaction(rot, cmd_str, return_str, &return_str_size, 3);
 
     /* '1' == Azimuth accepted '1' == Elevation accepted '0' == No error */
+    /* MA command may return 1=Lower than or 2=Higher than min/max elevation */
     if (return_str_size > 0 && strstr(return_str, "110") != NULL)
     {
         return RIG_OK;
@@ -350,8 +359,8 @@ static int meade_get_position(ROT *rot, azimuth_t *az, elevation_t *el)
     rig_debug(RIG_DEBUG_VERBOSE, "%s: az=%03d:%02d:%02d, el=%03d:%02d:%02d\n",
               __func__, az_degrees, az_minutes, az_seconds, el_degrees, el_minutes,
               el_seconds);
-    *az = dmmm2dec(az_degrees, az_minutes, az_seconds);
-    *el = dmmm2dec(el_degrees, el_minutes, el_seconds);
+    *az = dmmm2dec(az_degrees, az_minutes, az_seconds, az_seconds);
+    *el = dmmm2dec(el_degrees, el_minutes, el_seconds, el_seconds);
     return RIG_OK;
 }
 
@@ -451,7 +460,7 @@ const struct rot_caps meade_caps =
     ROT_MODEL(ROT_MODEL_MEADE),
     .model_name =       "LX200/Autostar",
     .mfg_name =         "Meade",
-    .version =          "0.2",
+    .version =          "20200610.0",
     .copyright =        "LGPL",
     .status =           RIG_STATUS_STABLE,
     .rot_type =         ROT_TYPE_AZEL,

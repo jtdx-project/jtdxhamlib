@@ -31,7 +31,7 @@
 #include <sys/time.h>
 #endif
 
-#define BACKEND_VER "20200505"
+#define BACKEND_VER "20200614"
 
 /*
  * defines used by comp_cal_str in rig.c
@@ -179,16 +179,18 @@ struct icom_priv_data
     int split_on;                                   /* record split state */
     pltstate_t *pltstate;   /* only on optoscan */
     int serial_USB_echo_off; /* USB is not set to echo */
-    /* we track vfos internallhy for use with different functions like split */
+    /* we track vfos internally for use with different functions like split */
     /* this allows queries using CURR_VFO and Main/Sub to behave */
-    vfo_t curr_vfo; 
     vfo_t rx_vfo; 
     vfo_t tx_vfo; 
     freq_t curr_freq; // our current freq depending on which vfo is selected
     freq_t main_freq; // track last setting of main -- not being used yet
     freq_t sub_freq;  // track last setting of sub -- not being used yet
+    freq_t vfoa_freq;  // track last setting of vfoa -- used to return last freq when ptt is asserted
+    freq_t vfob_freq;  // track last setting of vfob -- used to return last freq when ptt is asserted
     int x25cmdfails;  // This will get set if the 0x25 command fails so we try just once
     int x1cx03cmdfails;  // This will get set if the 0x1c 0x03 command fails so we try just once
+    int poweron;  // to prevent powering on more than once
 };
 
 extern const struct ts_sc_list r8500_ts_sc_list[];
@@ -293,7 +295,7 @@ int icom_mW2power(RIG *rig, float *power, unsigned int mwpower, freq_t freq,
 int icom_send_morse(RIG *rig, vfo_t vfo, const char *msg);
 int icom_send_voice_mem(RIG *rig, vfo_t vfo, int bank);
 /* Exposed routines */
-int icom_get_split_vfos(const RIG *rig, vfo_t *rx_vfo, vfo_t *tx_vfo);
+int icom_get_split_vfos(RIG *rig, vfo_t *rx_vfo, vfo_t *tx_vfo);
 int icom_set_raw(RIG *rig, int cmd, int subcmd, int subcmdbuflen,
                  unsigned char *subcmdbuf, int val_bytes, int val);
 int icom_get_raw_buf(RIG *rig, int cmd, int subcmd, int subcmdbuflen,

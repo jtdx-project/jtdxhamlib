@@ -121,9 +121,13 @@ static int netrigctl_vfostr(RIG *rig, char *vfostr, int len, vfo_t vfo)
     if (vfo == RIG_VFO_CURR)
     {
         vfo = priv->vfo_curr;
+
+        if (vfo == RIG_VFO_NONE) { vfo = RIG_VFO_A; }
     }
 
-    if (priv->rigctld_vfo_mode)
+    rig_debug(RIG_DEBUG_TRACE, "%s: vfo_opt=%d\n", __func__, rig->state.vfo_opt);
+
+    if (rig->state.vfo_opt)
     {
         snprintf(vfostr, len, " %s", vfo == RIG_VFO_A ? "VFOA" : "VFOB");
     }
@@ -189,14 +193,19 @@ static int netrigctl_open(RIG *rig)
     len = sprintf(cmd, "\\chk_vfo\n");
     ret = netrigctl_transaction(rig, cmd, len, buf);
 
-    if (ret == RIG_OK)
+    if (ret == 2)
     {
-        if (buf[0]) { sscanf(buf, "CHKVFO %d", &priv->rigctld_vfo_mode); }
+        if (buf[0]) { sscanf(buf, "%d", &priv->rigctld_vfo_mode); }
     }
     else if (ret < 0)
     {
         rig_debug(RIG_DEBUG_WARN, "%s: chk_vfo error: %s\n", __func__,
                   rigerror(ret));
+    }
+    else
+    {
+        rig_debug(RIG_DEBUG_ERR, "%s:  unknown return from netrigctl_transaction=%d\n",
+                  __func__, ret);
     }
 
     rig_debug(RIG_DEBUG_VERBOSE, "%s: vfo_mode=%d\n", __func__,
@@ -525,8 +534,25 @@ static int netrigctl_open(RIG *rig)
         {
             if (strcmp(setting, "vfo_ops") == 0)
             {
-                rig_debug(RIG_DEBUG_TRACE, "%s: %s set to %s\n", __func__, setting, value);
                 rig->caps->vfo_ops = strtol(value, NULL, 0);
+                rig_debug(RIG_DEBUG_TRACE, "%s: %s set to %d\n", __func__, setting,
+                          rig->caps->vfo_ops);
+            }
+            else if (strcmp(setting, "ptt_type") == 0)
+            {
+                ptt_type_t temp = (ptt_type_t)strtol(value, NULL, 0);
+
+                if (RIG_PTT_RIG_MICDATA == rig->state.pttport.type.ptt && RIG_PTT_NONE == temp)
+                {
+                    /*
+                     * remote PTT must always be RIG_PTT_RIG_MICDATA
+                     * if there is any PTT capability and we have not
+                     * locally overridden it
+                     */
+                    rig->state.pttport.type.ptt = temp;
+                    rig_debug(RIG_DEBUG_TRACE, "%s: %s set to %d\n", __func__, setting,
+                              rig->state.pttport.type.ptt);
+                }
             }
             else
             {
@@ -578,13 +604,18 @@ static int netrigctl_set_freq(RIG *rig, vfo_t vfo, freq_t freq)
 
     rig_debug(RIG_DEBUG_VERBOSE, "%s called\n", __func__);
 
+#if 1 // implement set_freq VFO later if it can be detected
     ret = netrigctl_vfostr(rig, vfostr, sizeof(vfostr), vfo);
 
     if (ret != RIG_OK) { return ret; }
 
     len = sprintf(cmd, "F%s %"FREQFMT"\n", vfostr, freq);
+#else
+    len = sprintf(cmd, "F %"FREQFMT"\n", freq);
+#endif
 
     ret = netrigctl_transaction(rig, cmd, len, buf);
+    rig_debug(RIG_DEBUG_TRACE, "%s: cmd=%s\n", __func__, strtok(cmd, "\r\n"));
 
     if (ret > 0)
     {
@@ -602,9 +633,12 @@ static int netrigctl_get_freq(RIG *rig, vfo_t vfo, freq_t *freq)
     char cmd[CMD_MAX];
     char buf[BUF_MAX];
     char vfostr[6] = "";
+#if 0 // disable until we figure out if we can do this without breaking backwards compability
     char vfotmp[16];
+#endif
 
-    rig_debug(RIG_DEBUG_VERBOSE, "%s called\n", __func__);
+    rig_debug(RIG_DEBUG_VERBOSE, "%s called, vfo=%s, freq=%.0f\n", __func__,
+              rig_strvfo(vfo), *freq);
 
     ret = netrigctl_vfostr(rig, vfostr, sizeof(vfostr), vfo);
 
@@ -614,6 +648,9 @@ static int netrigctl_get_freq(RIG *rig, vfo_t vfo, freq_t *freq)
 
     ret = netrigctl_transaction(rig, cmd, len, buf);
 
+    rig_debug(RIG_DEBUG_TRACE, "%s: cmd=%s, reply=%s\n", __func__, strtok(cmd,
+              "\r\n"), buf);
+
     if (ret <= 0)
     {
         return (ret < 0) ? ret : -RIG_EPROTO;
@@ -621,6 +658,7 @@ static int netrigctl_get_freq(RIG *rig, vfo_t vfo, freq_t *freq)
 
     CHKSCN1ARG(num_sscanf(buf, "%"SCNfreq, freq));
 
+#if 0 // implement set_freq VFO later if it can be detected
     ret = read_string(&rig->state.rigport, buf, BUF_MAX, "\n", 1);
 
     if (ret <= 0)
@@ -629,6 +667,7 @@ static int netrigctl_get_freq(RIG *rig, vfo_t vfo, freq_t *freq)
     }
 
     *vfotmp = rig_parse_vfo(buf);
+#endif
 
     return RIG_OK;
 }
@@ -713,12 +752,12 @@ static int netrigctl_set_vfo(RIG *rig, vfo_t vfo)
 
     rig_debug(RIG_DEBUG_VERBOSE, "%s called\n", __func__);
 
-    ret = netrigctl_vfostr(rig, vfostr, sizeof(vfostr), RIG_VFO_A);
+    //ret = netrigctl_vfostr(rig, vfostr, sizeof(vfostr), RIG_VFO_A);
 
-    if (ret != RIG_OK) { return ret; }
+    //if (ret != RIG_OK) { return ret; }
 
     len = sprintf(cmd, "V%s %s\n", vfostr, rig_strvfo(vfo));
-
+    rig_debug(RIG_DEBUG_VERBOSE, "%s: cmd='%s'\n", __func__, cmd);
     ret = netrigctl_transaction(rig, cmd, len, buf);
 
     if (ret > 0)
@@ -2162,7 +2201,23 @@ static int netrigctl_send_morse(RIG *rig, vfo_t vfo, const char *msg)
     }
 }
 
+static int netrigctl_set_vfo_opt(RIG *rig, int status)
+{
+    char cmdbuf[32];
+    char buf[BUF_MAX];
+    int ret;
 
+    sprintf(cmdbuf, "\\set_vfo_opt %d\n", status);
+    ret = netrigctl_transaction(rig, cmdbuf, strlen(cmdbuf), buf);
+
+    if (ret > 0)
+    {
+        return -RIG_EPROTO;
+    }
+
+    rig->state.vfo_opt = status;
+    return RIG_OK;
+}
 
 /*
  * Netrigctl rig capabilities.
@@ -2271,4 +2326,5 @@ struct rig_caps netrigctl_caps =
     .send_morse =  netrigctl_send_morse,
     .set_channel =    netrigctl_set_channel,
     .get_channel =    netrigctl_get_channel,
+    .set_vfo_opt = netrigctl_set_vfo_opt,
 };

@@ -422,7 +422,7 @@ const struct rig_caps ic9700_caps =
     RIG_MODEL(RIG_MODEL_IC9700),
     .model_name = "IC-9700",
     .mfg_name =  "Icom",
-    .version =  BACKEND_VER ".0",
+    .version =  BACKEND_VER ".1",
     .copyright =  "LGPL",
     .status =  RIG_STATUS_STABLE,
     .rig_type =  RIG_TYPE_TRANSCEIVER,
@@ -460,7 +460,7 @@ const struct rig_caps ic9700_caps =
     .max_rit =  Hz(9999),
     .max_xit =  Hz(9999),
     .max_ifshift =  Hz(0),
-    .targetable_vfo =  RIG_TARGETABLE_FREQ,
+    .targetable_vfo =  0,
     .vfo_ops =  IC9700_VFO_OPS,
     .scan_ops =  IC9700_SCAN_OPS,
     .transceive =  RIG_TRN_RIG,
@@ -474,7 +474,7 @@ const struct rig_caps ic9700_caps =
 
     // Hopefully any future changes in bandplans can be fixed with firmware updates
     // So we use the global REGION2 macros in here
-    .rx_range_list1 =   { // USA Version
+    .rx_range_list1 =   { // USA Version -- United States
         {MHz(144), MHz(148), IC9700_ALL_RX_MODES, -1, -1, IC9700_VFOS, RIG_ANT_CURR, "USA"},
         {MHz(430), MHz(450), IC9700_ALL_RX_MODES, -1, -1, IC9700_VFOS, RIG_ANT_CURR, "USA"},
         {MHz(1240), MHz(1300), IC9700_ALL_RX_MODES, -1, -1, IC9700_VFOS, RIG_ANT_CURR, "USA"},
@@ -490,7 +490,7 @@ const struct rig_caps ic9700_caps =
         RIG_FRNG_END,
     },
 
-    .rx_range_list2 =   { // EUR Version
+    .rx_range_list2 =   { // EUR Version -- Europe
         {MHz(144), MHz(146), IC9700_ALL_RX_MODES, -1, -1, IC9700_VFOS, RIG_ANT_CURR, "EUR"},
         {MHz(430), MHz(440), IC9700_ALL_RX_MODES, -1, -1, IC9700_VFOS, RIG_ANT_CURR, "EUR"},
         {MHz(1240), MHz(1300), IC9700_ALL_RX_MODES, -1, -1, IC9700_VFOS, RIG_ANT_CURR, "EUR"},
@@ -506,7 +506,7 @@ const struct rig_caps ic9700_caps =
         RIG_FRNG_END,
     },
 
-    .rx_range_list3 =   { // ITR Version
+    .rx_range_list3 =   { // ITR Version -- Italy
         {MHz(144), MHz(146), IC9700_ALL_RX_MODES, -1, -1, IC9700_VFOS, RIG_ANT_CURR, "ITR"},
         {MHz(430), MHz(434), IC9700_ALL_RX_MODES, -1, -1, IC9700_VFOS, RIG_ANT_CURR, "ITR"},
         {MHz(435), MHz(438), IC9700_ALL_RX_MODES, -1, -1, IC9700_VFOS, RIG_ANT_CURR, "ITR"},
@@ -528,7 +528,7 @@ const struct rig_caps ic9700_caps =
         RIG_FRNG_END,
     },
 
-    .rx_range_list4 =   { // TPE Version
+    .rx_range_list4 =   { // TPE Version -- Taiwan ??
         {MHz(144), MHz(146), IC9700_ALL_RX_MODES, -1, -1, IC9700_VFOS, RIG_ANT_CURR, "TPE"},
         {MHz(430), MHz(432), IC9700_ALL_RX_MODES, -1, -1, IC9700_VFOS, RIG_ANT_CURR, "TPE"},
         {MHz(1260), MHz(1265), IC9700_ALL_RX_MODES, -1, -1, IC9700_VFOS, RIG_ANT_CURR, "TPE"},
@@ -544,7 +544,7 @@ const struct rig_caps ic9700_caps =
         RIG_FRNG_END,
     },
 
-    .rx_range_list5 =   { // KOR Version
+    .rx_range_list5 =   { // KOR Version -- Republic of Korea
         {MHz(144), MHz(146), IC9700_ALL_RX_MODES, -1, -1, IC9700_VFOS, RIG_ANT_CURR, "KOR"},
         {MHz(430), MHz(440), IC9700_ALL_RX_MODES, -1, -1, IC9700_VFOS, RIG_ANT_CURR, "KOR"},
         {MHz(1260), MHz(1300), IC9700_ALL_RX_MODES, -1, -1, IC9700_VFOS, RIG_ANT_CURR, "KOR"},

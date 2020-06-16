@@ -27,7 +27,7 @@
 #include <string.h>
 #include "token.h"
 
-#define BACKEND_VER "20200508"
+#define BACKEND_VER "20200615"
 
 #define EOM_KEN ';'
 #define EOM_TH '\r'
@@ -126,6 +126,7 @@ struct kenwood_priv_data
     int is_950;
     struct timespec cache_start;
     char last_if_response[KENWOOD_MAX_BUF_LEN];
+    int poweron; /* to avoid powering on more than once */
 };
 
 
@@ -228,6 +229,7 @@ extern const struct rig_caps k3_caps;
 extern const struct rig_caps k3s_caps;
 extern const struct rig_caps kx2_caps;
 extern const struct rig_caps kx3_caps;
+extern const struct rig_caps k4_caps;
 extern const struct rig_caps xg3_caps;
 extern const struct rig_caps trc80_caps;
 
@@ -255,6 +257,7 @@ extern const struct rig_caps thf6a_caps;
 extern const struct rig_caps transfox_caps;
 
 extern const struct rig_caps f6k_caps;
+extern const struct rig_caps powersdr_caps;
 extern const struct rig_caps pihpsdr_caps;
 extern const struct rig_caps ts890s_caps;
 extern const struct rig_caps pt8000a_caps;

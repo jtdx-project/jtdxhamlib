@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 # A script to build a set of VB.NET 2002 Framework 1.1 binary DLLs from a
 # Hamlib tarball. This script assumes that the Hamlib tarball has been
@@ -24,25 +24,32 @@ EX_NOINPUT=66
 
 # Pass name of Hamlib archive extracted in $BUILD_DIR
 if [ $# -ne 1 ]; then
-	echo -e "\nUsage: `basename $0` hamlib-version\n"
-	echo -e "See README.build-VB.NET for more information.\n"
-	exit $EX_USAGE
+    echo
+    echo "Usage: $(basename $0) hamlib-version"
+    echo "See README.build-VB.NET for more information."
+
+    exit $EX_USAGE
 fi
 
 # Make sure the Hamlib archive is where we expect
 if [ -d ${BUILD_DIR}/$1 ]; then
-	echo -e "\nBuilding VB.NET binaries in ${BUILD_DIR}/$1\n\n"
-	cd ${BUILD_DIR}/$1
+    echo
+    echo "Building VB.NET binaries in ${BUILD_DIR}/$1"
+    echo
+
+    cd ${BUILD_DIR}/$1
 else
-	echo -e "\nBuild directory, ${BUILD_DIR}/$1 not found!\nCheck path for $1 or correct the version number.\n"
-	exit $EX_NOINPUT
+    echo "Build directory, ${BUILD_DIR}/$1 not found!"
+    echo "Check path for $1 or correct the version number."
+
+    exit $EX_NOINPUT
 fi
 
 # FIXME: Determine RELEASE only from AC_INIT line to avoid any other similar
 # values and avoid hard coded version number.
-RELEASE=`/usr/bin/awk 'BEGIN{FS="["; RS="]"} /\[3\./ {print $2}' ./configure.ac`
-INST_DIR=`pwd`/mingw-inst
-ZIP_DIR=`pwd`/hamlib-VB.NET-${RELEASE}
+RELEASE=$(/usr/bin/awk 'BEGIN{FS="["; RS="]"} /\[3\./ {print $2}' ./configure.ac)
+INST_DIR=$(pwd)/mingw-inst
+ZIP_DIR=$(pwd)/hamlib-VB.NET-${RELEASE}
 LIBUSB_WIN32_BIN_PATH=${BUILD_DIR}/${LIBUSB_VER}
 
 
@@ -178,7 +185,7 @@ rm include/hamlib/rig_dll.h.orig
 # Configure and build hamlib for mingw32, with libusb-win32
 
 ./configure --host=i586-mingw32msvc \
- --prefix=`pwd`/mingw-inst \
+ --prefix=$(pwd)/mingw-inst \
  --without-cxx-binding \
  PKG_CONFIG_LIBDIR=${LIBUSB_WIN32_BIN_PATH}/lib/pkgconfig
 
@@ -189,7 +196,9 @@ cp -a src/libhamlib.def ${ZIP_DIR}/lib/msvc/libhamlib-2.def; todos ${ZIP_DIR}/li
 cp -a ${INST_DIR}/include/hamlib ${ZIP_DIR}/include/.; todos ${ZIP_DIR}/include/hamlib/*.h
 
 # C++ binding is useless on win32 because of ABI
-rm ${ZIP_DIR}/include/hamlib/{rig,rot}class.h
+for f in *class.h ; do \
+    rm ${ZIP_DIR}/include/hamlib/${f}
+done
 
 for f in AUTHORS ChangeLog COPYING COPYING.LIB LICENSE README README.betatester README.VB.NET-bin THANKS ; do \
     cp -a ${f} ${ZIP_DIR}/${f}.txt ; todos ${ZIP_DIR}/${f}.txt ; done
@@ -205,5 +214,4 @@ cp -a ${LIBUSB_WIN32_BIN_PATH}/bin/x86/libusb0_x86.dll ${ZIP_DIR}/bin/libusb0.dl
 
 # Need VC++ free toolkit installed (default Wine directory installation shown)
 ( cd ${ZIP_DIR}/lib/msvc/ && wine ~/.wine/drive_c/Program\ Files/Microsoft\ Visual\ C++\ Toolkit\ 2003/bin/link.exe /lib /machine:i386 /def:libhamlib-2.def )
-zip -r hamlib-VB.NET-${RELEASE}.zip `basename ${ZIP_DIR}`
-
+zip -r hamlib-VB.NET-${RELEASE}.zip $(basename ${ZIP_DIR})

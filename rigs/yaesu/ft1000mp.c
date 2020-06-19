@@ -215,7 +215,7 @@ const struct rig_caps ft1000mp_caps =
     RIG_MODEL(RIG_MODEL_FT1000MP),
     .model_name =         "FT-1000MP",
     .mfg_name =           "Yaesu",
-    .version =            "20200617.0",
+    .version =            "20200618.0",
     .copyright =          "LGPL",
     .status =             RIG_STATUS_BETA,
     .rig_type =           RIG_TYPE_TRANSCEIVER,
@@ -230,8 +230,8 @@ const struct rig_caps ft1000mp_caps =
     .serial_handshake =   RIG_HANDSHAKE_NONE,
     .write_delay =        FT1000MP_WRITE_DELAY,
     .post_write_delay =   FT1000MP_POST_WRITE_DELAY,
-    .timeout =            1000, // was 2000 -- see https://github.com/Hamlib/Hamlib/issues/308
-    .retry =              1,
+    .timeout =            400, // was 2000 -- see https://github.com/Hamlib/Hamlib/issues/308
+    .retry =              6,
     .has_get_func =       FT1000MP_FUNC_ALL,
     .has_set_func =       FT1000MP_FUNC_ALL,
     .has_get_level =      FT1000MP_LEVEL_GET,
@@ -325,6 +325,8 @@ const struct rig_caps ft1000mp_caps =
     .set_vfo =            ft1000mp_set_vfo,  /* set vfo */
     .get_vfo =            ft1000mp_get_vfo,  /* get vfo */
 
+    .set_split_vfo =      ft1000mp_set_split_vfo,
+
     .get_rit =            ft1000mp_get_rit,
     .set_rit =            ft1000mp_set_rit,
     .get_xit =            ft1000mp_get_xit,
@@ -341,7 +343,7 @@ const struct rig_caps ft1000mpmkv_caps =
     RIG_MODEL(RIG_MODEL_FT1000MPMKV),
     .model_name =         "MARK-V FT-1000MP",
     .mfg_name =           "Yaesu",
-    .version =            "20200616.0",
+    .version =            "20200618.0",
     .copyright =          "LGPL",
     .status =             RIG_STATUS_BETA,
     .rig_type =           RIG_TYPE_TRANSCEIVER,
@@ -356,8 +358,8 @@ const struct rig_caps ft1000mpmkv_caps =
     .serial_handshake =   RIG_HANDSHAKE_NONE,
     .write_delay =        FT1000MP_WRITE_DELAY,
     .post_write_delay =   FT1000MP_POST_WRITE_DELAY,
-    .timeout =            1000,
-    .retry =              1,
+    .timeout =            400,
+    .retry =              6,
     .has_get_func =       FT1000MP_FUNC_ALL,
     .has_set_func =       FT1000MP_FUNC_ALL,
     .has_get_level =      FT1000MP_LEVEL_GET,
@@ -450,6 +452,8 @@ const struct rig_caps ft1000mpmkv_caps =
     .get_mode =           ft1000mp_get_mode, /* get mode */
     .set_vfo =            ft1000mp_set_vfo,  /* set vfo */
     .get_vfo =            ft1000mp_get_vfo,  /* get vfo */
+
+    .set_split_vfo =      ft1000mp_set_split_vfo,
 
     .get_rit =            ft1000mp_get_rit,
     .set_rit =            ft1000mp_set_rit,
@@ -467,7 +471,7 @@ const struct rig_caps ft1000mpmkvfld_caps =
     RIG_MODEL(RIG_MODEL_FT1000MPMKVFLD),
     .model_name =         "MARK-V Field FT-1000MP",
     .mfg_name =           "Yaesu",
-    .version =            "20200616.0",
+    .version =            "20200618.0",
     .copyright =          "LGPL",
     .status =             RIG_STATUS_BETA,
     .rig_type =           RIG_TYPE_TRANSCEIVER,
@@ -482,8 +486,8 @@ const struct rig_caps ft1000mpmkvfld_caps =
     .serial_handshake =   RIG_HANDSHAKE_NONE,
     .write_delay =        FT1000MP_WRITE_DELAY,
     .post_write_delay =   FT1000MP_POST_WRITE_DELAY,
-    .timeout =            1000,
-    .retry =              1,
+    .timeout =            400,
+    .retry =              6,
     .has_get_func =       FT1000MP_FUNC_ALL,
     .has_set_func =       FT1000MP_FUNC_ALL,
     .has_get_level =      FT1000MP_LEVEL_GET,
@@ -576,6 +580,8 @@ const struct rig_caps ft1000mpmkvfld_caps =
     .get_mode =           ft1000mp_get_mode, /* get mode */
     .set_vfo =            ft1000mp_set_vfo,  /* set vfo */
     .get_vfo =            ft1000mp_get_vfo,  /* get vfo */
+
+    .set_split_vfo =      ft1000mp_set_split_vfo,
 
     .get_rit =            ft1000mp_get_rit,
     .set_rit =            ft1000mp_set_rit,
@@ -1316,7 +1322,7 @@ int ft1000mp_get_level(RIG *rig, vfo_t vfo, setting_t level, value_t *val)
     unsigned char lvl_data[YAESU_CMD_LENGTH];
     int m;
     int retval;
-    int retry = rig->caps->retry;
+    int retry = rig->state.rigport.retry;
 
     rs = &rig->state;
     priv = (struct ft1000mp_priv_data *)rs->priv;
@@ -1442,7 +1448,7 @@ static int ft1000mp_get_update_data(RIG *rig, unsigned char ci,
     struct rig_state *rig_s;
     struct ft1000mp_priv_data *p;
     int n;                        /* for read_  */
-    int retry = rig->caps->retry;
+    int retry = rig->state.rigport.retry;
 
     rig_debug(RIG_DEBUG_VERBOSE, "%s: called\n", __func__);
 
@@ -1456,6 +1462,11 @@ static int ft1000mp_get_update_data(RIG *rig, unsigned char ci,
         ft1000mp_send_priv_cmd(rig, ci);
 
         n = read_block(&rig_s->rigport, (char *) p->update_data, rl);
+
+        if (n == -RIG_ETIMEOUT)
+        {
+            rig_debug(RIG_DEBUG_TRACE, "%s: Timeout retry count = %d\n", __func__, retry);
+        }
     }
     while (retry-- && n == -RIG_ETIMEOUT);
 
@@ -1500,4 +1511,36 @@ static int ft1000mp_send_priv_cmd(RIG *rig, unsigned char ci)
 
     return RIG_OK;
 
+}
+
+int ft1000mp_set_split_vfo(RIG *rig, vfo_t vfo, split_t split, vfo_t tx_vfo)
+{
+    // FT1000 transmits on A and receives on B
+
+    unsigned char cmd_index = 0;      /* index of sequence to send */
+
+    rig_debug(RIG_DEBUG_TRACE, "%s called rx_vfo=%s, tx_vfo=%s\n", __func__,
+              rig_strvfo(vfo), rig_strvfo(tx_vfo));
+
+    switch (split)
+    {
+    case RIG_SPLIT_OFF:
+        cmd_index = FT1000MP_NATIVE_SPLIT_OFF;
+        break;
+
+    case RIG_SPLIT_ON:
+        cmd_index = FT1000MP_NATIVE_SPLIT_ON;
+        break;
+
+    default:
+        rig_debug(RIG_DEBUG_VERBOSE, "%s: Unknown split value = %d\n", __func__, split);
+        return -RIG_EINVAL;         /* sorry, wrong VFO */
+    }
+
+    rig->state.current_vfo = RIG_VFO_B; // Rx on VFO_B
+    rig->state.tx_vfo = RIG_VFO_A;
+    ft1000mp_send_priv_cmd(rig, FT1000MP_NATIVE_VFO_B); // make B active
+    ft1000mp_send_priv_cmd(rig, cmd_index);
+
+    return RIG_OK;
 }

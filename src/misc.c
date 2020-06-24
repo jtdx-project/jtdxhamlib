@@ -54,6 +54,8 @@
 #include <hamlib/amplifier.h>
 
 #include "misc.h"
+#include "serial.h"
+#include "network.h"
 
 
 /**
@@ -1384,6 +1386,11 @@ int HAMLIB_API parse_hoststr(char *hoststr, char host[256], char port[6])
     port[0] = 0;
     dummy[0] = 0;
 
+    // Handle device names 1st
+    if (strstr(hoststr, "/dev")) { return -1; }
+
+    if (strncasecmp(hoststr, "com", 3) == 0) { return -1; }
+
     // bracketed IPV6 with optional port
     int n = sscanf(hoststr, "[%255[^]]]:%5s", host, port);
 
@@ -1393,8 +1400,9 @@ int HAMLIB_API parse_hoststr(char *hoststr, char host[256], char port[6])
     }
 
     // non-bracketed full IPV6 with optional link addr
-    n = sscanf(hoststr, "%x:%x:%x:%x:%x:%x:%x:%x:%%%31[^:]:%5s", &net1, &net2, &net3,
+    n = sscanf(hoststr, "%x:%x:%x:%x:%x:%x:%x:%x%%%31[^:]:%5s", &net1, &net2, &net3,
                &net4, &net5, &net6, &net7, &net8, link, port);
+
     if (n == 8 || n == 9)
     {
         strcpy(host, hoststr);
@@ -1407,8 +1415,9 @@ int HAMLIB_API parse_hoststr(char *hoststr, char host[256], char port[6])
         *p = 0;
         return RIG_OK;
     }
-    // non-bracketed IPV6 with optional link addr
-    n = sscanf(hoststr, "%x::%x:%x:%x:%x:%%%31[^:]:%5s", &net1, &net2, &net3,
+
+    // non-bracketed IPV6 with optional link addr and optional port
+    n = sscanf(hoststr, "%x::%x:%x:%x:%x%%%31[^:]:%5s", &net1, &net2, &net3,
                &net4, &net5, link, port);
 
     if (strchr(hoststr, '%') && (n == 5 || n == 6))
@@ -1469,6 +1478,25 @@ int HAMLIB_API parse_hoststr(char *hoststr, char host[256], char port[6])
     printf("Unhandled host=%s\n", hoststr);
 
     return -1;
+}
+
+int HAMLIB_API rig_flush(hamlib_port_t *port)
+{
+    rig_debug(RIG_DEBUG_TRACE, "%s: called for %s device\n", __func__,
+              port->type.rig == RIG_PORT_SERIAL ? "serial" : "network");
+
+    if (port->type.rig == RIG_PORT_NETWORK
+            || port->type.rig == RIG_PORT_UDP_NETWORK)
+    {
+        network_flush(port);
+        return RIG_OK;
+    }
+
+    if (port->type.rig != RIG_PORT_SERIAL)
+    {
+        rig_debug(RIG_DEBUG_WARN, "%s: Expected serial port type!!\nWhat is this rig?\n", __func__); 
+    }
+    return serial_flush(port); // we must be on serial port
 }
 
 //! @endcond

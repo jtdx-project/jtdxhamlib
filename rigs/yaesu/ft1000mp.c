@@ -97,18 +97,18 @@ static const yaesu_cmd_set_t ncmd[] =
     { 1, { 0x00, 0x00, 0x00, 0x0a, 0x0c } }, /* vfo A mode set DATA-LSB */
     { 1, { 0x00, 0x00, 0x00, 0x0b, 0x0c } }, /* vfo A mode set DATA-FM */
 
-    /*  { 1, { 0x00, 0x00, 0x00, 0x80, 0x0c } }, */ /* vfo B mode set LSB */
-    /*  { 1, { 0x00, 0x00, 0x00, 0x81, 0x0c } }, */ /* vfo B mode set USB */
-    /*  { 1, { 0x00, 0x00, 0x00, 0x82, 0x0c } }, */ /* vfo B mode set CW-USB */
-    /*  { 1, { 0x00, 0x00, 0x00, 0x83, 0x0c } }, */ /* vfo B mode set CW-LSB */
-    /*  { 1, { 0x00, 0x00, 0x00, 0x84, 0x0c } }, */ /* vfo B mode set AM */
-    /*  { 1, { 0x00, 0x00, 0x00, 0x85, 0x0c } }, */ /* vfo B mode set AM */
-    /*  { 1, { 0x00, 0x00, 0x00, 0x86, 0x0c } }, */ /* vfo B mode set FM */
-    /*  { 1, { 0x00, 0x00, 0x00, 0x87, 0x0c } }, */ /* vfo B mode set FMN */
-    /*  { 1, { 0x00, 0x00, 0x00, 0x88, 0x0c } }, */ /* vfo B mode set DATA-LSB */
-    /*  { 1, { 0x00, 0x00, 0x00, 0x89, 0x0c } }, */ /* vfo B mode set DATA-LSB */
-    /*  { 1, { 0x00, 0x00, 0x00, 0x8a, 0x0c } }, */ /* vfo B mode set DATA-USB */
-    /*  { 1, { 0x00, 0x00, 0x00, 0x8b, 0x0c } }, */ /* vfo B mode set DATA-FM */
+    { 1, { 0x00, 0x00, 0x00, 0x80, 0x0c } }, /* vfo B mode set LSB */
+    { 1, { 0x00, 0x00, 0x00, 0x81, 0x0c } }, /* vfo B mode set USB */
+    { 1, { 0x00, 0x00, 0x00, 0x82, 0x0c } }, /* vfo B mode set CW-USB */
+    { 1, { 0x00, 0x00, 0x00, 0x83, 0x0c } }, /* vfo B mode set CW-LSB */
+    { 1, { 0x00, 0x00, 0x00, 0x84, 0x0c } }, /* vfo B mode set AM */
+    { 1, { 0x00, 0x00, 0x00, 0x85, 0x0c } }, /* vfo B mode set AM */
+    { 1, { 0x00, 0x00, 0x00, 0x86, 0x0c } }, /* vfo B mode set FM */
+    { 1, { 0x00, 0x00, 0x00, 0x87, 0x0c } }, /* vfo B mode set FMN */
+    { 1, { 0x00, 0x00, 0x00, 0x88, 0x0c } }, /* vfo B mode set DATA-LSB */
+    { 1, { 0x00, 0x00, 0x00, 0x89, 0x0c } }, /* vfo B mode set DATA-LSB */
+    { 1, { 0x00, 0x00, 0x00, 0x8a, 0x0c } }, /* vfo B mode set DATA-USB */
+    { 1, { 0x00, 0x00, 0x00, 0x8b, 0x0c } }, /* vfo B mode set DATA-FM */
 
     { 0, { 0x00, 0x00, 0x00, 0x00, 0x0e } }, /* update interval/pacing */
     { 1, { 0x00, 0x00, 0x00, 0x00, 0x0F } }, /* PTT OFF */
@@ -123,6 +123,7 @@ static const yaesu_cmd_set_t ncmd[] =
     /*  { 1, { 0x00, 0x00, 0x00, 0x00, 0x81 } }, */ /* tuner off */
     /*  { 1, { 0x00, 0x00, 0x00, 0x01, 0x81 } }, */ /* tuner on */
     /*  { 1, { 0x00, 0x00, 0x00, 0x00, 0x82 } }, */ /* tuner start*/
+    { 1, { 0x00, 0x00, 0x00, 0x00, 0x85 } }, /* A>B */
 
 };
 
@@ -215,7 +216,7 @@ const struct rig_caps ft1000mp_caps =
     RIG_MODEL(RIG_MODEL_FT1000MP),
     .model_name =         "FT-1000MP",
     .mfg_name =           "Yaesu",
-    .version =            "20200621.0",
+    .version =            "20200623.0",
     .copyright =          "LGPL",
     .status =             RIG_STATUS_STABLE,
     .rig_type =           RIG_TYPE_TRANSCEIVER,
@@ -346,7 +347,7 @@ const struct rig_caps ft1000mpmkv_caps =
     RIG_MODEL(RIG_MODEL_FT1000MPMKV),
     .model_name =         "MARK-V FT-1000MP",
     .mfg_name =           "Yaesu",
-    .version =            "20200619.0",
+    .version =            "20200623.0",
     .copyright =          "LGPL",
     .status =             RIG_STATUS_STABLE,
     .rig_type =           RIG_TYPE_TRANSCEIVER,
@@ -477,7 +478,7 @@ const struct rig_caps ft1000mpmkvfld_caps =
     RIG_MODEL(RIG_MODEL_FT1000MPMKVFLD),
     .model_name =         "MARK-V Field FT-1000MP",
     .mfg_name =           "Yaesu",
-    .version =            "20200619.0",
+    .version =            "20200623.0",
     .copyright =          "LGPL",
     .status =             RIG_STATUS_STABLE,
     .rig_type =           RIG_TYPE_TRANSCEIVER,
@@ -849,42 +850,52 @@ int ft1000mp_set_mode(RIG *rig, vfo_t vfo, rmode_t mode, pbwidth_t width)
     {
     case RIG_MODE_AM:
         cmd_index = FT1000MP_NATIVE_MODE_SET_AM;
+        if (vfo == RIG_VFO_B) cmd_index = FT1000MP_NATIVE_MODE_SET_AM_B;
         break;
 
     case RIG_MODE_CW:
         cmd_index = FT1000MP_NATIVE_MODE_SET_CWR;
+        if (vfo == RIG_VFO_B) cmd_index = FT1000MP_NATIVE_MODE_SET_CWR_B;
         break;
 
     case RIG_MODE_CWR:
         cmd_index = FT1000MP_NATIVE_MODE_SET_CW;
+        if (vfo == RIG_VFO_B) cmd_index = FT1000MP_NATIVE_MODE_SET_CW_B;
         break;
 
     case RIG_MODE_USB:
         cmd_index = FT1000MP_NATIVE_MODE_SET_USB;
+        if (vfo == RIG_VFO_B) cmd_index = FT1000MP_NATIVE_MODE_SET_USB_B;
         break;
 
     case RIG_MODE_LSB:
         cmd_index = FT1000MP_NATIVE_MODE_SET_LSB;
+        if (vfo == RIG_VFO_B) cmd_index = FT1000MP_NATIVE_MODE_SET_LSB_B;
         break;
 
     case RIG_MODE_FM:
         cmd_index = FT1000MP_NATIVE_MODE_SET_FM;
+        if (vfo == RIG_VFO_B) cmd_index = FT1000MP_NATIVE_MODE_SET_FM_B;
         break;
 
     case RIG_MODE_RTTY:
         cmd_index = FT1000MP_NATIVE_MODE_SET_RTTY_LSB;
+        if (vfo == RIG_VFO_B) cmd_index = FT1000MP_NATIVE_MODE_SET_RTTY_LSB_B;
         break;
 
     case RIG_MODE_RTTYR:
         cmd_index = FT1000MP_NATIVE_MODE_SET_RTTY_USB;
+        if (vfo == RIG_VFO_B) cmd_index = FT1000MP_NATIVE_MODE_SET_RTTY_USB_B;
         break;
 
     case RIG_MODE_PKTLSB:
         cmd_index = FT1000MP_NATIVE_MODE_SET_DATA_LSB;
+        if (vfo == RIG_VFO_B) cmd_index = FT1000MP_NATIVE_MODE_SET_DATA_LSB_B;
         break;
 
     case RIG_MODE_PKTFM:
         cmd_index = FT1000MP_NATIVE_MODE_SET_DATA_FM;
+        if (vfo == RIG_VFO_B) cmd_index = FT1000MP_NATIVE_MODE_SET_FM_B;
         break;
 
     default:
@@ -1515,7 +1526,7 @@ static int ft1000mp_send_priv_cmd(RIG *rig, unsigned char ci)
     }
 
     cmd = (unsigned char *) p->pcs[cmd_index].nseq; /* get native sequence */
-    serial_flush(&rig_s->rigport);
+    rig_flush(&rig_s->rigport);
     write_block(&rig_s->rigport, (char *) cmd, YAESU_CMD_LENGTH);
 
     return RIG_OK;
@@ -1527,6 +1538,7 @@ int ft1000mp_set_split_vfo(RIG *rig, vfo_t vfo, split_t split, vfo_t tx_vfo)
     // FT1000 transmits on A and receives on B
 
     unsigned char cmd_index = 0;      /* index of sequence to send */
+    freq_t tx_freq;
 
     rig_debug(RIG_DEBUG_TRACE, "%s called rx_vfo=%s, tx_vfo=%s\n", __func__,
               rig_strvfo(vfo), rig_strvfo(tx_vfo));
@@ -1546,11 +1558,14 @@ int ft1000mp_set_split_vfo(RIG *rig, vfo_t vfo, split_t split, vfo_t tx_vfo)
         return -RIG_EINVAL;         /* sorry, wrong VFO */
     }
 
+    rig_get_freq(rig,RIG_VFO_B,&tx_freq);
     // manual says VFO_A=Tx and VFO_B=Rx but testing shows otherwise
     rig->state.current_vfo = RIG_VFO_A;
     rig->state.tx_vfo = RIG_VFO_B;
-    ft1000mp_send_priv_cmd(rig, FT1000MP_NATIVE_VFO_A); // make B active
+    ft1000mp_send_priv_cmd(rig, FT1000MP_NATIVE_AB); // Copy A to B
+    ft1000mp_send_priv_cmd(rig, FT1000MP_NATIVE_VFO_A); // make A active
     ft1000mp_send_priv_cmd(rig, cmd_index);
+    rig_set_freq(rig,RIG_VFO_B,tx_freq); // restore orig frequency
 
     return RIG_OK;
 }

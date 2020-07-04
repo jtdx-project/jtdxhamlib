@@ -1292,14 +1292,15 @@ double HAMLIB_API elapsed_ms(struct timespec *start, int option)
 
     case HAMLIB_ELAPSED_INVALIDATE:
         clock_gettime(CLOCK_REALTIME, start);
-        start->tv_sec -= 3600;
+        stop = *start;
+        start->tv_sec -= 10; // ten seconds should be more than enough
         break;
     }
 
     elapsed_msec = ((stop.tv_sec - start->tv_sec) + (stop.tv_nsec / 1e9 -
                     start->tv_nsec / 1e9)) * 1e3;
 
-    rig_debug(RIG_DEBUG_TRACE, "%s: elapsed_msecs=%g\n", __func__, elapsed_msec);
+    rig_debug(RIG_DEBUG_TRACE, "%s: elapsed_msecs=%.0f\n", __func__, elapsed_msec);
 
     if (elapsed_msec < 0 || option == HAMLIB_ELAPSED_INVALIDATE) { return 1000000; }
 
@@ -1381,7 +1382,7 @@ vfo_t HAMLIB_API vfo_fixup(RIG *rig, vfo_t vfo)
 int HAMLIB_API parse_hoststr(char *hoststr, char host[256], char port[6])
 {
     unsigned int net1, net2, net3, net4, net5, net6, net7, net8;
-    char dummy[2], link[32], *p;
+    char dummy[6], link[32], *p;
     host[0] = 0;
     port[0] = 0;
     dummy[0] = 0;
@@ -1470,7 +1471,7 @@ int HAMLIB_API parse_hoststr(char *hoststr, char host[256], char port[6])
         return RIG_OK;
     }
 
-    if (sscanf(hoststr, ":%5[0-9]%s", port,
+    if (sscanf(hoststr, ":%5[0-9]%1s", port,
                dummy) == 1) // just a port if you please
     {
         sprintf(hoststr, "%s:%s\n", "localhost", port);

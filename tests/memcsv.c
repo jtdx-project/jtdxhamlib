@@ -311,6 +311,7 @@ static char *mystrtok(char *s, char delim)
         }
     }
 
+    // cppcheck-suppress *
     return str + ent_pos;
 }
 
@@ -1054,5 +1055,6 @@ int find_on_list(char **list, char *what)
             i++;
         }
     }
+
     return i;
 }

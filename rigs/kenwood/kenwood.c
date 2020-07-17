@@ -946,6 +946,12 @@ int kenwood_close(RIG *rig)
                                                  it's not supported */
     }
 
+    if (priv->poweron != 0 && rig->state.auto_power_on)
+    {
+        rig_debug(RIG_DEBUG_TRACE, "%s: got PS1 so powerdown\n", __func__);
+        rig_set_powerstat(rig, 0);
+    }
+
     return RIG_OK;
 }
 

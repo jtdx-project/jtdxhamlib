@@ -355,7 +355,7 @@ transaction_read:
     if (retval < 0)
     {
         rig_debug(RIG_DEBUG_WARN,
-                  "%s: read_string retval < 0, retval = %d, retry_read=%d, retry=%d\n", __func__,
+                  "%s: read_string retval < 0, retval = %d, retry_read=%d, rs->rigport.retry=%d\n", __func__,
                   retval, retry_read, rs->rigport.retry);
 
         // only retry if we expect a response from the command
@@ -476,7 +476,8 @@ transaction_read:
             rig_debug(RIG_DEBUG_ERR, "%s: wrong reply %c%c for command %c%c\n",
                       __func__, buffer[0], buffer[1], cmdstr[0], cmdstr[1]);
 
-            if (retry_read++ < rs->rigport.retry)
+            rig_debug(RIG_DEBUG_ERR, "%s: retry_read=%d, rs->rigport.retry=%d\n", __func__, retry_read, rs->rigport.retry);
+            if (retry_read++ < rs->rigport.retry) 
             {
                 goto transaction_write;
             }
@@ -1717,7 +1718,7 @@ int kenwood_set_rit(RIG *rig, vfo_t vfo, shortfreq_t rit)
     if (priv->has_rit2) // if backend shows it has the Set 2 command
     {
         char cmd[15];  // length required to make Apple-gcc happy (unicode-proof).
-        snprintf(cmd, sizeof(cmd)-1, "R%c%05d", rit > 0 ? 'U' : 'D', abs((int)rit));
+        snprintf(cmd, sizeof(cmd) - 1, "R%c%05d", rit > 0 ? 'U' : 'D', abs((int)rit));
         retval = kenwood_transaction(rig, cmd, NULL, 0);
     }
     else
@@ -4288,6 +4289,8 @@ DECLARE_PROBERIG_BACKEND(kenwood)
     int retval = -1;
     int rates[] = { 115200, 57600, 38400, 19200, 9600, 4800, 1200, 0 }; /* possible baud rates */
     int rates_idx;
+    int write_delay = port->write_delay;
+    int retry = port->retry;
 
     rig_debug(RIG_DEBUG_VERBOSE, "%s called\n", __func__);
 
@@ -4317,6 +4320,8 @@ DECLARE_PROBERIG_BACKEND(kenwood)
 
         if (retval != RIG_OK)
         {
+            port->write_delay = write_delay;
+            port->retry = retry;
             return RIG_MODEL_NONE;
         }
 
@@ -4332,6 +4337,8 @@ DECLARE_PROBERIG_BACKEND(kenwood)
 
     if (retval != RIG_OK || id_len < 0 || !strcmp(idbuf, "ID;"))
     {
+        port->write_delay = write_delay;
+        port->retry = retry;
         return RIG_MODEL_NONE;
     }
 
@@ -4344,6 +4351,8 @@ DECLARE_PROBERIG_BACKEND(kenwood)
         rig_debug(RIG_DEBUG_VERBOSE, "probe_kenwood: protocol error, "
                   " expected %d, received %d: %s\n",
                   6, id_len, idbuf);
+        port->write_delay = write_delay;
+        port->retry = retry;
         return RIG_MODEL_NONE;
     }
 
@@ -4361,6 +4370,8 @@ DECLARE_PROBERIG_BACKEND(kenwood)
                 (*cfunc)(port, kenwood_id_string_list[i].model, data);
             }
 
+            port->write_delay = write_delay;
+            port->retry = retry;
             return kenwood_id_string_list[i].model;
         }
     }

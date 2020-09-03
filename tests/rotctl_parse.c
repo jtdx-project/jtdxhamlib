@@ -298,7 +298,6 @@ int hash_model_id_sort(struct mod_lst *a, struct mod_lst *b)
 
 void hash_sort_by_model_id()
 {
-    // cppcheck-suppress *
     HASH_SORT(models, hash_model_id_sort);
 }
 
@@ -306,7 +305,7 @@ void hash_sort_by_model_id()
 /* Delete hash */
 void hash_delete_all()
 {
-    struct mod_lst *current_model, *tmp=NULL;
+    struct mod_lst *current_model, *tmp = NULL;
 
     HASH_ITER(hh, models, current_model, tmp)
     {

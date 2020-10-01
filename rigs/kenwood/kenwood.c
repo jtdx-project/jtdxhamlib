@@ -113,7 +113,7 @@ static const struct kenwood_id_string kenwood_id_string_list[] =
     { RIG_MODEL_TS950SDX, "012" },
     { RIG_MODEL_TS50,   "013" },
     { RIG_MODEL_TS870S, "015" },
-    { RIG_MODEL_TS570D, "017" },  /* Elecraft K2|K3 also returns 17 */
+    { RIG_MODEL_TS570D, "017" },  /* Elecraft K2|K3|KX3 also returns 17 */
     { RIG_MODEL_TS570S, "018" },
     { RIG_MODEL_TS2000, "019" },
     { RIG_MODEL_TS480,  "020" },
@@ -2208,9 +2208,15 @@ int kenwood_set_level(RIG *rig, vfo_t vfo, setting_t level, value_t val)
 
         /*
          * Best estimate: 1.0 corresponds to 100W
-         * Anything better must be done in rig-specific files.
          */
-        if (RIG_LEVEL_IS_FLOAT(level)) { kenwood_val = val.f * 100; }
+        if (RIG_IS_K3 || RIG_IS_KX3 || RIG_IS_KX2) 
+        {
+            kenwood_val = val.f * 12;
+        } // range is 0-12 if there is no KPA3 installed
+        else 
+        {
+            kenwood_val = val.f * 100; 
+        }
 
         snprintf(levelbuf, sizeof(levelbuf), "PC%03d", kenwood_val);
         break;
@@ -2248,13 +2254,35 @@ int kenwood_set_level(RIG *rig, vfo_t vfo, setting_t level, value_t val)
     case RIG_LEVEL_MICGAIN:
 
         /* XXX check level range */
-        if (RIG_LEVEL_IS_FLOAT(level)) { kenwood_val = val.f * 100; }
+        if (RIG_IS_KX2 || RIG_IS_KX3 || RIG_IS_K2 || RIG_IS_K3 || RIG_IS_K3S) { // range is 0-255
+            kenwood_val = val.f * 100 * (60.0/255.0);
+        }
+        else { // range is 0-100
+            kenwood_val = val.f * 100;
+        }
 
         snprintf(levelbuf, sizeof(levelbuf), "MG%03d", kenwood_val);
         break;
 
     case RIG_LEVEL_RF:
+
         /* XXX check level range */
+        // KX2 and KX3 have range -190 to 250
+        if (val.f > 1.0) { return -RIG_EINVAL; }
+
+        if (RIG_IS_KX2 || RIG_IS_KX3)
+        {
+            kenwood_val = val.f * (250.0 - 190.0) + 190;
+        }
+        else if (RIG_IS_K3 || RIG_IS_K3S)
+        {
+            kenwood_val = val.f * (250.0 / 100.0);
+        }
+        else   // other kenwood rigs
+        {
+            kenwood_val = val.f * 255.0;
+        }
+
         snprintf(levelbuf, sizeof(levelbuf), "RG%03d", kenwood_val);
         break;
 
@@ -2375,7 +2403,7 @@ int kenwood_set_level(RIG *rig, vfo_t vfo, setting_t level, value_t val)
     return kenwood_transaction(rig, levelbuf, NULL, 0);
 }
 
-int get_kenwood_level(RIG *rig, const char *cmd, float *f)
+int get_kenwood_level(RIG *rig, const char *cmd, float *fval, int *ival)
 {
     char lvlbuf[10];
     int retval;
@@ -2384,7 +2412,7 @@ int get_kenwood_level(RIG *rig, const char *cmd, float *f)
 
     rig_debug(RIG_DEBUG_VERBOSE, "%s called\n", __func__);
 
-    if (!f)
+    if (!fval && !ival)
     {
         return -RIG_EINVAL;
     }
@@ -2398,7 +2426,11 @@ int get_kenwood_level(RIG *rig, const char *cmd, float *f)
 
     /* 000..255 */
     sscanf(lvlbuf + len, "%d", &lvl);
-    *f = lvl / 255.0;
+
+    if (ival) { *ival = lvl; } // raw value
+
+    if (fval) { *fval = lvl / 255.0; } // our default scaling of 0-255
+
     return RIG_OK;
 };
 
@@ -2561,13 +2593,23 @@ int kenwood_get_level(RIG *rig, vfo_t vfo, setting_t level, value_t *val)
         break;
 
     case RIG_LEVEL_RFPOWER:
+#if 0 // TBD
+        if (RIG_IS_K3) { // see if KPA3 is enabled
+            ret = get_kenwood_level(rig, "MP055", NULL, &val->i);
+            if (val->i == 
+        }
+#endif
         /*
          * an answer "PC100" means 100 Watt
-         * which is val=1.0 on most rigs, but
-         * get_kenwood_level maps 0...255 onto 0.0 ... 1.0
          */
-        ret = get_kenwood_level(rig, "PC", &val->f);
-        val->f = val->f * (255.0 / 100.0);
+        ret = get_kenwood_level(rig, "PC", NULL, &val->i);
+        if (RIG_IS_K3 || RIG_IS_KX3 || RIG_IS_KX2)
+        { // range is 0-12 if there is no KPA3 installed
+            val->f = val->i / 12.0;
+        }
+        else {
+            val->f = val->f / 100.0;
+        }
         return ret;
 
     case RIG_LEVEL_AF:
@@ -2632,15 +2674,16 @@ int kenwood_get_level(RIG *rig, vfo_t vfo, setting_t level, value_t *val)
             break;
 
         case 1:
-            return get_kenwood_level(rig, "AG", &val->f);
+            return get_kenwood_level(rig, "AG", &val->f, NULL);
             break;
 
         case 2:
-            return get_kenwood_level(rig, "AG0", &val->f);
+            return get_kenwood_level(rig, "AG0", &val->f, NULL);
             break;
 
         case 3:
-            return get_kenwood_level(rig, vfo == RIG_VFO_MAIN ? "AG0" : "AG1", &val->f);
+            return get_kenwood_level(rig, vfo == RIG_VFO_MAIN ? "AG0" : "AG1", &val->f,
+                                     NULL);
             break;
 
         default:
@@ -2650,26 +2693,30 @@ int kenwood_get_level(RIG *rig, vfo_t vfo, setting_t level, value_t *val)
         }
 
     case RIG_LEVEL_RF:
-        return get_kenwood_level(rig, "RG", &val->f);
+        return get_kenwood_level(rig, "RG", &val->f, NULL);
 
     case RIG_LEVEL_SQL:
-        return get_kenwood_level(rig, "SQ", &val->f);
+        return get_kenwood_level(rig, "SQ", &val->f, NULL);
 
     case RIG_LEVEL_MICGAIN:
-        ret = get_kenwood_level(rig, "MG", &val->f);
+        ret = get_kenwood_level(rig, "MG", NULL, &val->i);
 
         if (ret != RIG_OK)
         {
             rig_debug(RIG_DEBUG_ERR, "%s: Error getting MICGAIN\n", __func__);
             return ret;
         }
-
-        val->f = val->f * (255.0 / 100.0);
+        if (RIG_IS_KX2 || RIG_IS_KX3 || RIG_IS_K2 || RIG_IS_K3 || RIG_IS_K3S) {
+            val->f = val->i * (255.0/60.0);
+        }
+        else {
+            val->f = val->i / 255.0;
+        }
         return RIG_OK;
 
     case RIG_LEVEL_AGC:
-        ret = get_kenwood_level(rig, "GT", &val->f);
-        agclevel = 255 * val->f;
+        ret = get_kenwood_level(rig, "GT", NULL, &val->i);
+        agclevel = val->i;
 
         if (agclevel == 0) { val->i = 0; }
         else if (agclevel < 85) { val->i = 1; }

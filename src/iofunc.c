@@ -665,7 +665,7 @@ int HAMLIB_API read_string(hamlib_port_t *p,
     struct timeval tv, tv_timeout, start_time, end_time, elapsed_time;
     int total_count = 0;
 
-    rig_debug(RIG_DEBUG_TRACE, "%s called\n", __func__);
+    rig_debug(RIG_DEBUG_TRACE, "%s called, rxmax=%d\n", __func__, (int)rxmax);
 
     if (!p || !rxbuffer)
     {

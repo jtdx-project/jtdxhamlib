@@ -680,10 +680,6 @@ int ser_open(hamlib_port_t *p)
             ret = OPEN(p->pathname, O_RDWR | O_NOCTTY | O_NDELAY);
         }
     }
-    if (ret == -1)
-    {
-        rig_debug(RIG_DEBUG_ERR, "%s: OPEN failed %d=%s\n", __func__, ret, strerror(errno));
-    }
 
     p->fd = ret;
     return ret;

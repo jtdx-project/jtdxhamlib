@@ -2881,15 +2881,27 @@ int newcat_set_level(RIG *rig, vfo_t vfo, setting_t level, value_t val)
             return -RIG_ENAVAIL;
         }
 
-        if (val.i < 1)
+        val.i *= 10; // tenths to ms conversion
+
+        if (is_ft101)
         {
-            val.i = 1;
+            if (val.i <= 30) { snprintf(priv->cmd_str, sizeof(priv->cmd_str), "SD00;"); }
+
+            if (val.i <= 50) { snprintf(priv->cmd_str, sizeof(priv->cmd_str), "SD01;"); }
+
+            if (val.i <= 100) { snprintf(priv->cmd_str, sizeof(priv->cmd_str), "SD02;"); }
+
+            if (val.i <= 150) { snprintf(priv->cmd_str, sizeof(priv->cmd_str), "SD03;"); }
+
+            if (val.i <= 200) { snprintf(priv->cmd_str, sizeof(priv->cmd_str), "SD04;"); }
+
+            if (val.i <= 250) { snprintf(priv->cmd_str, sizeof(priv->cmd_str), "SD05;"); }
+
+            if (val.i > 2900) { snprintf(priv->cmd_str, sizeof(priv->cmd_str), "SD33;"); }
+            // this covers 300-2900 06-32
+            else { snprintf(priv->cmd_str, sizeof(priv->cmd_str), "SD%02d;", 6 + ((val.i - 300) / 100)); }
         }
-
-        val.i = 5000 / val.i;
-
-        if (newcat_is_rig(rig, RIG_MODEL_FT950) || newcat_is_rig(rig, RIG_MODEL_FT450)
-                || newcat_is_rig(rig, RIG_MODEL_FT1200))
+        else if (is_ft950 || is_ft450 || is_ft1200)
         {
             if (val.i < 30)
             {
@@ -2900,8 +2912,10 @@ int newcat_set_level(RIG *rig, vfo_t vfo, setting_t level, value_t val)
             {
                 val.i = 3000;
             }
+
+            snprintf(priv->cmd_str, sizeof(priv->cmd_str), "SD%04d%c", val.i, cat_term);
         }
-        else if (rig->caps->targetable_vfo & RIG_TARGETABLE_MODE)
+        else // default
         {
             if (val.i < 1)
             {
@@ -2912,9 +2926,10 @@ int newcat_set_level(RIG *rig, vfo_t vfo, setting_t level, value_t val)
             {
                 val.i = 5000;
             }
+
+            snprintf(priv->cmd_str, sizeof(priv->cmd_str), "SD%04d%c", val.i, cat_term);
         }
 
-        snprintf(priv->cmd_str, sizeof(priv->cmd_str), "SD%04d%c", val.i, cat_term);
         break;
 
     case RIG_LEVEL_SQL:
@@ -2934,11 +2949,10 @@ int newcat_set_level(RIG *rig, vfo_t vfo, setting_t level, value_t val)
             return -RIG_ENAVAIL;
         }
 
-        /* VOX delay, arg int (tenth of seconds), 100ms UI */
-        val.i = val.i * 100;
+        /* VOX delay, api int (tenth of seconds), ms for rig */
+        val.i = val.i * 10;
 
-        if (newcat_is_rig(rig, RIG_MODEL_FT950) || newcat_is_rig(rig, RIG_MODEL_FT450)
-                || newcat_is_rig(rig, RIG_MODEL_FT1200))
+        if (is_ft950 || is_ft450 || is_ft1200)
         {
             if (val.i < 100)         /* min is 30ms but spec is 100ms Unit Intervals */
             {
@@ -2949,6 +2963,23 @@ int newcat_set_level(RIG *rig, vfo_t vfo, setting_t level, value_t val)
             {
                 val.i = 3000;
             }
+
+            snprintf(priv->cmd_str, sizeof(priv->cmd_str), "VD%04d%c", val.i, cat_term);
+        }
+        else if (is_ft101) // new lookup table argument
+        {
+            val.i *= 10;  // Change tenths to ms since rig works in ms
+
+            if (val.i <= 30) { val.i = 0; }
+            else if (val.i <= 50) { val.i = 1; }
+            else if (val.i <= 100) { val.i = 2; }
+            else if (val.i <= 150) { val.i = 3; }
+            else if (val.i <= 200) { val.i = 4; }
+            else if (val.i <= 250) { val.i = 5; }
+            else if (val.i > 3000) { val.i = 33; }
+            else { val.i = (val.i - 300) / 100 + 6; }
+
+            snprintf(priv->cmd_str, sizeof(priv->cmd_str), "VD%02d%c", val.i, cat_term);
         }
         else if (rig->caps->targetable_vfo & RIG_TARGETABLE_MODE)
         {
@@ -2961,9 +2992,15 @@ int newcat_set_level(RIG *rig, vfo_t vfo, setting_t level, value_t val)
             {
                 val.i = 5000;
             }
+
+            snprintf(priv->cmd_str, sizeof(priv->cmd_str), "VD%04d%c", val.i, cat_term);
         }
 
-        snprintf(priv->cmd_str, sizeof(priv->cmd_str), "VD%04d%c", val.i, cat_term);
+        else
+        {
+            snprintf(priv->cmd_str, sizeof(priv->cmd_str), "VD%04d%c", val.i, cat_term);
+        }
+
         break;
 
     case RIG_LEVEL_VOXGAIN:
@@ -3402,6 +3439,30 @@ int newcat_get_level(RIG *rig, vfo_t vfo, setting_t level, value_t *val)
 
     case RIG_LEVEL_BKINDL:
         val->i = atoi(retlvl);      /* milliseconds */
+
+        if (is_ft101)
+        {
+            switch (val->i)
+            {
+            case 0: val->i = 3; break;
+
+            case 1: val->i = 5; break;
+
+            case 2: val->i = 10; break;
+
+            case 3: val->i = 15; break;
+
+            case 4: val->i = 20; break;
+
+            case 5: val->i = 25; break;
+
+            case 6: val->i = 30; break;
+
+            default: val->i = (val->i - 6) * 10 + 30;
+            }
+
+            return RIG_OK;
+        }
 
         if (val->i < 1)
         {
@@ -5771,6 +5832,66 @@ int newcat_set_rx_bandwidth(RIG *rig, vfo_t vfo, rmode_t mode, pbwidth_t width)
             return -RIG_EINVAL;
         }   /* end switch(mode) */
     }
+    else if (newcat_is_rig(rig, RIG_MODEL_FTDX101D))
+    {
+        switch (mode)
+        {
+        case RIG_MODE_PKTUSB:
+        case RIG_MODE_PKTLSB:
+        case RIG_MODE_RTTY:
+        case RIG_MODE_RTTYR:
+        case RIG_MODE_CW:
+        case RIG_MODE_CWR:
+            if (width == 0) { snprintf(priv->cmd_str, sizeof(priv->cmd_str), "SH00;"); }
+            else if (width <= 50) { snprintf(priv->cmd_str, sizeof(priv->cmd_str), "SH01;"); }
+            else if (width <= 100) { snprintf(priv->cmd_str, sizeof(priv->cmd_str), "SH02;"); }
+            else if (width <= 150) { snprintf(priv->cmd_str, sizeof(priv->cmd_str), "SH03;"); }
+            else if (width <= 200) { snprintf(priv->cmd_str, sizeof(priv->cmd_str), "SH04;"); }
+            else if (width <= 250) { snprintf(priv->cmd_str, sizeof(priv->cmd_str), "SH05;"); }
+            else if (width <= 300) { snprintf(priv->cmd_str, sizeof(priv->cmd_str), "SH06;"); }
+            else if (width <= 350) { snprintf(priv->cmd_str, sizeof(priv->cmd_str), "SH07;"); }
+            else if (width <= 400) { snprintf(priv->cmd_str, sizeof(priv->cmd_str), "SH08;"); }
+            else if (width <= 450) { snprintf(priv->cmd_str, sizeof(priv->cmd_str), "SH09;"); }
+            else if (width <= 500) { snprintf(priv->cmd_str, sizeof(priv->cmd_str), "SH10;"); }
+            else if (width <= 600) { snprintf(priv->cmd_str, sizeof(priv->cmd_str), "SH11;"); }
+            else if (width <= 800) { snprintf(priv->cmd_str, sizeof(priv->cmd_str), "SH12;"); }
+            else if (width <= 1200) { snprintf(priv->cmd_str, sizeof(priv->cmd_str), "SH13;"); }
+            else if (width <= 1400) { snprintf(priv->cmd_str, sizeof(priv->cmd_str), "SH14;"); }
+            else if (width <= 1700) { snprintf(priv->cmd_str, sizeof(priv->cmd_str), "SH15;"); }
+            else if (width <= 2000) { snprintf(priv->cmd_str, sizeof(priv->cmd_str), "SH16;"); }
+            else if (width <= 2400) { snprintf(priv->cmd_str, sizeof(priv->cmd_str), "SH17;"); }
+            else { snprintf(priv->cmd_str, sizeof(priv->cmd_str), "SH18;"); }
+
+            break;
+
+        case RIG_MODE_LSB:
+        case RIG_MODE_USB:
+            if (width == 0) { snprintf(priv->cmd_str, sizeof(priv->cmd_str), "SH00;"); }
+            else if (width <= 300) { snprintf(priv->cmd_str, sizeof(priv->cmd_str), "SH01;"); }
+            else if (width <= 400) { snprintf(priv->cmd_str, sizeof(priv->cmd_str), "SH02;"); }
+            else if (width <= 600) { snprintf(priv->cmd_str, sizeof(priv->cmd_str), "SH03;"); }
+            else if (width <= 850) { snprintf(priv->cmd_str, sizeof(priv->cmd_str), "SH04;"); }
+            else if (width <= 1100) { snprintf(priv->cmd_str, sizeof(priv->cmd_str), "SH05;"); }
+            else if (width <= 1200) { snprintf(priv->cmd_str, sizeof(priv->cmd_str), "SH06;"); }
+            else if (width <= 1500) { snprintf(priv->cmd_str, sizeof(priv->cmd_str), "SH07;"); }
+            else if (width <= 1650) { snprintf(priv->cmd_str, sizeof(priv->cmd_str), "SH08;"); }
+            else if (width <= 1800) { snprintf(priv->cmd_str, sizeof(priv->cmd_str), "SH09;"); }
+            else if (width <= 1950) { snprintf(priv->cmd_str, sizeof(priv->cmd_str), "SH10;"); }
+            else if (width <= 2100) { snprintf(priv->cmd_str, sizeof(priv->cmd_str), "SH11;"); }
+            else if (width <= 2200) { snprintf(priv->cmd_str, sizeof(priv->cmd_str), "SH12;"); }
+            else if (width <= 2300) { snprintf(priv->cmd_str, sizeof(priv->cmd_str), "SH13;"); }
+            else if (width <= 2400) { snprintf(priv->cmd_str, sizeof(priv->cmd_str), "SH14;"); }
+            else if (width <= 2500) { snprintf(priv->cmd_str, sizeof(priv->cmd_str), "SH15;"); }
+            else if (width <= 2600) { snprintf(priv->cmd_str, sizeof(priv->cmd_str), "SH16;"); }
+            else if (width <= 2700) { snprintf(priv->cmd_str, sizeof(priv->cmd_str), "SH17;"); }
+            else if (width <= 2800) { snprintf(priv->cmd_str, sizeof(priv->cmd_str), "SH18;"); }
+            else if (width <= 2900) { snprintf(priv->cmd_str, sizeof(priv->cmd_str), "SH19;"); }
+            else if (width <= 3000) { snprintf(priv->cmd_str, sizeof(priv->cmd_str), "SH20;"); }
+            else { snprintf(priv->cmd_str, sizeof(priv->cmd_str), "SH21;"); }
+        }
+
+        return newcat_set_cmd(rig);
+    }
     else       /* end if FT1200 */
     {
         /* FT450, FT2000, FT5000, FT9000 */
@@ -5842,7 +5963,7 @@ int newcat_set_rx_bandwidth(RIG *rig, vfo_t vfo, rmode_t mode, pbwidth_t width)
     snprintf(priv->cmd_str, sizeof(priv->cmd_str), "NA%c%c%cSH%c%s%c",
              main_sub_vfo, narrow, cat_term, main_sub_vfo, width_str, cat_term);
 
-    rig_debug(RIG_DEBUG_TRACE, "cmd_str = %s\n", priv->cmd_str);
+    rig_debug(RIG_DEBUG_TRACE, "%s: cmd_str = %s\n", __func__, priv->cmd_str);
 
     /* Set RX Bandwidth */
     return newcat_set_cmd(rig);

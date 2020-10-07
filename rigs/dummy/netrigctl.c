@@ -40,7 +40,7 @@
 
 #include "dummy.h"
 
-#define CMD_MAX 32
+#define CMD_MAX 64
 #define BUF_MAX 96
 
 #define CHKSCN1ARG(a) if ((a) != 1) return -RIG_EPROTO; else do {} while(0)
@@ -100,6 +100,8 @@ static int netrigctl_vfostr(RIG *rig, char *vfostr, int len, vfo_t vfo)
 {
     struct netrigctl_priv_data *priv;
 
+    rig_debug(RIG_DEBUG_TRACE, "%s: called vfo=%s\n", __func__, rig_strvfo(vfo));
+
     if (len < 5)
     {
         rig_debug(RIG_DEBUG_ERR, "%s: len must be >=5, len=%d\n", __func__, len);
@@ -112,6 +114,8 @@ static int netrigctl_vfostr(RIG *rig, char *vfostr, int len, vfo_t vfo)
 
     if (vfo == RIG_VFO_CURR)
     {
+        rig_debug(RIG_DEBUG_TRACE, "%s: vfo==RIG_VFO_CURR, curr=%s\n", __func__,
+                  rig_strvfo(priv->vfo_curr));
         vfo = priv->vfo_curr;
 
         if (vfo == RIG_VFO_NONE) { vfo = RIG_VFO_A; }
@@ -121,7 +125,33 @@ static int netrigctl_vfostr(RIG *rig, char *vfostr, int len, vfo_t vfo)
 
     if (rig->state.vfo_opt)
     {
-        snprintf(vfostr, len, " %s", vfo == RIG_VFO_A ? "VFOA" : "VFOB");
+        rig_debug(RIG_DEBUG_TRACE, "%s: vfo_opt vfo=%u\n", __func__, vfo);
+        char *myvfo;
+
+        switch (vfo)
+        {
+        case RIG_VFO_B: myvfo = "VFOB"; break;
+
+        case RIG_VFO_C: myvfo = "VFOC"; break;
+
+        case RIG_VFO_MAIN: myvfo = "Main"; break;
+
+        case RIG_VFO_MAIN_A: myvfo = "MainA"; break;
+
+        case RIG_VFO_MAIN_B: myvfo = "MainB"; break;
+
+        case RIG_VFO_SUB: myvfo = "Sub"; break;
+
+        case RIG_VFO_SUB_A: myvfo = "SubA"; break;
+
+        case RIG_VFO_SUB_B: myvfo = "SubB"; break;
+
+        case RIG_VFO_MEM: myvfo = "MEM"; break;
+
+        default: myvfo = "VFOA";
+        }
+
+        snprintf(vfostr, len, " %s", myvfo);
     }
 
     return RIG_OK;
@@ -546,6 +576,10 @@ static int netrigctl_open(RIG *rig)
                               rig->state.pttport.type.ptt);
                 }
             }
+            else if (strcmp(setting, "targetable_vfo") == 0)
+            {
+                rig->caps->targetable_vfo = strtol(value, NULL, 0);
+            }
             else
             {
                 // not an error -- just a warning for backward compatibility
@@ -592,7 +626,7 @@ static int netrigctl_set_freq(RIG *rig, vfo_t vfo, freq_t freq)
     int ret, len;
     char cmd[CMD_MAX];
     char buf[BUF_MAX];
-    char vfostr[6] = "";
+    char vfostr[16] = "";
 
     rig_debug(RIG_DEBUG_VERBOSE, "%s called\n", __func__);
 
@@ -624,7 +658,7 @@ static int netrigctl_get_freq(RIG *rig, vfo_t vfo, freq_t *freq)
     int ret, len;
     char cmd[CMD_MAX];
     char buf[BUF_MAX];
-    char vfostr[6] = "";
+    char vfostr[16] = "";
 #if 0 // disable until we figure out if we can do this without breaking backwards compatibility
     char vfotmp[16];
 #endif
@@ -671,9 +705,9 @@ static int netrigctl_set_mode(RIG *rig, vfo_t vfo, rmode_t mode,
     int ret, len;
     char cmd[CMD_MAX];
     char buf[BUF_MAX];
-    char vfostr[6] = "";
+    char vfostr[16] = "";
 
-    rig_debug(RIG_DEBUG_VERBOSE, "%s called\n", __func__);
+    rig_debug(RIG_DEBUG_VERBOSE, "%s called, vfo=%s\n", __func__, rig_strvfo(vfo));
 
     ret = netrigctl_vfostr(rig, vfostr, sizeof(vfostr), vfo);
 
@@ -701,9 +735,9 @@ static int netrigctl_get_mode(RIG *rig, vfo_t vfo, rmode_t *mode,
     int ret, len;
     char cmd[CMD_MAX];
     char buf[BUF_MAX];
-    char vfostr[6] = "";
+    char vfostr[16] = "";
 
-    rig_debug(RIG_DEBUG_VERBOSE, "%s called\n", __func__);
+    rig_debug(RIG_DEBUG_VERBOSE, "%s called, vfo=%s\n", __func__, rig_strvfo(vfo));
 
     ret = netrigctl_vfostr(rig, vfostr, sizeof(vfostr), vfo);
 
@@ -768,7 +802,7 @@ static int netrigctl_get_vfo(RIG *rig, vfo_t *vfo)
     int ret, len;
     char cmd[CMD_MAX];
     char buf[BUF_MAX];
-    char vfostr[6] = "";
+    char vfostr[16] = "";
     struct netrigctl_priv_data *priv;
 
     rig_debug(RIG_DEBUG_VERBOSE, "%s called\n", __func__);
@@ -805,7 +839,7 @@ static int netrigctl_set_ptt(RIG *rig, vfo_t vfo, ptt_t ptt)
     int ret, len;
     char cmd[CMD_MAX];
     char buf[BUF_MAX];
-    char vfostr[6] = "";
+    char vfostr[16] = "";
 
     rig_debug(RIG_DEBUG_VERBOSE, "%s called\n", __func__);
 
@@ -833,7 +867,7 @@ static int netrigctl_get_ptt(RIG *rig, vfo_t vfo, ptt_t *ptt)
     int ret, len;
     char cmd[CMD_MAX];
     char buf[BUF_MAX];
-    char vfostr[6] = "";
+    char vfostr[16] = "";
 
     rig_debug(RIG_DEBUG_VERBOSE, "%s called\n", __func__);
 
@@ -860,7 +894,7 @@ static int netrigctl_get_dcd(RIG *rig, vfo_t vfo, dcd_t *dcd)
     int ret, len;
     char cmd[CMD_MAX];
     char buf[BUF_MAX];
-    char vfostr[6] = "";
+    char vfostr[16] = "";
 
     rig_debug(RIG_DEBUG_VERBOSE, "%s called\n", __func__);
 
@@ -889,7 +923,7 @@ static int netrigctl_set_rptr_shift(RIG *rig, vfo_t vfo,
     int ret, len;
     char cmd[CMD_MAX];
     char buf[BUF_MAX];
-    char vfostr[6] = "";
+    char vfostr[16] = "";
 
     rig_debug(RIG_DEBUG_VERBOSE, "%s called\n", __func__);
 
@@ -918,7 +952,7 @@ static int netrigctl_get_rptr_shift(RIG *rig, vfo_t vfo,
     int ret, len;
     char cmd[CMD_MAX];
     char buf[BUF_MAX];
-    char vfostr[6] = "";
+    char vfostr[16] = "";
 
     rig_debug(RIG_DEBUG_VERBOSE, "%s called\n", __func__);
 
@@ -948,7 +982,7 @@ static int netrigctl_set_rptr_offs(RIG *rig, vfo_t vfo, shortfreq_t rptr_offs)
     int ret, len;
     char cmd[CMD_MAX];
     char buf[BUF_MAX];
-    char vfostr[6] = "";
+    char vfostr[16] = "";
 
     rig_debug(RIG_DEBUG_VERBOSE, "%s called\n", __func__);
 
@@ -976,7 +1010,7 @@ static int netrigctl_get_rptr_offs(RIG *rig, vfo_t vfo, shortfreq_t *rptr_offs)
     int ret, len;
     char cmd[CMD_MAX];
     char buf[BUF_MAX];
-    char vfostr[6] = "";
+    char vfostr[16] = "";
 
     rig_debug(RIG_DEBUG_VERBOSE, "%s called\n", __func__);
 
@@ -1004,7 +1038,7 @@ static int netrigctl_set_ctcss_tone(RIG *rig, vfo_t vfo, tone_t tone)
     int ret, len;
     char cmd[CMD_MAX];
     char buf[BUF_MAX];
-    char vfostr[6] = "";
+    char vfostr[16] = "";
 
     rig_debug(RIG_DEBUG_VERBOSE, "%s called\n", __func__);
 
@@ -1032,7 +1066,7 @@ static int netrigctl_get_ctcss_tone(RIG *rig, vfo_t vfo, tone_t *tone)
     int ret, len;
     char cmd[CMD_MAX];
     char buf[BUF_MAX];
-    char vfostr[6] = "";
+    char vfostr[16] = "";
 
     rig_debug(RIG_DEBUG_VERBOSE, "%s called\n", __func__);
 
@@ -1060,7 +1094,7 @@ static int netrigctl_set_dcs_code(RIG *rig, vfo_t vfo, tone_t code)
     int ret, len;
     char cmd[CMD_MAX];
     char buf[BUF_MAX];
-    char vfostr[6] = "";
+    char vfostr[16] = "";
 
     rig_debug(RIG_DEBUG_VERBOSE, "%s called\n", __func__);
 
@@ -1088,7 +1122,7 @@ static int netrigctl_get_dcs_code(RIG *rig, vfo_t vfo, tone_t *code)
     int ret, len;
     char cmd[CMD_MAX];
     char buf[BUF_MAX];
-    char vfostr[6] = "";
+    char vfostr[16] = "";
 
     rig_debug(RIG_DEBUG_VERBOSE, "%s called\n", __func__);
 
@@ -1116,7 +1150,7 @@ static int netrigctl_set_ctcss_sql(RIG *rig, vfo_t vfo, tone_t tone)
     int ret, len;
     char cmd[CMD_MAX];
     char buf[BUF_MAX];
-    char vfostr[6] = "";
+    char vfostr[16] = "";
 
     rig_debug(RIG_DEBUG_VERBOSE, "%s called\n", __func__);
 
@@ -1144,7 +1178,7 @@ static int netrigctl_get_ctcss_sql(RIG *rig, vfo_t vfo, tone_t *tone)
     int ret, len;
     char cmd[CMD_MAX];
     char buf[BUF_MAX];
-    char vfostr[6] = "";
+    char vfostr[16] = "";
 
     rig_debug(RIG_DEBUG_VERBOSE, "%s called\n", __func__);
 
@@ -1172,7 +1206,7 @@ static int netrigctl_set_dcs_sql(RIG *rig, vfo_t vfo, unsigned int code)
     int ret, len;
     char cmd[CMD_MAX];
     char buf[BUF_MAX];
-    char vfostr[6] = "";
+    char vfostr[16] = "";
 
     rig_debug(RIG_DEBUG_VERBOSE, "%s called\n", __func__);
 
@@ -1199,7 +1233,7 @@ static int netrigctl_get_dcs_sql(RIG *rig, vfo_t vfo, unsigned int *code)
     int ret, len;
     char cmd[CMD_MAX];
     char buf[BUF_MAX];
-    char vfostr[6] = "";
+    char vfostr[16] = "";
 
     rig_debug(RIG_DEBUG_VERBOSE, "%s called\n", __func__);
 
@@ -1227,7 +1261,7 @@ static int netrigctl_set_split_freq(RIG *rig, vfo_t vfo, freq_t tx_freq)
     int ret, len;
     char cmd[CMD_MAX];
     char buf[BUF_MAX];
-    char vfostr[6] = "";
+    char vfostr[16] = "";
 
     rig_debug(RIG_DEBUG_VERBOSE, "%s called\n", __func__);
 
@@ -1255,7 +1289,7 @@ static int netrigctl_get_split_freq(RIG *rig, vfo_t vfo, freq_t *tx_freq)
     int ret, len;
     char cmd[CMD_MAX];
     char buf[BUF_MAX];
-    char vfostr[6] = "";
+    char vfostr[16] = "";
 
     rig_debug(RIG_DEBUG_VERBOSE, "%s called\n", __func__);
 
@@ -1283,7 +1317,7 @@ static int netrigctl_set_split_mode(RIG *rig, vfo_t vfo, rmode_t tx_mode,
     int ret, len;
     char cmd[CMD_MAX];
     char buf[BUF_MAX];
-    char vfostr[6] = "";
+    char vfostr[16] = "";
 
     rig_debug(RIG_DEBUG_VERBOSE, "%s called\n", __func__);
 
@@ -1312,7 +1346,7 @@ static int netrigctl_get_split_mode(RIG *rig, vfo_t vfo, rmode_t *tx_mode,
     int ret, len;
     char cmd[CMD_MAX];
     char buf[BUF_MAX];
-    char vfostr[6] = "";
+    char vfostr[16] = "";
 
     rig_debug(RIG_DEBUG_VERBOSE, "%s called\n", __func__);
 
@@ -1351,7 +1385,7 @@ static int netrigctl_set_split_vfo(RIG *rig, vfo_t vfo, split_t split,
     int ret, len;
     char cmd[CMD_MAX];
     char buf[BUF_MAX];
-    char vfostr[6] = "";
+    char vfostr[16] = "";
 
     rig_debug(RIG_DEBUG_VERBOSE, "%s called\n", __func__);
 
@@ -1380,7 +1414,7 @@ static int netrigctl_get_split_vfo(RIG *rig, vfo_t vfo, split_t *split,
     int ret, len;
     char cmd[CMD_MAX];
     char buf[BUF_MAX];
-    char vfostr[6] = "";
+    char vfostr[16] = "";
 
     rig_debug(RIG_DEBUG_VERBOSE, "%s called\n", __func__);
 
@@ -1419,7 +1453,7 @@ static int netrigctl_set_rit(RIG *rig, vfo_t vfo, shortfreq_t rit)
     int ret, len;
     char cmd[CMD_MAX];
     char buf[BUF_MAX];
-    char vfostr[6] = "";
+    char vfostr[16] = "";
 
     rig_debug(RIG_DEBUG_VERBOSE, "%s called\n", __func__);
 
@@ -1447,7 +1481,7 @@ static int netrigctl_get_rit(RIG *rig, vfo_t vfo, shortfreq_t *rit)
     int ret, len;
     char cmd[CMD_MAX];
     char buf[BUF_MAX];
-    char vfostr[6] = "";
+    char vfostr[16] = "";
 
     rig_debug(RIG_DEBUG_VERBOSE, "%s called\n", __func__);
 
@@ -1475,7 +1509,7 @@ static int netrigctl_set_xit(RIG *rig, vfo_t vfo, shortfreq_t xit)
     int ret, len;
     char cmd[CMD_MAX];
     char buf[BUF_MAX];
-    char vfostr[6] = "";
+    char vfostr[16] = "";
 
     rig_debug(RIG_DEBUG_VERBOSE, "%s called\n", __func__);
 
@@ -1503,7 +1537,7 @@ static int netrigctl_get_xit(RIG *rig, vfo_t vfo, shortfreq_t *xit)
     int ret, len;
     char cmd[CMD_MAX];
     char buf[BUF_MAX];
-    char vfostr[6] = "";
+    char vfostr[16] = "";
 
     rig_debug(RIG_DEBUG_VERBOSE, "%s called\n", __func__);
 
@@ -1531,7 +1565,7 @@ static int netrigctl_set_ts(RIG *rig, vfo_t vfo, shortfreq_t ts)
     int ret, len;
     char cmd[CMD_MAX];
     char buf[BUF_MAX];
-    char vfostr[6] = "";
+    char vfostr[16] = "";
 
     rig_debug(RIG_DEBUG_VERBOSE, "%s called\n", __func__);
 
@@ -1559,7 +1593,7 @@ static int netrigctl_get_ts(RIG *rig, vfo_t vfo, shortfreq_t *ts)
     int ret, len;
     char cmd[CMD_MAX];
     char buf[BUF_MAX];
-    char vfostr[6] = "";
+    char vfostr[16] = "";
 
     rig_debug(RIG_DEBUG_VERBOSE, "%s called\n", __func__);
 
@@ -1587,7 +1621,7 @@ static int netrigctl_set_func(RIG *rig, vfo_t vfo, setting_t func, int status)
     int ret, len;
     char cmd[CMD_MAX];
     char buf[BUF_MAX];
-    char vfostr[6] = "";
+    char vfostr[16] = "";
 
     rig_debug(RIG_DEBUG_VERBOSE, "%s called\n", __func__);
 
@@ -1615,7 +1649,7 @@ static int netrigctl_get_func(RIG *rig, vfo_t vfo, setting_t func, int *status)
     int ret, len;
     char cmd[CMD_MAX];
     char buf[BUF_MAX];
-    char vfostr[6] = "";
+    char vfostr[16] = "";
 
     rig_debug(RIG_DEBUG_VERBOSE, "%s called\n", __func__);
 
@@ -1645,7 +1679,7 @@ static int netrigctl_set_level(RIG *rig, vfo_t vfo, setting_t level,
     char cmd[CMD_MAX];
     char buf[BUF_MAX];
     char lstr[32];
-    char vfostr[6] = "";
+    char vfostr[16] = "";
 
     rig_debug(RIG_DEBUG_VERBOSE, "%s called\n", __func__);
 
@@ -1685,7 +1719,7 @@ static int netrigctl_get_level(RIG *rig, vfo_t vfo, setting_t level,
     int ret, len;
     char cmd[CMD_MAX];
     char buf[BUF_MAX];
-    char vfostr[6] = "";
+    char vfostr[16] = "";
 
     rig_debug(RIG_DEBUG_VERBOSE, "%s called\n", __func__);
 
@@ -1829,7 +1863,7 @@ static int netrigctl_set_ant(RIG *rig, vfo_t vfo, ant_t ant, value_t option)
     int ret, len;
     char cmd[CMD_MAX];
     char buf[BUF_MAX];
-    char vfostr[6] = "";
+    char vfostr[16] = "";
     int i_ant = 0;
 
     rig_debug(RIG_DEBUG_VERBOSE, "%s called, ant=0x%02x, option=%d\n", __func__,
@@ -1875,7 +1909,7 @@ static int netrigctl_get_ant(RIG *rig, vfo_t vfo, ant_t ant, value_t *option,
     int ret, len;
     char cmd[CMD_MAX];
     char buf[BUF_MAX];
-    char vfostr[6] = "";
+    char vfostr[16] = "";
 
     rig_debug(RIG_DEBUG_VERBOSE, "%s called\n", __func__);
 
@@ -1972,7 +2006,7 @@ static int netrigctl_set_mem(RIG *rig, vfo_t vfo, int ch)
     int ret, len;
     char cmd[CMD_MAX];
     char buf[BUF_MAX];
-    char vfostr[6] = "";
+    char vfostr[16] = "";
 
     rig_debug(RIG_DEBUG_VERBOSE, "%s called\n", __func__);
 
@@ -2000,7 +2034,7 @@ static int netrigctl_get_mem(RIG *rig, vfo_t vfo, int *ch)
     int ret, len;
     char cmd[CMD_MAX];
     char buf[BUF_MAX];
-    char vfostr[6] = "";
+    char vfostr[16] = "";
 
     rig_debug(RIG_DEBUG_VERBOSE, "%s called\n", __func__);
 

@@ -3055,19 +3055,24 @@ int newcat_set_level(RIG *rig, vfo_t vfo, setting_t level, value_t val)
             return -RIG_ENAVAIL;
         }
 
-        scale = (newcat_is_rig(rig, RIG_MODEL_FT950)) ? 100 : 255;
-        scale = (newcat_is_rig(rig, RIG_MODEL_FT1200)) ? 100 : scale;
+        scale = (is_ft950 || is_ft101) ? 100 : 255;
+        scale = (is_ft1200) ? 100 : scale;
         fpf = newcat_scale_float(scale, val.f);
         snprintf(priv->cmd_str, sizeof(priv->cmd_str), "VG%03d%c", fpf, cat_term);
         break;
 
     case RIG_LEVEL_ANTIVOX:
-        if (newcat_is_rig(rig, RIG_MODEL_FT950))
+        if (is_ft950)
         {
             fpf = newcat_scale_float(100, val.f);
             snprintf(priv->cmd_str, sizeof(priv->cmd_str), "EX117%03d%c", fpf, cat_term);
         }
-        else if (newcat_is_rig(rig, RIG_MODEL_FT1200))
+        else if (is_ft101)
+        {
+            fpf = newcat_scale_float(100, val.f);
+            snprintf(priv->cmd_str, sizeof(priv->cmd_str), "AV%03d%c", fpf, cat_term);
+        }
+        else if (is_ft1200)
         {
             fpf = newcat_scale_float(100, val.f);
             snprintf(priv->cmd_str, sizeof(priv->cmd_str), "EX183%03d%c", fpf, cat_term);
@@ -3381,11 +3386,15 @@ int newcat_get_level(RIG *rig, vfo_t vfo, setting_t level, value_t *val)
         break;
 
     case RIG_LEVEL_ANTIVOX:
-        if (newcat_is_rig(rig, RIG_MODEL_FT950))
+        if (is_ft950)
         {
             snprintf(priv->cmd_str, sizeof(priv->cmd_str), "EX117%c", cat_term);
         }
-        else if (newcat_is_rig(rig, RIG_MODEL_FT1200))
+        else if (is_ft101)
+        {
+            snprintf(priv->cmd_str, sizeof(priv->cmd_str), "AV%c", cat_term);
+        }
+        else if (is_ft1200)
         {
             snprintf(priv->cmd_str, sizeof(priv->cmd_str), "EX183%c", cat_term);
         }
@@ -3443,7 +3452,7 @@ int newcat_get_level(RIG *rig, vfo_t vfo, setting_t level, value_t *val)
     case RIG_LEVEL_VOXGAIN:
     case RIG_LEVEL_COMP:
     case RIG_LEVEL_ANTIVOX:
-        scale = (is_ft950) ? 100. : 255.;
+        scale = (is_ft950 || is_ft101) ? 100. : 255.;
         scale = (is_ft1200 || is_ft101) ? 100. : scale ;
         val->f = (float)atoi(retlvl) / scale;
         break;
@@ -5744,6 +5753,8 @@ int newcat_set_rx_bandwidth(RIG *rig, vfo_t vfo, rmode_t mode, pbwidth_t width)
     } // end is_ft1200
     else if (is_ft101)
     {
+        int roof_width;
+
         switch (mode)
         {
         case RIG_MODE_PKTUSB:
@@ -5752,7 +5763,7 @@ int newcat_set_rx_bandwidth(RIG *rig, vfo_t vfo, rmode_t mode, pbwidth_t width)
         case RIG_MODE_RTTYR:
         case RIG_MODE_CW:
         case RIG_MODE_CWR:
-            if (width == 0) { w = 0; }
+            if (width == RIG_PASSBAND_ROOF) { w = 0; }
             else if (width <= 50) { w = 1; }
             else if (width <= 100) { w = 2; }
             else if (width <= 150) { w = 3; }
@@ -5776,7 +5787,7 @@ int newcat_set_rx_bandwidth(RIG *rig, vfo_t vfo, rmode_t mode, pbwidth_t width)
 
         case RIG_MODE_LSB:
         case RIG_MODE_USB:
-            if (width == 0) { w = 0; }
+            if (width == RIG_PASSBAND_ROOF) { w = 0; }
             else if (width <= 300) {  w = 1; }
             else if (width <= 400) {  w = 2; }
             else if (width <= 600) {  w = 3; }
@@ -5801,6 +5812,21 @@ int newcat_set_rx_bandwidth(RIG *rig, vfo_t vfo, rmode_t mode, pbwidth_t width)
             else if (width <= 3500) {  w = 22; }
             else { w = 23; } // 4000Hz
         } // end switch(mode)
+
+        // set roofing filter to allow for requested bandwith
+        // widths of 3 and 5 are optional so won't do them
+        if (width <= 600) { roof_width = 4; }
+        else if (width <= 3000) { roof_width = 2; }
+        else { roof_width = 1; }
+
+        snprintf(priv->cmd_str, sizeof(priv->cmd_str), "RF%c%1d%c", main_sub_vfo,
+                 roof_width,
+                 cat_term);
+
+        if (RIG_OK != (err = newcat_set_cmd(rig)))
+        {
+            return err;
+        }
 
     } // end is_ft101
     else
@@ -5851,7 +5877,14 @@ int newcat_set_rx_bandwidth(RIG *rig, vfo_t vfo, rmode_t mode, pbwidth_t width)
 
     /* end else */
 
-    snprintf(priv->cmd_str, sizeof(priv->cmd_str), "SH%c%02d;", main_sub_vfo, w);
+    if (is_ft101)
+    {
+        snprintf(priv->cmd_str, sizeof(priv->cmd_str), "SH%c0%02d;", main_sub_vfo, w);
+    }
+    else
+    {
+        snprintf(priv->cmd_str, sizeof(priv->cmd_str), "SH%c%02d;", main_sub_vfo, w);
+    }
 
     rig_debug(RIG_DEBUG_TRACE, "%s: cmd_str = %s\n", __func__, priv->cmd_str);
 
@@ -5948,7 +5981,28 @@ int newcat_get_rx_bandwidth(RIG *rig, vfo_t vfo, rmode_t mode, pbwidth_t *width)
         return err;
     }
 
-    if (sscanf(priv->ret_data, "SH%*1d%3d", &w) != 1)
+    if (strlen(priv->ret_data) == 7)
+    {
+        if (sscanf(priv->ret_data, "SH%*1d0%3d", &w) != 1)
+        {
+            err = -RIG_EPROTO;
+        }
+    }
+    else if (strlen(priv->ret_data) == 6)
+    {
+        if (sscanf(priv->ret_data, "SH%*1d%3d", &w) != 1)
+        {
+            err = -RIG_EPROTO;
+        }
+    }
+    else
+    {
+        rig_debug(RIG_DEBUG_ERR, "%s: unknown SH response='%s'\n", __func__,
+                  priv->ret_data);
+        return -RIG_EPROTO;
+    }
+
+    if (err != RIG_OK)
     {
         rig_debug(RIG_DEBUG_ERR, "%s: unable to parse width from '%s'\n", __func__,
                   priv->ret_data);

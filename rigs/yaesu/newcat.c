@@ -110,20 +110,20 @@ const cal_table_float_t yaesu_default_swr_cal =
 
 const cal_table_float_t yaesu_ftdx101d_swr_cal =
 {
-    7,
+    8,
     {
         // first cut at generic Yaesu table, need more points probably
         // based on testing by Adam M7OTP on FT-991
-        {12, 1.0f},
+        {0, 1.0f},
         {26, 1.2f},
-        {39, 1.3f},
-        {63, 1.5f},
-        {112, 2.5f},
-        {161, 4.0f},
-        {223, 5.0f}
+        {52, 1.5f},
+        {89, 2.0f},
+        {126, 3.0f},
+        {173, 4.0f},
+        {236, 5.0f},
+        {255, 25.0f},
     }
 };
-
 
 // Easy reference to rig model -- it is set in newcat_valid_command
 static ncboolean is_ft450;
@@ -958,6 +958,8 @@ int newcat_set_vfo(RIG *rig, vfo_t vfo)
     {
     case RIG_VFO_A:
     case RIG_VFO_B:
+    case RIG_VFO_MAIN:
+    case RIG_VFO_SUB:
         if (vfo == RIG_VFO_B || vfo == RIG_VFO_SUB)
         {
             c = '1';
@@ -988,7 +990,7 @@ int newcat_set_vfo(RIG *rig, vfo_t vfo)
         if (priv->current_mem == NC_MEM_CHANNEL_NONE)
         {
             /* Only works correctly for VFO A */
-            if (state->current_vfo == RIG_VFO_B)
+            if (state->current_vfo != RIG_VFO_A && state->current_vfo != RIG_VFO_MAIN)
             {
                 return -RIG_ENTARGET;
             }
@@ -1095,8 +1097,8 @@ int newcat_get_vfo(RIG *rig, vfo_t *vfo)
 
     case '1':
         if (rig->state.vfo_list & RIG_VFO_SUB) { *vfo = RIG_VFO_SUB; }
+        else { *vfo = RIG_VFO_B; }
 
-        *vfo = RIG_VFO_B;
         break;
 
     default:
@@ -1152,6 +1154,10 @@ int newcat_set_ptt(RIG *rig, vfo_t vfo, ptt_t ptt)
         snprintf(priv->cmd_str, sizeof(priv->cmd_str), "%s", txoff);
         rig_debug(RIG_DEBUG_TRACE, "%s: cmd_str = %s\n", __func__, priv->cmd_str);
         err = newcat_set_cmd(rig);
+	// some rigs like the FT991 need time before doing anything else like set_freq
+	// We won't mess with CW mode -- no freq change expected hopefully
+	if (rig->state.current_mode != RIG_MODE_CW)
+	hl_usleep(100*1000);
         break;
 
     default:
@@ -2559,7 +2565,7 @@ int newcat_set_level(RIG *rig, vfo_t vfo, setting_t level, value_t val)
         return err;
     }
 
-    if (rig->caps->targetable_vfo & RIG_TARGETABLE_PURE)
+    if (rig->caps->targetable_vfo & RIG_TARGETABLE_LEVEL)
     {
         main_sub_vfo = (RIG_VFO_B == vfo || RIG_VFO_SUB == vfo) ? '1' : '0';
     }
@@ -2927,23 +2933,25 @@ int newcat_set_level(RIG *rig, vfo_t vfo, setting_t level, value_t val)
             return -RIG_ENAVAIL;
         }
 
+        // we don't get full resolution as long as val->i is in integer tenths
+        // consider changing this to float or to milliseconds
         val.i *= 100; // tenths to ms conversion
 
         if (is_ft101)
         {
             if (val.i <= 30) { snprintf(priv->cmd_str, sizeof(priv->cmd_str), "SD00;"); }
 
-            if (val.i <= 50) { snprintf(priv->cmd_str, sizeof(priv->cmd_str), "SD01;"); }
+            else if (val.i <= 50) { snprintf(priv->cmd_str, sizeof(priv->cmd_str), "SD01;"); }
 
-            if (val.i <= 100) { snprintf(priv->cmd_str, sizeof(priv->cmd_str), "SD02;"); }
+            else if (val.i <= 100) { snprintf(priv->cmd_str, sizeof(priv->cmd_str), "SD02;"); }
 
-            if (val.i <= 150) { snprintf(priv->cmd_str, sizeof(priv->cmd_str), "SD03;"); }
+            else if (val.i <= 150) { snprintf(priv->cmd_str, sizeof(priv->cmd_str), "SD03;"); }
 
-            if (val.i <= 200) { snprintf(priv->cmd_str, sizeof(priv->cmd_str), "SD04;"); }
+            else if (val.i <= 200) { snprintf(priv->cmd_str, sizeof(priv->cmd_str), "SD04;"); }
 
-            if (val.i <= 250) { snprintf(priv->cmd_str, sizeof(priv->cmd_str), "SD05;"); }
+            else if (val.i <= 250) { snprintf(priv->cmd_str, sizeof(priv->cmd_str), "SD05;"); }
 
-            if (val.i > 2900) { snprintf(priv->cmd_str, sizeof(priv->cmd_str), "SD33;"); }
+            else if (val.i > 2900) { snprintf(priv->cmd_str, sizeof(priv->cmd_str), "SD33;"); }
             // this covers 300-2900 06-32
             else { snprintf(priv->cmd_str, sizeof(priv->cmd_str), "SD%02d;", 6 + ((val.i - 300) / 100)); }
         }
@@ -3153,7 +3161,7 @@ int newcat_get_level(RIG *rig, vfo_t vfo, setting_t level, value_t *val)
         return err;
     }
 
-    if (rig->caps->targetable_vfo & RIG_TARGETABLE_PURE)
+    if (rig->caps->targetable_vfo & RIG_TARGETABLE_LEVEL)
     {
         main_sub_vfo = (RIG_VFO_B == vfo || RIG_VFO_SUB == vfo) ? '1' : '0';
     }
@@ -3872,7 +3880,9 @@ int newcat_set_func(RIG *rig, vfo_t vfo, setting_t func, int status)
             return -RIG_ENAVAIL;
         }
 
-        snprintf(priv->cmd_str, sizeof(priv->cmd_str), "AC00%d%c", status ? 1 : 0,
+        // some rigs use AC02 to actually start tuning
+        if (status == 1 && (is_ft101 || is_ft5000)) status = 2;
+        snprintf(priv->cmd_str, sizeof(priv->cmd_str), "AC00%d%c", status == 0 ? 0 : status,
                  cat_term);
         break;
 
@@ -3892,7 +3902,7 @@ int newcat_set_func(RIG *rig, vfo_t vfo, setting_t func, int status)
             return -RIG_ENAVAIL;
         }
 
-        snprintf(priv->cmd_str, sizeof(priv->cmd_str), "XT%d9%c", status ? 1 : 0,
+        snprintf(priv->cmd_str, sizeof(priv->cmd_str), "XT%d%c", status ? 1 : 0,
                  cat_term);
         break;
 
@@ -3913,6 +3923,11 @@ int newcat_get_func(RIG *rig, vfo_t vfo, setting_t func, int *status)
     char main_sub_vfo = '0';
 
     rig_debug(RIG_DEBUG_VERBOSE, "%s called\n", __func__);
+
+    if (rig->caps->targetable_vfo & (RIG_TARGETABLE_MODE | RIG_TARGETABLE_TONE))
+    {
+        main_sub_vfo = (RIG_VFO_B == vfo || RIG_VFO_SUB == vfo) ? '1' : '0';
+    }
 
     switch (func)
     {
@@ -4589,7 +4604,7 @@ int newcat_set_channel(RIG *rig, const channel_t *chan)
 
     case RIG_VFO_SUB:
     default:
-        /* Only works with VFO A */
+        /* Only works with VFO Main */
         return -RIG_ENTARGET;
     }
 
@@ -5130,7 +5145,6 @@ int newcat_get_tx_vfo(RIG *rig, vfo_t *tx_vfo)
     }
 
     snprintf(priv->cmd_str, sizeof(priv->cmd_str), "%s%c", command, cat_term);
-    rig_debug(RIG_DEBUG_TRACE, "cmd_str = %s\n", priv->cmd_str);
 
     /* Get TX VFO */
     if (RIG_OK != (err = newcat_get_cmd(rig)))
@@ -5143,14 +5157,14 @@ int newcat_get_tx_vfo(RIG *rig, vfo_t *tx_vfo)
     switch (c)
     {
     case '0':
-        if (rig->state.vfo_list && RIG_VFO_MAIN) { *tx_vfo = RIG_VFO_MAIN; }
+        if (rig->state.vfo_list & RIG_VFO_MAIN) { *tx_vfo = RIG_VFO_MAIN; }
         else { *tx_vfo = RIG_VFO_A; }
 
         rig->state.cache.split = 0;
         break;
 
     case '1' :
-        if (rig->state.vfo_list && RIG_VFO_SUB) { *tx_vfo = RIG_VFO_SUB; }
+        if (rig->state.vfo_list & RIG_VFO_SUB) { *tx_vfo = RIG_VFO_SUB; }
         else { *tx_vfo = RIG_VFO_B; }
 
         rig->state.cache.split = 1;
@@ -5813,7 +5827,7 @@ int newcat_set_rx_bandwidth(RIG *rig, vfo_t vfo, rmode_t mode, pbwidth_t width)
             else { w = 23; } // 4000Hz
         } // end switch(mode)
 
-        // set roofing filter to allow for requested bandwith
+        // set roofing filter to allow for requested bandwidth
         // widths of 3 and 5 are optional so won't do them
         if (width <= 600) { roof_width = 4; }
         else if (width <= 3000) { roof_width = 2; }
@@ -6742,6 +6756,9 @@ int newcat_get_cmd(RIG *rig)
         || strcmp(priv->cmd_str, "NL1;") == 0
         || strcmp(priv->cmd_str, "NR0;") == 0
         || strcmp(priv->cmd_str, "NR1;") == 0
+        || strcmp(priv->cmd_str, "NR0;") == 0
+        || strcmp(priv->cmd_str, "NR1;") == 0
+        || strcmp(priv->cmd_str, "OS0;") == 0
         || strcmp(priv->cmd_str, "OS0;") == 0
         || strcmp(priv->cmd_str, "OS1;") == 0
         || strcmp(priv->cmd_str, "PA0;") == 0

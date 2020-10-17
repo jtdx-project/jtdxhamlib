@@ -1154,10 +1154,14 @@ int newcat_set_ptt(RIG *rig, vfo_t vfo, ptt_t ptt)
         snprintf(priv->cmd_str, sizeof(priv->cmd_str), "%s", txoff);
         rig_debug(RIG_DEBUG_TRACE, "%s: cmd_str = %s\n", __func__, priv->cmd_str);
         err = newcat_set_cmd(rig);
-	// some rigs like the FT991 need time before doing anything else like set_freq
-	// We won't mess with CW mode -- no freq change expected hopefully
-	if (rig->state.current_mode != RIG_MODE_CW)
-	hl_usleep(100*1000);
+
+        // some rigs like the FT991 need time before doing anything else like set_freq
+        // We won't mess with CW mode -- no freq change expected hopefully
+        if (rig->state.current_mode != RIG_MODE_CW)
+        {
+            hl_usleep(100 * 1000);
+        }
+
         break;
 
     default:
@@ -3860,16 +3864,17 @@ int newcat_set_func(RIG *rig, vfo_t vfo, setting_t func, int status)
             return -RIG_ENAVAIL;
         }
 
-        if (is_ft101)
+        if (is_ft101 || is_ft5000)
         {
             snprintf(priv->cmd_str, sizeof(priv->cmd_str), "PR0%d%c", status ? 1 : 0,
-                 cat_term);
+                     cat_term);
         }
         else
         {
             snprintf(priv->cmd_str, sizeof(priv->cmd_str), "PR%d%c", status ? 1 : 0,
-                 cat_term);
+                     cat_term);
         }
+
         break;
 
     case RIG_FUNC_VOX:
@@ -3889,8 +3894,10 @@ int newcat_set_func(RIG *rig, vfo_t vfo, setting_t func, int status)
         }
 
         // some rigs use AC02 to actually start tuning
-        if (status == 1 && (is_ft101 || is_ft5000)) status = 2;
-        snprintf(priv->cmd_str, sizeof(priv->cmd_str), "AC00%d%c", status == 0 ? 0 : status,
+        if (status == 1 && (is_ft101 || is_ft5000)) { status = 2; }
+
+        snprintf(priv->cmd_str, sizeof(priv->cmd_str), "AC00%d%c",
+                 status == 0 ? 0 : status,
                  cat_term);
         break;
 
@@ -4062,7 +4069,7 @@ int newcat_get_func(RIG *rig, vfo_t vfo, setting_t func, int *status)
             return -RIG_ENAVAIL;
         }
 
-        if (is_ft101)
+        if (is_ft101 || is_ft5000)
         {
             snprintf(priv->cmd_str, sizeof(priv->cmd_str), "PR0%c", cat_term);
         }
@@ -4070,6 +4077,7 @@ int newcat_get_func(RIG *rig, vfo_t vfo, setting_t func, int *status)
         {
             snprintf(priv->cmd_str, sizeof(priv->cmd_str), "PR%c", cat_term);
         }
+
         break;
 
     case RIG_FUNC_VOX:
@@ -4132,11 +4140,13 @@ int newcat_get_func(RIG *rig, vfo_t vfo, setting_t func, int *status)
         break;
 
     case RIG_FUNC_COMP:
+
         // future Yaesu's may use the new command format
         // so we do this check here instead of the back end
         // only need to add the "|| is_XXX" here
-        if (is_ft101) *status = (retfunc[0] == '0') ? 0 : 1;
-        else *status = (retfunc[0] == '0') ? 0 : 1;
+        if (is_ft101) { *status = (retfunc[1] == '0') ? 0 : 1; }
+        else { *status = (retfunc[0] == '0') ? 0 : 1; }
+
         break;
 
     case RIG_FUNC_ANF:
@@ -6204,7 +6214,7 @@ int newcat_get_rx_bandwidth(RIG *rig, vfo_t vfo, rmode_t mode, pbwidth_t *width)
             switch (w)
             {
             case 0:
-                if (mode == RIG_MODE_CW || RIG_MODE_CWR) { *width = narrow ? 500 : 2400; }
+                if (mode == RIG_MODE_CW || mode == RIG_MODE_CWR) { *width = narrow ? 500 : 2400; }
                 else { *width = narrow ? 300 : 500; }
 
                 break;

@@ -1793,6 +1793,7 @@ struct rig_caps {
 
     int (*send_morse)(RIG *rig, vfo_t vfo, const char *msg);
     int (*stop_morse)(RIG *rig, vfo_t vfo);
+    int (*wait_morse)(RIG *rig, vfo_t vfo);
 
     int (*send_voice_mem)(RIG *rig, vfo_t vfo, int ch);
 
@@ -1934,6 +1935,7 @@ struct rig_cache {
     // Most rigs have MainA and MainB
     // Dual VFO rigs can have SubA and SubB too
     // For dual VFO rigs simplex operations are all done on MainA/MainB -- ergo this abstraction
+    freq_t freqCurr;  // VFO_CURR
     freq_t freqMainA; // VFO_A, VFO_MAIN, and VFO_MAINA
     freq_t freqMainB; // VFO_B, VFO_SUB, and VFO_MAINB
     freq_t freqMainC; // VFO_C (future MainC?)
@@ -2508,6 +2510,10 @@ rig_send_morse HAMLIB_PARAMS((RIG *rig,
 
 extern HAMLIB_EXPORT(int)
 rig_stop_morse HAMLIB_PARAMS((RIG *rig,
+                              vfo_t vfo));
+
+extern HAMLIB_EXPORT(int)
+rig_wait_morse HAMLIB_PARAMS((RIG *rig,
                               vfo_t vfo));
 
 extern HAMLIB_EXPORT(int)

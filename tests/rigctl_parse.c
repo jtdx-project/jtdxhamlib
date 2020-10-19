@@ -218,6 +218,7 @@ declare_proto_rig(get_ant);
 declare_proto_rig(reset);
 declare_proto_rig(send_morse);
 declare_proto_rig(stop_morse);
+declare_proto_rig(wait_morse);
 declare_proto_rig(send_voice_mem);
 declare_proto_rig(send_cmd);
 declare_proto_rig(set_powerstat);
@@ -313,14 +314,15 @@ static struct test_table test_list[] =
     { 'W',  "send_cmd_rx",      ACTION(send_cmd),       ARG_IN | ARG_OUT2 | ARG_NOVFO, "Cmd", "Reply"},
     { 'b',  "send_morse",       ACTION(send_morse),     ARG_IN  | ARG_IN_LINE, "Morse" },
     { 0xbb, "stop_morse",       ACTION(stop_morse),     },
-    { 0x94,  "send_voice_mem",  ACTION(send_voice_mem), ARG_IN, "Voice Mem#" },
+    { 0xbc, "wait_morse",       ACTION(wait_morse),     },
+    { 0x94, "send_voice_mem",   ACTION(send_voice_mem), ARG_IN, "Voice Mem#" },
     { 0x8b, "get_dcd",          ACTION(get_dcd),        ARG_OUT, "DCD" },
     { 0x8d, "set_twiddle",      ACTION(set_twiddle),  ARG_IN  | ARG_NOVFO, "Timeout (secs)" },
     { 0x8e, "get_twiddle",      ACTION(get_twiddle),  ARG_OUT | ARG_NOVFO, "Timeout (secs)" },
     { 0x95, "set_cache",        ACTION(set_cache),      ARG_IN | ARG_NOVFO, "Timeout (msecs)" },
     { 0x96, "get_cache",        ACTION(get_cache),      ARG_OUT | ARG_NOVFO, "Timeout (msecs)" },
     { '2',  "power2mW",         ACTION(power2mW),       ARG_IN1 | ARG_IN2 | ARG_IN3 | ARG_OUT1 | ARG_NOVFO, "Power [0.0..1.0]", "Frequency", "Mode", "Power mW" },
-    { '4',  "mW2power",         ACTION(mW2power),       ARG_IN1 | ARG_IN2 | ARG_IN3 | ARG_OUT1 | ARG_NOVFO, "Power mW", "Frequency", "Mode", "Power [0.0..1.0]" },
+    { '4',  "mW2power",         ACTION(mW2power),       ARG_IN1 | ARG_IN2 | ARG_IN3 | ARG_OUT1 | ARG_NOVFO, "Pwr mW", "Freq", "Mode", "Power [0.0..1.0]" },
     { '1',  "dump_caps",        ACTION(dump_caps),      ARG_NOVFO },
     { '3',  "dump_conf",        ACTION(dump_conf),      ARG_NOVFO },
     { 0x8f, "dump_state",       ACTION(dump_state),     ARG_OUT | ARG_NOVFO },
@@ -4223,6 +4225,11 @@ declare_proto_rig(send_morse)
 declare_proto_rig(stop_morse)
 {
     return rig_stop_morse(rig, vfo);
+}
+
+declare_proto_rig(wait_morse)
+{
+    return rig_wait_morse(rig, vfo);
 }
 
 /* '8' */

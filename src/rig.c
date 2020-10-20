@@ -1257,6 +1257,11 @@ static int set_cache_freq(RIG *rig, vfo_t vfo, freq_t freq)
 {
     switch (vfo)
     {
+    case RIG_VFO_CURR:
+        rig->state.cache.freqCurr = freq;
+        elapsed_ms(&rig->state.cache.time_freqCurr, HAMLIB_ELAPSED_SET);
+        break;
+
     case RIG_VFO_A:
     case RIG_VFO_MAIN:
     case RIG_VFO_MAIN_A:
@@ -1301,6 +1306,9 @@ static int get_cache_freq(RIG *rig, vfo_t vfo, freq_t *freq, int *cache_ms)
     // VFO_C to be implemented
     switch (vfo)
     {
+    case RIG_VFO_CURR:
+        *freq = rig->state.cache.freqCurr;
+        break;
     case RIG_VFO_A:
     case RIG_VFO_MAIN:
     case RIG_VFO_MAIN_A:
@@ -5134,18 +5142,20 @@ static int wait_morse_ptt(RIG *rig, vfo_t vfo)
 
     rig_debug(RIG_DEBUG_VERBOSE, "%s called\n", __func__);
 
+    hl_usleep(200*1000);  // give little time for CW to start PTT
     do
     {
         rig_debug(RIG_DEBUG_TRACE, "%s: loop#%d until ptt=0, ptt=%d\n", __func__, loops,
                   pttStatus);
+        elapsed_ms(&rig->state.cache.time_ptt, HAMLIB_ELAPSED_INVALIDATE);
         retval = rig_get_ptt(rig, vfo, &pttStatus);
 
         if (retval != RIG_OK)
         {
             return retval;
         }
-
-        hl_usleep(50 * 1000);
+        // every 25ms should be short enough
+        hl_usleep(25 * 1000);
         ++loops;
     }
     while (pttStatus == RIG_PTT_ON && loops <= 600);
@@ -5174,16 +5184,11 @@ int HAMLIB_API rig_wait_morse(RIG *rig, vfo_t vfo)
     rig_debug(RIG_DEBUG_VERBOSE, "%s called\n", __func__);
     caps = rig->caps;
 
-    if (caps->wait_morse == NULL)
-    {
-        return wait_morse_ptt(rig, vfo);
-    }
-
     if ((caps->targetable_vfo & RIG_TARGETABLE_PURE)
             || vfo == RIG_VFO_CURR
             || vfo == rig->state.current_vfo)
     {
-        return caps->wait_morse(rig, vfo);
+        return wait_morse_ptt(rig, vfo);
     }
 
     if (!caps->set_vfo)
@@ -5199,7 +5204,7 @@ int HAMLIB_API rig_wait_morse(RIG *rig, vfo_t vfo)
         return retcode;
     }
 
-    retcode = caps->wait_morse(rig, vfo);
+    retcode = wait_morse_ptt(rig, vfo);
     /* try and revert even if we had an error above */
     rc2 = caps->set_vfo(rig, curr_vfo);
 

@@ -2261,11 +2261,28 @@ static int kenwood_get_power_minmax(RIG *rig, int *power_now, int *power_min,
     // we set back to 0 for safety and if restore is true we restore power_min
     // otherwise we expect calling routine to be setting new power level
     // we batch these commands together for speed
-    char *cmd = "PC;PC000;PC;PC255;PC;PC000;";
+    char *cmd;
     int n;
     struct rig_state *rs = &rig->state;
 
     rig_debug(RIG_DEBUG_TRACE, "%s: called\n", __func__);
+
+    switch (rig->caps->rig_model)
+    {
+    // TS890S can't take power levels outside 5-100 and 5-50
+    // So all we'll do is read power_now
+    case RIG_MODEL_TS890S:
+        rig->state.power_min = *power_min = 5;
+        rig->state.power_max = *power_max = 100;
+
+        if (rig->state.current_mode == RIG_MODE_AM) { *power_max = 50; }
+
+        cmd = "PC;";
+        break;
+
+    default:
+        cmd = "PC;PC000;PC;PC255;PC;PC000;";
+    }
 
     // Don't do this if PTT is on...don't want to max out power!!
     if (rig->state.cache.ptt == RIG_PTT_ON)
@@ -2287,27 +2304,34 @@ static int kenwood_get_power_minmax(RIG *rig, int *power_now, int *power_min,
 
     rig_debug(RIG_DEBUG_TRACE, "%s: retval=%d\n", __func__, retval);
 
-    if (retval != 18)
+    if (RIG_IS_TS890S)
     {
-        rig_debug(RIG_DEBUG_ERR, "%s: expected 19, got %d in '%s'\n", __func__, retval,
-                  levelbuf);
-        return -RIG_EPROTO;
+        n = sscanf(levelbuf, "PC%d;", power_now);
+
+        if (n != 1)
+        {
+            rig_debug(RIG_DEBUG_ERR, "%s: count not parse 1 value from '%s'\n", __func__,
+                      levelbuf);
+            return -RIG_EPROTO;
+        }
     }
-
-    n = sscanf(levelbuf, "PC%d;PC%d;PC%d", power_now, power_min, power_max);
-
-    if (n != 3)
+    else
     {
-        rig_debug(RIG_DEBUG_ERR, "%s: count not parse 3 values from '%s'\n", __func__,
-                  levelbuf);
-        return -RIG_EPROTO;
-    }
+        n = sscanf(levelbuf, "PC%d;PC%d;PC%d", power_now, power_min, power_max);
 
-    if (restore)
-    {
-        snprintf(levelbuf, sizeof(levelbuf), "PC%03d;", *power_now);
-        retval = kenwood_transaction(rig, levelbuf, NULL, 0);
-        return retval;
+        if (n != 3)
+        {
+            rig_debug(RIG_DEBUG_ERR, "%s: count not parse 3 values from '%s'\n", __func__,
+                      levelbuf);
+            return -RIG_EPROTO;
+        }
+
+        if (restore) // only need to restore if 3-value cmd is done
+        {
+            snprintf(levelbuf, sizeof(levelbuf), "PC%03d;", *power_now);
+            retval = kenwood_transaction(rig, levelbuf, NULL, 0);
+            return retval;
+        }
     }
 
     rig_debug(RIG_DEBUG_TRACE, "%s: returning now=%d, min=%d, max=%d\n", __func__,
@@ -3748,7 +3772,8 @@ int kenwood_set_trn(RIG *rig, int trn)
     switch (rig->caps->rig_model)
     {
     case RIG_MODEL_POWERSDR: // powersdr doesn't have AI command
-       return -RIG_ENAVAIL;
+        return -RIG_ENAVAIL;
+
     case RIG_MODEL_TS990S:
         return kenwood_transaction(rig, (trn == RIG_TRN_RIG) ? "AI2" : "AI0", NULL, 0);
         break;

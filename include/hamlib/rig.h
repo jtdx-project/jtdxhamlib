@@ -495,16 +495,13 @@ typedef unsigned int vfo_t;
  * \brief Macro for bandpass to be set to normal
  * \def RIG_PASSBAND_NORMAL
  */
-#define RIG_PASSBAND_NORMAL     s_Hz(0) // was 0 but collided with Yaesu SH00; capability
+#define RIG_PASSBAND_NORMAL     s_Hz(0)
 
 /**
  * \brief Macro for bandpass to be left alone
  */
 #define RIG_PASSBAND_NOCHANGE   s_Hz(-1)
-/**
- * \brief Macro for selecting roofing filter on set_mode/width -- FTDX101D
- */
-#define RIG_PASSBAND_ROOF s_Hz(-3)
+
 /**
  *
  * \sa rig_passband_normal(), rig_passband_narrow(), rig_passband_wide()
@@ -1010,7 +1007,7 @@ typedef uint64_t setting_t;
 #define RIG_FUNC_COMP       CONSTANT_64BIT_FLAG (2)    /*!< \c COMP -- Speech Compression */
 #define RIG_FUNC_VOX        CONSTANT_64BIT_FLAG (3)    /*!< \c VOX -- Voice Operated Relay */
 #define RIG_FUNC_TONE       CONSTANT_64BIT_FLAG (4)    /*!< \c TONE -- CTCSS Tone */
-#define RIG_FUNC_TSQL       CONSTANT_64BIT_FLAG (5)    /*!< \c TSQL -- CTCSS Activate/De-activate */
+#define RIG_FUNC_TSQL       CONSTANT_64BIT_FLAG (5)    /*!< \c TSQL -- CTCSS Activate/De-activate and Encode-only value=2 if available */
 #define RIG_FUNC_SBKIN      CONSTANT_64BIT_FLAG (6)    /*!< \c SBKIN -- Semi Break-in (CW mode) */
 #define RIG_FUNC_FBKIN      CONSTANT_64BIT_FLAG (7)    /*!< \c FBKIN -- Full Break-in (CW mode) */
 #define RIG_FUNC_ANF        CONSTANT_64BIT_FLAG (8)    /*!< \c ANF -- Automatic Notch Filter (DSP) */

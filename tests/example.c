@@ -13,6 +13,7 @@
 #include <hamlib/rig.h>
 #include <hamlib/riglist.h>
 #include "sprintflst.h"
+#include <hamlib/rotator.h>
 
 #if 0
 #define MODEL RIG_MODEL_DUMMY
@@ -130,7 +131,7 @@ int main()
     if (range)
     {
         char vfolist[256];
-        sprintf_vfo(vfolist, my_rig->state.vfo_list);
+        rig_sprintf_vfo(vfolist, my_rig->state.vfo_list);
         printf("Range start=%"PRIfreq", end=%"PRIfreq", low_power=%d, high_power=%d, vfos=%s\n",
                range->startf, range->endf, range->low_power, range->high_power, vfolist);
     }

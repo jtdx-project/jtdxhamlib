@@ -2826,7 +2826,9 @@ int newcat_set_powerstat(RIG *rig, powerstat_t status)
 {
     struct rig_state *state = &rig->state;
     struct newcat_priv_data *priv = (struct newcat_priv_data *)rig->state.priv;
-    int err;
+    int retval;
+    int i;
+    int retry_save;
     char ps;
 
     rig_debug(RIG_DEBUG_VERBOSE, "%s called\n", __func__);
@@ -2858,9 +2860,39 @@ int newcat_set_powerstat(RIG *rig, powerstat_t status)
 
     snprintf(priv->cmd_str, sizeof(priv->cmd_str), "PS%c%c", ps, cat_term);
 
-    err = write_block(&state->rigport, priv->cmd_str, strlen(priv->cmd_str));
+    retval = write_block(&state->rigport, priv->cmd_str, strlen(priv->cmd_str));
+    
+    retry_save = rig->state.rigport.retry;
+    rig->state.rigport.retry = 0;
 
-    return err;
+    if (status == RIG_POWER_ON) // wait for wakeup only
+    {
+        for (i = 0; i < 8; ++i) // up to ~10 seconds including the timeouts
+        {
+            freq_t freq;
+            hl_usleep(1000000);
+            retval = rig_get_freq(rig, RIG_VFO_A, &freq);
+
+            if (retval == RIG_OK) { 
+                rig->state.rigport.retry = retry_save;
+	        return retval; 
+	    }
+
+            rig_debug(RIG_DEBUG_TRACE, "%s: Wait #%d for power up\n", __func__, i + 1);
+        }
+    }
+
+    rig->state.rigport.retry = retry_save;
+
+    if (i == 9)
+    {
+        rig_debug(RIG_DEBUG_TRACE, "%s: timeout waiting for powerup, try %d\n",
+                  __func__,
+                  i + 1);
+        retval = -RIG_ETIMEOUT;
+    }
+
+    return retval;
 }
 
 
@@ -7590,11 +7622,14 @@ int newcat_get_rx_bandwidth(RIG *rig, vfo_t vfo, rmode_t mode, pbwidth_t *width)
             return err;
         }
 
-        if (sscanf(priv->ret_data, "SH%3d;", &w) != 1 &&
-            sscanf(priv->ret_data, "SH0%3d;", &w) != 1)
+        if (sscanf(priv->ret_data, "SH0%3d;", &w) != 1)
         {
-            err = -RIG_EPROTO;
+            if (sscanf(priv->ret_data, "SH%3d;", &w) != 1) 
+            {
+                err = -RIG_EPROTO;
+	    }
         }
+	rig_debug(RIG_DEBUG_TRACE, "%s: w=%d\n", __func__, w);
 
         if (err != RIG_OK)
         {
@@ -7602,8 +7637,6 @@ int newcat_get_rx_bandwidth(RIG *rig, vfo_t vfo, rmode_t mode, pbwidth_t *width)
                       priv->ret_data);
             return -RIG_EPROTO;
         }
-
-        rig_debug(RIG_DEBUG_TRACE, "%s: w=%d\n", __func__, w);
     }
     else
     {
@@ -8897,6 +8930,7 @@ int newcat_get_cmd(RIG *rig)
     {
         if (rc != -RIG_BUSBUSY)
         {
+            rig_flush(&state->rigport);  /* discard any unsolicited data */
             /* send the command */
             rig_debug(RIG_DEBUG_TRACE, "cmd_str = %s\n", priv->cmd_str);
 

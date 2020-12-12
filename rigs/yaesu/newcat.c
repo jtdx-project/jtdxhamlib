@@ -4158,7 +4158,14 @@ int newcat_get_level(RIG *rig, vfo_t vfo, setting_t level, value_t *val)
             return -RIG_ENAVAIL;
         }
 
-        snprintf(priv->cmd_str, sizeof(priv->cmd_str), "RM5%c", cat_term);
+        if (is_ftdx9000)
+        {
+            snprintf(priv->cmd_str, sizeof(priv->cmd_str), "RM08%c", cat_term);
+        }
+        else
+        {
+            snprintf(priv->cmd_str, sizeof(priv->cmd_str), "RM5%c", cat_term);
+        }
         break;
 
     case RIG_LEVEL_COMP_METER:
@@ -8960,6 +8967,7 @@ int newcat_get_cmd(RIG *rig)
                       __func__, priv->ret_data);
             // we were using BUSBUSY but microham devices need retries
             //rc = -RIG_BUSBUSY;    /* don't write command again */
+            rc = -RIG_EPROTO;
             /* we could decrement retry_count
                here but there is a danger of
                infinite looping so we just use up
@@ -9035,6 +9043,7 @@ int newcat_get_cmd(RIG *rig)
             // we were using BUSBUSY but microham devices need retries
             // this should be OK under all other circumstances too
             //rc = -RIG_BUSBUSY;    /* retry read only */
+            rc = -RIG_EPROTO;
         }
     }
 

@@ -388,6 +388,8 @@ int rig2icom_mode(RIG *rig, vfo_t vfo, rmode_t mode, pbwidth_t width,
 {
     unsigned char icmode;
     signed char icmode_ext;
+    pbwidth_t width_tmp = width;
+    struct icom_priv_data *priv_data = (struct icom_priv_data *) rig->state.priv;
 
     icmode_ext = -1;
 
@@ -458,7 +460,7 @@ int rig2icom_mode(RIG *rig, vfo_t vfo, rmode_t mode, pbwidth_t width,
         return -RIG_EINVAL;
     }
 
-    if (width != RIG_PASSBAND_NOCHANGE)
+    if (width_tmp != RIG_PASSBAND_NOCHANGE)
     {
         pbwidth_t medium_width = rig_passband_normal(rig, mode);
 
@@ -488,10 +490,15 @@ int rig2icom_mode(RIG *rig, vfo_t vfo, rmode_t mode, pbwidth_t width,
                 icmode_ext = PD_WIDE_3; /* default to Wide */
             }
         }
+        *pd = icmode_ext;
+    }
+    else
+    {
+        // filter should already be set elsewhere
+        *pd = priv_data->filter;
     }
 
     *md = icmode;
-    *pd = icmode_ext;
     return RIG_OK;
 }
 

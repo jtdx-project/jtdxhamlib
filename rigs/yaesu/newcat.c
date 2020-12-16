@@ -1040,6 +1040,7 @@ int newcat_get_mode(RIG *rig, vfo_t vfo, rmode_t *mode, pbwidth_t *width)
 
     if (*mode == '0')
     {
+        rig_debug(RIG_DEBUG_ERR, "%s: *mode = '0'??\n", __func__);
         return -RIG_EPROTO;
     }
 
@@ -7638,14 +7639,31 @@ int newcat_get_rx_bandwidth(RIG *rig, vfo_t vfo, rmode_t mode, pbwidth_t *width)
             return err;
         }
 
-        if (sscanf(priv->ret_data, "SH0%3d;", &w) != 1)
+
+        w = 0; // use default in case of error
+        if (strlen(priv->ret_data) == 7)
         {
-            if (sscanf(priv->ret_data, "SH%3d;", &w) != 1) 
+            int on;
+            int n = sscanf(priv->ret_data, "SH0%1d%3d", &on, &w);
+            if (n == 2) {
+                if (!on) { w = 0; }
+            }
+            else
             {
                 err = -RIG_EPROTO;
-	    }
+            }
         }
-	rig_debug(RIG_DEBUG_TRACE, "%s: w=%d\n", __func__, w);
+        else if (strlen(priv->ret_data) == 6)
+        {
+            int n = sscanf(priv->ret_data, "SH%3d", &w);
+            if (n != 1) err = -RIG_EPROTO;
+        }
+        else
+        {
+            err = -RIG_EPROTO;
+        }
+
+	    rig_debug(RIG_DEBUG_TRACE, "%s: w=%d\n", __func__, w);
 
         if (err != RIG_OK)
         {
@@ -7776,6 +7794,7 @@ int newcat_get_rx_bandwidth(RIG *rig, vfo_t vfo, rmode_t mode, pbwidth_t *width)
             break;
 
         default:
+            rig_debug(RIG_DEBUG_ERR, "%s: unknown mode=%s\n", __func__, rig_strrmode(mode));
             return -RIG_EINVAL;
         }   /* end switch(mode) */
 
@@ -7784,6 +7803,7 @@ int newcat_get_rx_bandwidth(RIG *rig, vfo_t vfo, rmode_t mode, pbwidth_t *width)
     {
         if ((narrow = get_narrow(rig, vfo)) < 0)
         {
+            rig_debug(RIG_DEBUG_ERR, "%s: error narrow < 0, narrow=%d\n", __func__, narrow);
             return -RIG_EPROTO;
         }
 
@@ -7843,7 +7863,9 @@ int newcat_get_rx_bandwidth(RIG *rig, vfo_t vfo, rmode_t mode, pbwidth_t *width)
 
             case 17: *width = 3000; break;
 
-            default: return -RIG_EINVAL;
+            default: 
+                rig_debug(RIG_DEBUG_ERR, "%s: unknown w=%d\n", __func__, w);
+                return -RIG_EINVAL;
             }
 
             break;
@@ -7896,7 +7918,9 @@ int newcat_get_rx_bandwidth(RIG *rig, vfo_t vfo, rmode_t mode, pbwidth_t *width)
 
             case 21: *width = 3200; break;
 
-            default: return -RIG_EINVAL;
+            default: 
+                rig_debug(RIG_DEBUG_ERR, "%s: unknown mode=%s\n", __func__, rig_strrmode(mode));
+                return -RIG_EINVAL;
             }
 
             break;
@@ -7916,6 +7940,7 @@ int newcat_get_rx_bandwidth(RIG *rig, vfo_t vfo, rmode_t mode, pbwidth_t *width)
             break;
 
         default:
+            rig_debug(RIG_DEBUG_ERR, "%s: unknown mode=%s\n", __func__, rig_strrmode(mode));
             return -RIG_EINVAL;
         }   /* end switch(mode) */
 

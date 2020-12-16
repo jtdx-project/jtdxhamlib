@@ -170,10 +170,11 @@ const cal_table_float_t yaesu_default_comp_meter_cal =
 // TODO: Provide sane defaults
 const cal_table_float_t yaesu_default_rfpower_meter_cal =
 {
-    2,
+    3,
     {
         {0, 0.0f},
-        {255, 1.0f},
+        {148, 0.5f},
+        {208, 1.0f},
     }
 };
 
@@ -4394,10 +4395,10 @@ int newcat_get_level(RIG *rig, vfo_t vfo, setting_t level, value_t *val)
             val->f = rig_raw2val_float(atoi(retlvl), &rig->caps->rfpower_meter_cal);
         }
         rig_debug(RIG_DEBUG_VERBOSE, "%s: RFPOWER_METER=%s, converted to %f\n", __func__, retlvl, val->f);
-        if (val->f > 1.0) 
+        if (val->f > 3.0) 
         {
             rig_debug(RIG_DEBUG_VERBOSE, "%s: val->f(%f) clipped at 1.0\n", __func__, val->f);
-            val->f = 1.0;
+            val->f = 3.0;
         }
 
         break;

@@ -57,7 +57,7 @@
                      RIG_MODE_SSB | RIG_MODE_LSB | RIG_MODE_USB |\
              RIG_MODE_FM | RIG_MODE_WFM | RIG_MODE_FMN |RIG_MODE_PKTFM )
 
-#define FLRIG_LEVELS (RIG_LEVEL_AF | RIG_LEVEL_RF | RIG_LEVEL_MICGAIN | RIG_LEVEL_STRENGTH | RIG_LEVEL_RFPOWER_METER)
+#define FLRIG_LEVELS (RIG_LEVEL_AF | RIG_LEVEL_RF | RIG_LEVEL_MICGAIN | RIG_LEVEL_STRENGTH | RIG_LEVEL_RFPOWER_METER | RIG_LEVEL_RFPOWER_METER_WATTS)
 
 #define streq(s1,s2) (strcmp(s1,s2)==0)
 
@@ -742,7 +742,7 @@ static int flrig_open(RIG *rig)
 
     if (retval != RIG_OK) { return retval; }
 
-    priv->powermeter_scale = 100; // default
+    priv->powermeter_scale = 1; // default
 
     if (strlen(value) > 0)
     {
@@ -1923,7 +1923,7 @@ static int flrig_get_level(RIG *rig, vfo_t vfo, setting_t level, value_t *val)
     char value[MAXARGLEN];
     char *cmd;
     int retval;
-    //struct flrig_priv_data *priv = (struct flrig_priv_data *) rig->state.priv;
+    struct flrig_priv_data *priv = (struct flrig_priv_data *) rig->state.priv;
 
     rig_debug(RIG_DEBUG_TRACE, "%s: vfo=%s\n", __func__,
               rig_strvfo(vfo));
@@ -1939,6 +1939,7 @@ static int flrig_get_level(RIG *rig, vfo_t vfo, setting_t level, value_t *val)
 
     case RIG_LEVEL_STRENGTH: cmd = "rig.get_power"; break;
 
+    case RIG_LEVEL_RFPOWER_METER_WATTS:
     case RIG_LEVEL_RFPOWER_METER: cmd = "rig.get_pwrmeter"; break;
 
     default:
@@ -1963,12 +1964,12 @@ static int flrig_get_level(RIG *rig, vfo_t vfo, setting_t level, value_t *val)
         rig_debug(RIG_DEBUG_TRACE, "%s: val.i='%s'(%d)\n", __func__, value, val->i);
 
     case RIG_LEVEL_RFPOWER_METER:
-        val->f = atof(value)/100.0;
+        val->f = atof(value) / 100.0 * priv->powermeter_scale;
         rig_debug(RIG_DEBUG_TRACE, "%s: val.f='%s'(%g)\n", __func__, value, val->f);
         break;
 
     case RIG_LEVEL_RFPOWER_METER_WATTS:
-        val->f = atof(value);
+        val->f = atof(value) * priv->powermeter_scale;
         rig_debug(RIG_DEBUG_TRACE, "%s: val.f='%s'(%g)\n", __func__, value, val->f);
         break;
 

@@ -736,6 +736,7 @@ int powersdr_get_level(RIG *rig, vfo_t vfo, setting_t level, value_t *val)
     int len, ans;
     rmode_t mode;
     pbwidth_t width;
+    ptt_t ptt;
 
     rig_debug(RIG_DEBUG_VERBOSE, "%s called\n", __func__);
 
@@ -771,6 +772,15 @@ int powersdr_get_level(RIG *rig, vfo_t vfo, setting_t level, value_t *val)
         break;
 
     case RIG_LEVEL_RFPOWER_METER:
+    case RIG_LEVEL_RFPOWER_METER_WATTS:
+        flex6k_get_ptt(rig, vfo, &ptt);
+
+        if (!ptt)
+        {
+            val->f = 0;
+            return RIG_OK;
+        }
+
         cmd = "ZZRM5";
         len = 5;
         ans = 3;
@@ -836,18 +846,21 @@ int powersdr_get_level(RIG *rig, vfo_t vfo, setting_t level, value_t *val)
     case RIG_LEVEL_AF:
     case RIG_LEVEL_RFPOWER_METER:
     case RIG_LEVEL_RFPOWER_METER_WATTS:
-        n = sscanf(lvlbuf + len, "%f", &val->f);
+        n = sscanf(lvlbuf, "ZZRM%f", &val->f);
 
         if (n != 1)
         {
             rig_debug(RIG_DEBUG_ERR, "%s: Error parsing value from lvlbuf='%s'\n",
                       __func__, lvlbuf);
+            val->f = 0;
             return -RIG_EPROTO;
         }
+
         if (level != RIG_LEVEL_RFPOWER_METER_WATTS)
         {
             val->f /= 100;
         }
+
         break;
 
     case RIG_LEVEL_RF:

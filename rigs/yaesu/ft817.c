@@ -163,15 +163,15 @@ enum ft817_digi
 // Thanks to Olivier Schmitt sc.olivier@gmail.com for these tables
 #define FT817_PWR_CAL { 9, \
                 { \
-                    { 0x00, 0.0f }, \
-                    { 0x01, 0.1f }, \
-                    { 0x02, 0.14f }, \
-                    { 0x03, 0.2f }, \
-                    { 0x04, 0.34f }, \
-                    { 0x05, 0.5f }, \
-                    { 0x06, 0.66f }, \
-                    { 0x07, 0.82f }, \
-                    { 0x08, 1.00f } \
+                    { 0x00, 0 }, \
+                    { 0x01, 10 }, \
+                    { 0x02, 14 }, \
+                    { 0x03, 20 }, \
+                    { 0x04, 34 }, \
+                    { 0x05, 50 }, \
+                    { 0x06, 66 }, \
+                    { 0x07, 82 }, \
+                    { 0x08, 100 } \
                 } }
 
 #define FT817_ALC_CAL { 6, \

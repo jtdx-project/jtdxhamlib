@@ -4397,10 +4397,10 @@ int newcat_get_level(RIG *rig, vfo_t vfo, setting_t level, value_t *val)
             val->f = rig_raw2val_float(atoi(retlvl), &rig->caps->rfpower_meter_cal)/(level == RIG_LEVEL_RFPOWER_METER_WATTS?1.0:100.0);
         }
         rig_debug(RIG_DEBUG_VERBOSE, "%s: RFPOWER_METER=%s, converted to %f\n", __func__, retlvl, val->f);
-        if (level == RIG_LEVEL_RFPOWER_METER && val->f > 1.0) 
+        if (level == RIG_LEVEL_RFPOWER_METER && val->f > 2.4) 
         {
             rig_debug(RIG_DEBUG_VERBOSE, "%s: val->f(%f) clipped at 1.0\n", __func__, val->f);
-            val->f = 1.0;
+            val->f = 2.4;
         }
 
         break;

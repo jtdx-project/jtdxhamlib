@@ -196,15 +196,11 @@ static struct s_modeMap modeMap[] =
     {RIG_MODE_LSB, NULL},
     {RIG_MODE_PKTUSB, NULL},
     {RIG_MODE_PKTLSB, NULL},
-    {RIG_MODE_PKTUSB, NULL},
-    {RIG_MODE_PKTLSB, NULL},
     {RIG_MODE_AM, NULL},
     {RIG_MODE_FM, NULL},
     {RIG_MODE_FMN, NULL},
     {RIG_MODE_WFM, NULL},
     {RIG_MODE_CW, NULL},
-    {RIG_MODE_CW, NULL},
-    {RIG_MODE_CWR, NULL},
     {RIG_MODE_CWR, NULL},
     {RIG_MODE_RTTY, NULL},
     {RIG_MODE_RTTYR, NULL},
@@ -860,13 +856,16 @@ static int flrig_open(RIG *rig)
         else if (streq(p, "D-USB")) { modeMapAdd(&modes, RIG_MODE_PKTUSB, p); }
         else if (streq(p, "DATA")) { modeMapAdd(&modes, RIG_MODE_PKTUSB, p); }
         else if (streq(p, "DATA-FM")) { modeMapAdd(&modes, RIG_MODE_PKTFM, p); }
+        else if (streq(p, "DATA-L")) { modeMapAdd(&modes, RIG_MODE_PKTLSB, p); }
+        else if (streq(p, "DATA-R")) { modeMapAdd(&modes, RIG_MODE_PKTLSB, p); }
         else if (streq(p, "DATA-LSB")) { modeMapAdd(&modes, RIG_MODE_PKTLSB, p); }
         else if (streq(p, "DATA-USB")) { modeMapAdd(&modes, RIG_MODE_PKTUSB, p); }
         else if (streq(p, "DATA-U")) { modeMapAdd(&modes, RIG_MODE_PKTUSB, p); }
         else if (streq(p, "DIG")) { modeMapAdd(&modes, RIG_MODE_PKTUSB, p); }
         else if (streq(p, "DIGI")) { modeMapAdd(&modes, RIG_MODE_PKTUSB, p); }
-        else if (streq(p, "DATA-L")) { modeMapAdd(&modes, RIG_MODE_PKTLSB, p); }
-        else if (streq(p, "DATA-R")) { modeMapAdd(&modes, RIG_MODE_PKTLSB, p); }
+        else if (streq(p, "DIGL")) { modeMapAdd(&modes, RIG_MODE_PKTLSB, p); }
+        else if (streq(p, "DIGU")) { modeMapAdd(&modes, RIG_MODE_PKTUSB, p); }
+        else if (streq(p, "DSB")) { modeMapAdd(&modes, RIG_MODE_DSB, p); }
         else if (streq(p, "FM")) { modeMapAdd(&modes, RIG_MODE_FM, p); }
         else if (streq(p, "FM-D")) { modeMapAdd(&modes, RIG_MODE_PKTFM, p); }
         else if (streq(p, "FMN")) { modeMapAdd(&modes, RIG_MODE_FMN, p); }
@@ -909,6 +908,11 @@ static int flrig_open(RIG *rig)
         else if (streq(p, "WFM")) { modeMapAdd(&modes, RIG_MODE_WFM, p); }
         else if (streq(p, "UCW")) { modeMapAdd(&modes, RIG_MODE_CW, p); }
         else if (streq(p, "C4FM")) { modeMapAdd(&modes, RIG_MODE_C4FM, p); }
+        else if (streq(p, "SPEC")) { modeMapAdd(&modes, RIG_MODE_SPEC, p); }
+        else if (streq(p,"DRM")) // we don't support DRM yet (or maybe ever)
+        {
+            rig_debug(RIG_DEBUG_VERBOSE, "%s: no mapping for mode %s\n", __func__, p);
+        }
         else { rig_debug(RIG_DEBUG_ERR, "%s: Unknown mode (new?) for this rig='%s'\n", __func__, p); }
     }
 

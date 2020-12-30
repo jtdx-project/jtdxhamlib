@@ -1,12 +1,13 @@
 /*
  * hamlib - (C) Frank Singleton 2000 (javabear at users.sourceforge.net)
  *
- * ft5000.c - (C) Nate Bargmann 2007 (n0nb at arrl.net)
- *            (C) Stephane Fillod 2008-2010
- *            (C) Terry Embry 2008-2009
+ * ftdx10.c - (C) Nate Bargmann 2007 (n0nb at arrl.net)
+ *             (C) Stephane Fillod 2008-2010
+ *             (C) Terry Embry 2008-2009
+ *             (C) Mikael Nousiainen 2020
  *
  * This shared library provides an API for communicating
- * via serial interface to an FT-DX5000 using the "CAT" interface
+ * via serial interface to an FTDX10(D/MP) using the "CAT" interface
  *
  *
  *   This library is free software; you can redistribute it and/or
@@ -31,32 +32,27 @@
 
 #include "hamlib/rig.h"
 #include "bandplan.h"
-#include "newcat.h"
-#include "ft5000.h"
 #include "idx_builtin.h"
 #include "tones.h"
+#include "newcat.h"
+#include "ftdx10.h"
 
-const struct newcat_priv_caps ftdx5000_priv_caps =
+const struct newcat_priv_caps ftdx10_priv_caps =
 {
-    .roofing_filter_count = 11,
+    .roofing_filter_count = 6,
     .roofing_filters =
     {
         // The index must match ext level combo index
-        { .index = 0, .set_value = '0', .get_value = 0, .width = 15000, .optional = 0 },
-        { .index = 1, .set_value = '1', .get_value = '1', .width = 15000, .optional = 0 },
-        { .index = 2, .set_value = '2', .get_value = '2', .width = 6000, .optional = 0 },
-        { .index = 3, .set_value = '3', .get_value = '3', .width = 3000, .optional = 0 },
-        { .index = 4, .set_value = '4', .get_value = '7', .width = 600, .optional = 0 },
-        { .index = 5, .set_value = '5', .get_value = '8', .width = 300, .optional = 0 },
-        { .index = 6, .set_value = 0, .get_value = '4', .width = 15000, .optional = 0 },
-        { .index = 7, .set_value = 0, .get_value = '5', .width = 6000, .optional = 0 },
-        { .index = 8, .set_value = 0, .get_value = '6', .width = 3000, .optional = 0 },
-        { .index = 9, .set_value = 0, .get_value = '9', .width = 600, .optional = 0 },
-        { .index = 10, .set_value = 0, .get_value = 'A', .width = 300, .optional = 0 },
+        { .index = 0, .set_value = '0', .get_value = 0, .width = 12000, .optional = 0 },
+        { .index = 1, .set_value = '1', .get_value = '6', .width = 12000, .optional = 0 },
+        { .index = 2, .set_value = '2', .get_value = '7', .width = 3000, .optional = 0 },
+//        { .index = 3, .set_value = '3', .get_value = '8', .width = 1200, .optional = 1 },
+        { .index = 4, .set_value = '4', .get_value = '9', .width = 500, .optional = 0 },
+        { .index = 5, .set_value = '5', .get_value = 'A', .width = 300, .optional = 0 },
     }
 };
 
-const struct confparams ftdx5000_ext_levels[] =
+const struct confparams ftdx10_ext_levels[] =
 {
     {
         TOK_ROOFING_FILTER,
@@ -65,141 +61,136 @@ const struct confparams ftdx5000_ext_levels[] =
         "Roofing filter",
         NULL,
         RIG_CONF_COMBO,
-        {
-            .c = {
-                .combostr = {
-                    "AUTO", "15 kHz", "6 kHz", "3 kHz", "600 Hz (Main)", "300 Hz (Main)",
-                    "AUTO - 15 kHz", "AUTO - 6 kHz", "AUTO - 3 kHz", "AUTO - 600 Hz (Main)", "AUTO - 300 Hz (Main)",
-                    NULL
-                }
-            }
-        }
+        { .c = { .combostr = { "AUTO", "12 kHz", "3 kHz", "500 Hz", "300 Hz (optional)", NULL } } }
     },
     { RIG_CONF_END, NULL, }
 };
 
-int ftdx5000_ext_tokens[] =
+int ftdx10_ext_tokens[] =
 {
     TOK_ROOFING_FILTER, TOK_BACKEND_NONE
 };
 
-const struct rig_caps ftdx5000_caps =
+const struct rig_caps ftdx10_caps =
 {
-    RIG_MODEL(RIG_MODEL_FTDX5000),
-    .model_name =         "FTDX-5000",
+    RIG_MODEL(RIG_MODEL_FTDX10),
+    .model_name =         "FTDX-10",
     .mfg_name =           "Yaesu",
     .version =            NEWCAT_VER ".0",
     .copyright =          "LGPL",
-    .status =             RIG_STATUS_STABLE,
+    .status =             RIG_STATUS_ALPHA,
     .rig_type =           RIG_TYPE_TRANSCEIVER,
     .ptt_type =           RIG_PTT_RIG,
     .dcd_type =           RIG_DCD_NONE,
     .port_type =          RIG_PORT_SERIAL,
-    .serial_rate_min =    4800,         /* Default rate per manual */
+    .serial_rate_min =    4800,
     .serial_rate_max =    38400,
     .serial_data_bits =   8,
-    .serial_stop_bits =   1,            /* Assumed since manual makes no mention */
+    .serial_stop_bits =   1,
     .serial_parity =      RIG_PARITY_NONE,
     .serial_handshake =   RIG_HANDSHAKE_HARDWARE,
-    .write_delay =        FTDX5000_WRITE_DELAY,
-    .post_write_delay =   FTDX5000_POST_WRITE_DELAY,
+    .write_delay =        FTDX10_WRITE_DELAY,
+    .post_write_delay =   FTDX10_POST_WRITE_DELAY,
     .timeout =            2000,
     .retry =              3,
-    .has_get_func =       FTDX5000_FUNCS,
-    .has_set_func =       FTDX5000_FUNCS,
-    .has_get_level =      FTDX5000_LEVELS,
-    .has_set_level =      RIG_LEVEL_SET(FTDX5000_LEVELS),
+    .has_get_func =       FTDX10_FUNCS,
+    .has_set_func =       FTDX10_FUNCS,
+    .has_get_level =      FTDX10_LEVELS,
+    .has_set_level =      RIG_LEVEL_SET(FTDX10_LEVELS),
     .has_get_parm =       RIG_PARM_NONE,
     .has_set_parm =       RIG_PARM_NONE,
     .level_gran = {
-        // cppcheck-suppress *
         [LVL_RAWSTR] = { .min = { .i = 0 }, .max = { .i = 255 } },
         [LVL_CWPITCH] = { .min = { .i = 300 }, .max = { .i = 1050 }, .step = { .i = 10 } },
         [LVL_KEYSPD] = { .min = { .i = 4 }, .max = { .i = 60 }, .step = { .i = 1 } },
-        [LVL_NOTCHF] = { .min = { .i = 1 }, .max = { .i = 4000 }, .step = { .i = 10 } },
+        [LVL_NOTCHF] = { .min = { .i = 1 }, .max = { .i = 3200 }, .step = { .i = 10 } },
     },
     .ctcss_list =         common_ctcss_list,
     .dcs_list =           NULL,
-    .preamp =             { 10, 20, RIG_DBLST_END, }, /* TBC: Not specified in manual */
+    .preamp =             { 10, 20, RIG_DBLST_END, },
     .attenuator =         { 6, 12, 18, RIG_DBLST_END, },
     .max_rit =            Hz(9999),
     .max_xit =            Hz(9999),
-    .max_ifshift =        Hz(1000),
-    .vfo_ops =            FTDX5000_VFO_OPS,
-    .targetable_vfo =     RIG_TARGETABLE_FREQ | RIG_TARGETABLE_MODE | RIG_TARGETABLE_FUNC | RIG_TARGETABLE_LEVEL,
-    .transceive =         RIG_TRN_OFF,        /* May enable later as the 5000 has an Auto Info command */
+    .max_ifshift =        Hz(1200),
+    .vfo_ops =            FTDX10_VFO_OPS,
+    .targetable_vfo =     RIG_TARGETABLE_FREQ | RIG_TARGETABLE_MODE | RIG_TARGETABLE_FUNC | RIG_TARGETABLE_LEVEL | RIG_TARGETABLE_COMMON,
+    .transceive =         RIG_TRN_OFF, /* May enable later as the FTDX10 has an Auto Info command */
     .bank_qty =           0,
     .chan_desc_sz =       0,
-    .str_cal =            FTDX5000_STR_CAL,
+    .rfpower_meter_cal =  FTDX10_RFPOWER_METER_CAL,
+    .swr_cal =            FTDX10_SWR_CAL,
     .chan_list =          {
         {   1,  99, RIG_MTYPE_MEM,  NEWCAT_MEM_CAP },
-        { 100, 117, RIG_MTYPE_EDGE, NEWCAT_MEM_CAP },    /* two by two */
         RIG_CHAN_END,
     },
 
     .rx_range_list1 =     {
         /* General coverage + ham, ANT_5 is RX only antenna */
-        {kHz(30), MHz(60), FTDX5000_ALL_RX_MODES, -1, -1, FTDX5000_VFO_ALL, FTDX5000_TX_ANTS | RIG_ANT_5, "USA"},
+        {kHz(30), MHz(60), FTDX10_ALL_RX_MODES, -1, -1, FTDX10_VFO_ALL, FTDX10_TX_ANTS, "USA"},
         RIG_FRNG_END,
     },
 
-    .tx_range_list1 =     {
-        FRQ_RNG_HF(1, FTDX5000_OTHER_TX_MODES, W(5), W(200), FTDX5000_VFO_ALL, FTDX5000_TX_ANTS),
-        FRQ_RNG_HF(1, FTDX5000_AM_TX_MODES, W(2), W(75), FTDX5000_VFO_ALL, FTDX5000_TX_ANTS),   /* AM class */
-        FRQ_RNG_6m_REGION1(FTDX5000_OTHER_TX_MODES, W(5), W(200), FTDX5000_VFO_ALL, FTDX5000_TX_ANTS),
-        FRQ_RNG_6m_REGION1(FTDX5000_AM_TX_MODES, W(2), W(75), FTDX5000_VFO_ALL, FTDX5000_TX_ANTS),   /* AM class */
+    .tx_range_list1 =     { /* the 101DX is 100W and the MP is 200W */
+        FRQ_RNG_HF(1, FTDX10_OTHER_TX_MODES, W(5), W(200), FTDX10_VFO_ALL, FTDX10_TX_ANTS),
+        FRQ_RNG_HF(1, FTDX10_AM_TX_MODES, W(2), W(75), FTDX10_VFO_ALL, FTDX10_TX_ANTS),   /* AM class */
+        FRQ_RNG_6m(1, FTDX10_OTHER_TX_MODES, W(5), W(200), FTDX10_VFO_ALL, FTDX10_TX_ANTS),
+        FRQ_RNG_6m(1, FTDX10_AM_TX_MODES, W(2), W(75), FTDX10_VFO_ALL, FTDX10_TX_ANTS),   /* AM class */
 
         RIG_FRNG_END,
     },
 
     .rx_range_list2 =     {
-        {kHz(30), MHz(60), FTDX5000_ALL_RX_MODES, -1, -1, FTDX5000_VFO_ALL, FTDX5000_TX_ANTS | RIG_ANT_5, "EUR"},
+        {kHz(30), MHz(60), FTDX10_ALL_RX_MODES, -1, -1, FTDX10_VFO_ALL, FTDX10_TX_ANTS, "EUR"},
         RIG_FRNG_END,
     },
 
     .tx_range_list2 =     {
-        FRQ_RNG_HF(2, FTDX5000_OTHER_TX_MODES, W(5), W(200), FTDX5000_VFO_ALL, FTDX5000_TX_ANTS),
-        FRQ_RNG_HF(2, FTDX5000_AM_TX_MODES, W(2), W(75), FTDX5000_VFO_ALL, FTDX5000_TX_ANTS),   /* AM class */
-        FRQ_RNG_6m_REGION2(FTDX5000_OTHER_TX_MODES, W(5), W(200), FTDX5000_VFO_ALL, FTDX5000_TX_ANTS),
-        FRQ_RNG_6m_REGION2(FTDX5000_AM_TX_MODES, W(2), W(75), FTDX5000_VFO_ALL, FTDX5000_TX_ANTS),   /* AM class */
+        FRQ_RNG_HF(2, FTDX10_OTHER_TX_MODES, W(5), W(200), FTDX10_VFO_ALL, FTDX10_TX_ANTS),
+        FRQ_RNG_HF(2, FTDX10_AM_TX_MODES, W(2), W(75), FTDX10_VFO_ALL, FTDX10_TX_ANTS),   /* AM class */
+        FRQ_RNG_6m(2, FTDX10_OTHER_TX_MODES, W(5), W(200), FTDX10_VFO_ALL, FTDX10_TX_ANTS),
+        FRQ_RNG_6m(2, FTDX10_AM_TX_MODES, W(2), W(75), FTDX10_VFO_ALL, FTDX10_TX_ANTS),   /* AM class */
+        FRQ_RNG_4m_REGION2(FTDX10_OTHER_TX_MODES, W(5), W(200), FTDX10_VFO_ALL, FTDX10_TX_ANTS),
+        FRQ_RNG_4m_REGION2(FTDX10_AM_TX_MODES, W(2), W(75), FTDX10_VFO_ALL, FTDX10_TX_ANTS),   /* AM class */
 
         RIG_FRNG_END,
     },
 
     .tuning_steps =       {
-        {FTDX5000_SSB_CW_RX_MODES, Hz(10)},    /* Normal */
-        {FTDX5000_SSB_CW_RX_MODES, Hz(100)},   /* Fast */
+        {FTDX10_SSB_CW_RX_MODES, Hz(10)},    /* Normal */
+        {FTDX10_SSB_CW_RX_MODES, Hz(100)},   /* Fast */
 
-        {FTDX5000_AM_RX_MODES,     Hz(100)},   /* Normal */
-        {FTDX5000_AM_RX_MODES,     kHz(1)},    /* Fast */
+        {FTDX10_AM_RX_MODES,     Hz(100)},   /* Normal */
+        {FTDX10_AM_RX_MODES,     kHz(1)},    /* Fast */
 
-        {FTDX5000_FM_RX_MODES,     Hz(100)},   /* Normal */
-        {FTDX5000_FM_RX_MODES,     kHz(1)},    /* Fast */
+        {FTDX10_FM_RX_MODES,     Hz(100)},   /* Normal */
+        {FTDX10_FM_RX_MODES,     kHz(1)},    /* Fast */
 
         RIG_TS_END,
+
     },
 
-    /* mode/filter list, .remember =  order matters! */
+    /* mode/filter list, remember that order matters! */
     .filters =            {
-        {FTDX5000_CW_RTTY_PKT_RX_MODES,  Hz(1700)},   /* Normal CW, RTTY, PKT/USER */
-        {FTDX5000_CW_RTTY_PKT_RX_MODES,  Hz(500)},    /* Narrow CW, RTTY, PKT/USER */
-        {FTDX5000_CW_RTTY_PKT_RX_MODES,  Hz(2400)},   /* Wide   CW, RTTY, PKT/USER */
+        {FTDX10_CW_RTTY_PKT_RX_MODES,  Hz(600)},   /* Normal CW, RTTY, PKT/USER */
+        {FTDX10_CW_RTTY_PKT_RX_MODES,  Hz(300)},    /* Narrow CW, RTTY, PKT/USER */
+        {FTDX10_CW_RTTY_PKT_RX_MODES,  Hz(2400)},   /* Wide   CW, RTTY, PKT/USER */
+        {FTDX10_CW_RTTY_PKT_RX_MODES,  Hz(1200)},   /* Normal CW, RTTY, PKT/USER */
         {RIG_MODE_SSB,                 Hz(2400)},   /* Normal SSB */
         {RIG_MODE_SSB,                 Hz(1800)},   /* Narrow SSB */
-        {RIG_MODE_SSB,                 Hz(4000)},   /* Wide   SSB */
-        {FTDX5000_AM_RX_MODES,         Hz(9000)},   /* Normal AM  */
-        {FTDX5000_AM_RX_MODES,         Hz(6000)},   /* Narrow AM  */
-        {FTDX5000_FM_RX_MODES,         Hz(16000)},  /* Normal FM  */
-        {FTDX5000_FM_RX_MODES,         Hz(9000)},   /* Narrow FM  */
-        {FTDX5000_CW_RTTY_PKT_RX_MODES | RIG_MODE_SSB, RIG_FLT_ANY},
+        {RIG_MODE_SSB,                 Hz(3000)},   /* Wide   SSB */
+        {RIG_MODE_AM,                  Hz(9000)},   /* Normal AM  */
+        {RIG_MODE_AMN,                 Hz(6000)},   /* Narrow AM  */
+        {RIG_MODE_FM | RIG_MODE_PKTFM, Hz(16000)},  /* Normal FM  */
+        {RIG_MODE_FMN | RIG_MODE_PKTFMN, Hz(9000)},   /* Narrow FM  */
+        {FTDX10_CW_RTTY_PKT_RX_MODES | RIG_MODE_SSB, RIG_FLT_ANY},
 
         RIG_FLT_END,
     },
 
-    .ext_tokens =         ftdx5000_ext_tokens,
-    .extlevels =          ftdx5000_ext_levels,
+    .ext_tokens =         ftdx10_ext_tokens,
+    .extlevels =          ftdx10_ext_levels,
 
-    .priv =               &ftdx5000_priv_caps,
+    .priv =               &ftdx10_priv_caps,
 
     .rig_init =           newcat_init,
     .rig_cleanup =        newcat_cleanup,
@@ -253,5 +244,4 @@ const struct rig_caps ftdx5000_caps =
     .get_channel =        newcat_get_channel,
     .set_ext_level =      newcat_set_ext_level,
     .get_ext_level =      newcat_get_ext_level,
-
 };

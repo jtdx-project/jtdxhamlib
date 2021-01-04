@@ -1944,7 +1944,7 @@ static int flrig_get_level(RIG *rig, vfo_t vfo, setting_t level, value_t *val)
 
     case RIG_LEVEL_MICGAIN: cmd = "rig.get_micgain"; break;
 
-    case RIG_LEVEL_STRENGTH: cmd = "rig.get_power"; break;
+    case RIG_LEVEL_STRENGTH: cmd = "rig.get_smeter"; break;
 
     case RIG_LEVEL_RFPOWER_METER_WATTS:
     case RIG_LEVEL_RFPOWER_METER: cmd = "rig.get_pwrmeter"; break;
@@ -1967,8 +1967,10 @@ static int flrig_get_level(RIG *rig, vfo_t vfo, setting_t level, value_t *val)
     switch (level)
     {
     case RIG_LEVEL_STRENGTH:
-        val->i = atoi(value);
+        val->i = atoi(value) - 54;
+        //if (val->i > 0) val->i /= 10;
         rig_debug(RIG_DEBUG_TRACE, "%s: val.i='%s'(%d)\n", __func__, value, val->i);
+        break;
 
     case RIG_LEVEL_RFPOWER_METER:
         val->f = atof(value) / 100.0 * priv->powermeter_scale;

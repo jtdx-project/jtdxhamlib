@@ -1395,6 +1395,7 @@ int HAMLIB_API rig_set_freq(RIG *rig, vfo_t vfo, freq_t freq)
 {
     const struct rig_caps *caps;
     int retcode;
+    freq_t freq_new = freq;
 
     rig_debug(RIG_DEBUG_VERBOSE, "%s called vfo=%s, freq=%g\n", __func__,
               rig_strvfo(vfo), freq);
@@ -1481,9 +1482,8 @@ int HAMLIB_API rig_set_freq(RIG *rig, vfo_t vfo, freq_t freq)
         }
     }
 
-    if (retcode == RIG_OK)
+    if (retcode == RIG_OK && caps->get_freq != NULL)
     {
-        freq_t freq_new = freq;
 
         // verify our freq to ensure HZ mods are seen
         // some rigs truncate or round e.g. 1,2,5,10,20,100Hz intervals
@@ -1510,15 +1510,15 @@ int HAMLIB_API rig_set_freq(RIG *rig, vfo_t vfo, freq_t freq)
                       freq_new);
         }
 
-        // update our current freq too
-        if (vfo == RIG_VFO_CURR || vfo == rig->state.current_vfo) { rig->state.current_freq = freq_new; }
-
-        elapsed_ms(&rig->state.cache.time_ptt, HAMLIB_ELAPSED_SET);
-        rig->state.cache.freq = freq_new;
-        //future 4.1 caching
-        set_cache_freq(rig, vfo, freq_new);
-        rig->state.cache.vfo_freq = vfo;
     }
+    // update our current freq too
+    if (vfo == RIG_VFO_CURR || vfo == rig->state.current_vfo) { rig->state.current_freq = freq_new; }
+
+    elapsed_ms(&(rig->state.cache.time_freq), HAMLIB_ELAPSED_SET);
+    rig->state.cache.freq = freq_new;
+    //future 4.1 caching
+    set_cache_freq(rig, vfo, freq_new);
+    rig->state.cache.vfo_freq = vfo;
 
     return retcode;
 }

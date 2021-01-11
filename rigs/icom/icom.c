@@ -655,6 +655,7 @@ icom_init(RIG *rig)
     priv->tx_vfo = RIG_VFO_NONE;
     priv->rx_vfo = RIG_VFO_NONE;
     rig->state.current_vfo = RIG_VFO_NONE;
+    priv->filter = RIG_PASSBAND_NOCHANGE;
 
     rig_debug(RIG_DEBUG_TRACE, "%s: done\n", __func__);
 
@@ -1908,7 +1909,7 @@ int icom_get_mode(RIG *rig, vfo_t vfo, rmode_t *mode, pbwidth_t *width)
 
     retval = icom_transaction(rig, C_RD_MODE, -1, NULL, 0, modebuf, &mode_len);
 
-    if (mode_len == 3)
+    if (--mode_len == 3)
     {
         priv_data->filter = modebuf[2];
         rig_debug(RIG_DEBUG_TRACE,
@@ -1955,8 +1956,12 @@ int icom_get_mode(RIG *rig, vfo_t vfo, rmode_t *mode, pbwidth_t *width)
      * not ask for DSP filter settings */
     /* Likewise, don't ask if we happen to be an Omni VI Plus */
     /* Likewise, don't ask if we happen to be an IC-R30 */
+    /* Likewise, don't ask if we happen to be an IC-706* */
     if ((rig->caps->rig_model == RIG_MODEL_IC910) ||
             (rig->caps->rig_model == RIG_MODEL_OMNIVIP) ||
+            (rig->caps->rig_model == RIG_MODEL_IC706) ||
+            (rig->caps->rig_model == RIG_MODEL_IC706MKII) ||
+            (rig->caps->rig_model == RIG_MODEL_IC706MKIIG) ||
             (rig->caps->rig_model == RIG_MODEL_ICR30))
     {
         return RIG_OK;

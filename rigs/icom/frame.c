@@ -226,6 +226,10 @@ int icom_one_transaction(RIG *rig, int cmd, int subcmd,
     buf[0] = 0;
     frm_len = read_icom_frame(&rs->rigport, buf, sizeof(buf));
 
+#if 0
+
+    // this was causing rigctld to fail on IC706 and WSJT-X
+    // This dynamic detection is therefore disabled for now
     if (memcmp(buf, sendbuf, frm_len) == 0 && priv->serial_USB_echo_off)
     {
         // Hmmm -- got an echo back when not expected so let's change
@@ -233,6 +237,8 @@ int icom_one_transaction(RIG *rig, int cmd, int subcmd,
         // And try again
         frm_len = read_icom_frame(&rs->rigport, buf, sizeof(buf));
     }
+
+#endif
 
     Unhold_Decode(rig);
 
@@ -269,6 +275,8 @@ int icom_one_transaction(RIG *rig, int cmd, int subcmd,
     if (NAK == buf[frm_len - 2]) { return -RIG_ERJCTED; }
 
     *data_len = frm_len - (ACKFRMLEN - 1);
+    rig_debug(RIG_DEBUG_TRACE, "%s: data_len=%d, frm_len=%d\n", __func__, *data_len,
+              frm_len);
     memcpy(data, buf + 4, *data_len);
 
     /*
@@ -298,8 +306,8 @@ int icom_transaction(RIG *rig, int cmd, int subcmd,
     int retval, retry;
 
     rig_debug(RIG_DEBUG_VERBOSE,
-              "%s: cmd=0x%02x, subcmd=0x%02x, payload_len=%d, data_len=%d\n", __func__,
-              cmd, subcmd, payload_len, *data_len);
+              "%s: cmd=0x%02x, subcmd=0x%02x, payload_len=%d\n", __func__,
+              cmd, subcmd, payload_len);
 
     retry = rig->state.rigport.retry;
 
@@ -395,10 +403,13 @@ int rig2icom_mode(RIG *rig, vfo_t vfo, rmode_t mode, pbwidth_t width,
     pbwidth_t width_tmp = width;
     struct icom_priv_data *priv_data = (struct icom_priv_data *) rig->state.priv;
 
+    rig_debug(RIG_DEBUG_TRACE, "%s: mode=%d, width=%d\n", __func__, (int)mode,
+              (int)width);
     icmode_ext = -1;
 
     if (width == RIG_PASSBAND_NOCHANGE) // then we read width so we can reuse it
     {
+        rig_debug(RIG_DEBUG_TRACE, "%s: width==RIG_PASSBAND_NOCHANGE\n", __func__);
         rmode_t tmode;
         int ret = rig_get_mode(rig, vfo, &tmode, &width);
 
@@ -472,6 +483,7 @@ int rig2icom_mode(RIG *rig, vfo_t vfo, rmode_t mode, pbwidth_t width,
 
     if (width_tmp != RIG_PASSBAND_NOCHANGE)
     {
+        rig_debug(RIG_DEBUG_TRACE, "%s: width_tmp=%ld\n", __func__, width_tmp);
         pbwidth_t medium_width = rig_passband_normal(rig, mode);
 
         if (width == RIG_PASSBAND_NORMAL)

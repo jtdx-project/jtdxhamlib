@@ -473,6 +473,7 @@ typedef unsigned int vfo_t;
 #define RIG_TARGETABLE_PTT (1<<7)
 #define RIG_TARGETABLE_MEM (1<<8)
 #define RIG_TARGETABLE_BANK (1<<9)
+#define RIG_TARGETABLE_ANT (1<<10)
 #define RIG_TARGETABLE_COMMON (RIG_TARGETABLE_RITXIT | RIG_TARGETABLE_PTT | RIG_TARGETABLE_MEM | RIG_TARGETABLE_BANK)
 #define RIG_TARGETABLE_ALL  0x7fffffff
 //! @endcond
@@ -1995,7 +1996,8 @@ typedef struct hamlib_port {
     } post_write_date;      /*!< hamlib internal use */
 
     int timeout;            /*!< Timeout, in mS */
-    int retry;              /*!< Maximum number of retries, 0 to disable */
+    short retry;            /*!< Maximum number of retries, 0 to disable */
+    short flushx;           /*!< If true flush is done with read instead of TCFLUSH - MicroHam */
 
     char pathname[FILPATHLEN];      /*!< Port pathname */
 
@@ -2033,7 +2035,6 @@ typedef struct hamlib_port {
             int value;      /*!< Toggle PTT ON or OFF */
         } gpio;             /*!< GPIO attributes */
     } parm;                 /*!< Port parameter union */
-    int flushx;             /*!< If true flush is done with read instead of TCFLUSH - MicroHam */
 } hamlib_port_t;
 //! @endcond
 

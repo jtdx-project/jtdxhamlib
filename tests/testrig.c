@@ -83,7 +83,6 @@ int main(int argc, char *argv[])
 
     printf("Port %s opened ok\n", SERIAL_PORT);
 
-    printf("Offset of vfo_list=%p\n", &my_rig->state.vfo_list);
     /*
      * Below are examples of set/get routines.
      * Must add checking of functionality map prior to command execution -- FS

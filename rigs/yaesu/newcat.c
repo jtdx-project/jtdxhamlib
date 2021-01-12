@@ -3292,7 +3292,9 @@ int newcat_set_level(RIG *rig, vfo_t vfo, setting_t level, value_t val)
         }
 
         // Some Yaesu rigs reject this command in AM/FM modes
-        priv->question_mark_response_means_rejected = 1;
+        // Disabling as it's too general
+        // Need to be rig/mode specific
+        //priv->question_mark_response_means_rejected = 1;
         break;
 
     case RIG_LEVEL_CWPITCH:
@@ -3359,7 +3361,9 @@ int newcat_set_level(RIG *rig, vfo_t vfo, setting_t level, value_t val)
         snprintf(priv->cmd_str, sizeof(priv->cmd_str), "MG%03d%c", fpf, cat_term);
 
         // Some Yaesu rigs reject this command in RTTY modes
-        priv->question_mark_response_means_rejected = 1;
+        // Disabling as it's too general
+        // Need to be rig/mode specific
+        //priv->question_mark_response_means_rejected = 1;
         break;
 
     case RIG_LEVEL_METER:
@@ -3567,7 +3571,9 @@ int newcat_set_level(RIG *rig, vfo_t vfo, setting_t level, value_t val)
         }
 
         // Some Yaesu rigs reject this command in AM/FM modes
-        priv->question_mark_response_means_rejected = 1;
+        // Disabling as it's too general
+        // Need to be rig/mode specific
+        //priv->question_mark_response_means_rejected = 1;
         break;
 
     case RIG_LEVEL_COMP:
@@ -4865,7 +4871,9 @@ int newcat_set_func(RIG *rig, vfo_t vfo, setting_t func, int status)
         }
 
         // Some Yaesu rigs reject this command in AM/FM modes
-        priv->question_mark_response_means_rejected = 1;
+        // Disabling as it's too general
+        // Need to be rig/mode specific
+        //priv->question_mark_response_means_rejected = 1;
         break;
 
     case RIG_FUNC_MN:
@@ -4883,7 +4891,9 @@ int newcat_set_func(RIG *rig, vfo_t vfo, setting_t func, int status)
         }
 
         // Some Yaesu rigs reject this command in AM/FM modes
-        priv->question_mark_response_means_rejected = 1;
+        // Disabling as it's too general
+        // Need to be rig/mode specific
+        //priv->question_mark_response_means_rejected = 1;
         break;
 
     case RIG_FUNC_FBKIN:
@@ -4989,7 +4999,9 @@ int newcat_set_func(RIG *rig, vfo_t vfo, setting_t func, int status)
         }
 
         // Some Yaesu rigs reject this command in AM/FM modes
-        priv->question_mark_response_means_rejected = 1;
+        // Disabling as it's too general
+        // Need to be rig/mode specific
+        //priv->question_mark_response_means_rejected = 1;
         break;
 
     case RIG_FUNC_COMP:

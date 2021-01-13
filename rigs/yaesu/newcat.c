@@ -539,6 +539,29 @@ int newcat_open(RIG *rig)
     (void)newcat_get_rigid(rig);
     rig_debug(RIG_DEBUG_VERBOSE, "%s: rig_id=%d\n", __func__, priv->rig_id);
 
+#if 0 // possible future enhancement?
+    // some rigs have a CAT TOT timeout that defaults to 10ms
+    // so we'll increase CAT timeout to 100ms
+    if (priv->rig_id == NC_RIGID_FT2000 
+            || priv->rig_id == NC_RIGID_FT2000D
+            || priv->rig_id == NC_RIGID_FT891
+            || priv->rig_id == NC_RIGID_FT991
+            || priv->rig_id == NC_RIGID_FT950)
+    {
+        int err;
+        char *cmd = "EX0291%c";
+        if (priv->rig_id == NC_RIGID_FT950) cmd = "EX0271%c";
+        else if (priv->rig_id == NC_RIGID_FT891) cmd = "EX05071c";
+        else if (priv->rig_id == NC_RIGID_FT991) cmd = "EX0321c";
+        snprintf(priv->cmd_str, sizeof(priv->cmd_str), cmd, cat_term);
+
+        if (RIG_OK != (err = newcat_set_cmd(rig)))
+        {
+            return err;
+        }
+    }
+#endif
+
     rig_debug(RIG_DEBUG_VERBOSE, "%s: returning RIG_OK\n", __func__);
     return RIG_OK;
 }
@@ -790,6 +813,7 @@ int newcat_set_freq(RIG *rig, vfo_t vfo, freq_t freq)
             && !rig->state.cache.split
             && !is_ft891) // 891 does not remember bandwidth so don't do this
     {
+        hl_usleep(200*1000);  // seems we need some time before doing band select 200ms enough?
         snprintf(priv->cmd_str, sizeof(priv->cmd_str), "BS%02d%c",
                  newcat_band_index(freq), cat_term);
 
@@ -889,6 +913,7 @@ int newcat_get_freq(RIG *rig, vfo_t vfo, freq_t *freq)
         break;
 
     default:
+        rig_debug(RIG_DEBUG_ERR, "%s: unsupported vfo=%s\n", __func__, rig_strvfo(vfo));
         return -RIG_EINVAL;         /* sorry, unsupported VFO */
     }
 
@@ -9198,9 +9223,9 @@ int newcat_get_cmd(RIG *rig)
 
     while (rc != RIG_OK && retry_count++ <= state->rigport.retry)
     {
+        rig_flush(&state->rigport);  /* discard any unsolicited data */
         if (rc != -RIG_BUSBUSY)
         {
-            rig_flush(&state->rigport);  /* discard any unsolicited data */
             /* send the command */
             rig_debug(RIG_DEBUG_TRACE, "cmd_str = %s\n", priv->cmd_str);
 
@@ -9291,8 +9316,8 @@ int newcat_get_cmd(RIG *rig)
                     return -RIG_ERJCTED;
                 }
 
-                rig_debug(RIG_DEBUG_WARN, "%s: Rig busy - retrying: '%s'\n", __func__,
-                        priv->cmd_str);
+                rig_debug(RIG_DEBUG_WARN, "%s: Rig busy - retrying %d of %d: '%s'\n", __func__,
+                        retry_count, state->rigport.retry, priv->cmd_str);
 
                 rc = -RIG_ERJCTED; /* retry */
                 break;
@@ -9368,6 +9393,7 @@ int newcat_set_cmd(RIG *rig)
             return RIG_OK;
         }
 
+        hl_usleep(11*1000); // some Yaeus rigs have 10ms timeout -- does this fix the ?; reponse problem?
         /* send the verification command */
         rig_debug(RIG_DEBUG_TRACE, "cmd_str = %s\n", verify_cmd);
 
@@ -9446,17 +9472,12 @@ int newcat_set_cmd(RIG *rig)
                 rig_debug(RIG_DEBUG_WARN, "%s: Rig busy - retrying: '%s'\n", __func__,
                         priv->cmd_str);
 
-                /* read the verify command reply */
+                /* read/flush the verify command reply which should still be there */
                 if ((rc = read_string(&state->rigport, priv->ret_data, sizeof(priv->ret_data),
                                       &cat_term, sizeof(cat_term))) > 0)
                 {
                     rig_debug(RIG_DEBUG_TRACE, "%s: read count = %d, ret_data = %s\n",
                               __func__, rc, priv->ret_data);
-                    rc = RIG_OK;  /* probably recovered and read verification */
-                }
-                else
-                {
-                    /* probably a timeout */
                     rc = -RIG_BUSBUSY; /* retry */
                 }
 

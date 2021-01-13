@@ -226,6 +226,10 @@ int icom_one_transaction(RIG *rig, int cmd, int subcmd,
     buf[0] = 0;
     frm_len = read_icom_frame(&rs->rigport, buf, sizeof(buf));
 
+#if 0
+
+    // this was causing rigctld to fail on IC706 and WSJT-X
+    // This dynamic detection is therefore disabled for now
     if (memcmp(buf, sendbuf, frm_len) == 0 && priv->serial_USB_echo_off)
     {
         // Hmmm -- got an echo back when not expected so let's change
@@ -234,6 +238,7 @@ int icom_one_transaction(RIG *rig, int cmd, int subcmd,
         frm_len = read_icom_frame(&rs->rigport, buf, sizeof(buf));
     }
 
+#endif
 
     Unhold_Decode(rig);
 

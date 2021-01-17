@@ -354,6 +354,13 @@ static const yaesu_newcat_commands_t valid_commands[] =
 int valid_commands_count = sizeof(valid_commands) / sizeof(
                                yaesu_newcat_commands_t);
 
+static void errmsg(int err, const char *func, const char *file, int line,
+                   char *s)
+{
+    rig_debug(RIG_DEBUG_ERR, "%s(%s:%d): %s: %s\b", __func__, file, line, s,
+              rigerror(err));
+}
+
 /*
  * configuration Tokens
  *
@@ -540,9 +547,10 @@ int newcat_open(RIG *rig)
     rig_debug(RIG_DEBUG_VERBOSE, "%s: rig_id=%d\n", __func__, priv->rig_id);
 
 #if 0 // possible future enhancement?
+
     // some rigs have a CAT TOT timeout that defaults to 10ms
     // so we'll increase CAT timeout to 100ms
-    if (priv->rig_id == NC_RIGID_FT2000 
+    if (priv->rig_id == NC_RIGID_FT2000
             || priv->rig_id == NC_RIGID_FT2000D
             || priv->rig_id == NC_RIGID_FT891
             || priv->rig_id == NC_RIGID_FT991
@@ -550,9 +558,11 @@ int newcat_open(RIG *rig)
     {
         int err;
         char *cmd = "EX0291%c";
-        if (priv->rig_id == NC_RIGID_FT950) cmd = "EX0271%c";
-        else if (priv->rig_id == NC_RIGID_FT891) cmd = "EX05071c";
-        else if (priv->rig_id == NC_RIGID_FT991) cmd = "EX0321c";
+
+        if (priv->rig_id == NC_RIGID_FT950) { cmd = "EX0271%c"; }
+        else if (priv->rig_id == NC_RIGID_FT891) { cmd = "EX05071c"; }
+        else if (priv->rig_id == NC_RIGID_FT991) { cmd = "EX0321c"; }
+
         snprintf(priv->cmd_str, sizeof(priv->cmd_str), cmd, cat_term);
 
         if (RIG_OK != (err = newcat_set_cmd(rig)))
@@ -560,6 +570,7 @@ int newcat_open(RIG *rig)
             return err;
         }
     }
+
 #endif
 
     rig_debug(RIG_DEBUG_VERBOSE, "%s: returning RIG_OK\n", __func__);
@@ -728,6 +739,7 @@ int newcat_set_freq(RIG *rig, vfo_t vfo, freq_t freq)
 
     if (err < 0)
     {
+        errmsg(err, __func__, __FILE__, __LINE__, "newcat_set_vfo_from_alias");
         return err;
     }
 
@@ -777,6 +789,7 @@ int newcat_set_freq(RIG *rig, vfo_t vfo, freq_t freq)
 
         if (RIG_OK != (err = newcat_get_cmd(rig)))
         {
+            errmsg(err, __func__, __FILE__, __LINE__, "newcat_get_cmd");
             return err;
         }
 
@@ -787,6 +800,7 @@ int newcat_set_freq(RIG *rig, vfo_t vfo, freq_t freq)
 
             if (RIG_OK != (err = newcat_set_cmd(rig)))
             {
+                errmsg(err, __func__, __FILE__, __LINE__, "newcat_set_cmd failed");
                 return err;
             }
         }
@@ -808,34 +822,112 @@ int newcat_set_freq(RIG *rig, vfo_t vfo, freq_t freq)
     //
     // Restore band memory if we can and band is changing -- we do it before we set the frequency
     // And only when not in split mode (note this check has been removed for testing)
-    if (newcat_valid_command(rig, "BS")
-            && newcat_band_index(freq) != newcat_band_index(rig->state.current_freq)
-            // remove the split check here -- hopefully works OK 
-            //&& !rig->state.cache.split
-            && !is_ft891) // 891 does not remember bandwidth so don't do this
+    int changing;
+
+    if (vfo == RIG_VFO_A || vfo == RIG_VFO_MAIN)
     {
-        snprintf(priv->cmd_str, sizeof(priv->cmd_str), "BS%02d%c",
-                 newcat_band_index(freq), cat_term);
+        changing = newcat_band_index(freq) != newcat_band_index(
+                       rig->state.cache.freqMainA);
+        rig_debug(RIG_DEBUG_TRACE, "%s: VFO_A freq changing=%d\n", __func__, changing);
+    }
+    else
+    {
+        changing = newcat_band_index(freq) != newcat_band_index(
+                       rig->state.cache.freqMainB);
+        rig_debug(RIG_DEBUG_TRACE, "%s: VFO_B freq changing=%d\n", __func__, changing);
+    }
+
+    if (newcat_valid_command(rig, "BS") && changing
+            // remove the split check here -- hopefully works OK
+            //&& !rig->state.cache.split
+            && !is_ft891 // 891 does not remember bandwidth so don't do this
+            && rig->caps->get_vfo != NULL
+            && rig->caps->set_vfo != NULL) // gotta' have get_vfo too
+    {
+        if (rig->state.current_vfo != vfo)
+        {
+            // then we need to change vfos, BS, and change back
+            snprintf(priv->cmd_str, sizeof(priv->cmd_str), "VS1;BS%02d%c;VS0;",
+                     newcat_band_index(freq), cat_term);
+
+            if (vfo  == RIG_VFO_A || vfo == RIG_VFO_MAIN)
+                snprintf(priv->cmd_str, sizeof(priv->cmd_str), "VS0;BS%02d%c;VS1;",
+                         newcat_band_index(freq), cat_term);
+        }
+        else
+        {
+            snprintf(priv->cmd_str, sizeof(priv->cmd_str), "BS%02d%c",
+                     newcat_band_index(freq), cat_term);
+        }
 
         if (RIG_OK != (err = newcat_set_cmd(rig)))
         {
-            rig_debug(RIG_DEBUG_ERR, "%s: Unexpected error with BS command=%s\n", __func__,
+            rig_debug(RIG_DEBUG_ERR, "%s: Unexpected error with BS command#1=%s\n",
+                      __func__,
                       rigerror(err));
         }
         else
         {
+            // Also need to do this for the other VFO on some Yaesu rigs
+            // is redundant for rigs where band stack includes both vfos
+            vfo_t vfotmp;
+            err = rig_get_vfo(rig, &vfotmp);
+
+            if (err != RIG_OK) { return err; }
+
+            if (rig->state.vfo_list & RIG_VFO_MAIN)
+            {
+                err = rig_set_vfo(rig, vfotmp == RIG_VFO_MAIN ? RIG_VFO_SUB : RIG_VFO_MAIN);
+            }
+            else
+            {
+                err = rig_set_vfo(rig, vfotmp == RIG_VFO_A ? RIG_VFO_B : RIG_VFO_A);
+            }
+
+
+            if (err != RIG_OK) { return err; }
+
+            snprintf(priv->cmd_str, sizeof(priv->cmd_str), "BS%02d%c",
+                     newcat_band_index(freq), cat_term);
+
+            if (RIG_OK != (err = newcat_set_cmd(rig)))
+            {
+                rig_debug(RIG_DEBUG_ERR, "%s: Unexpected error with BS command#2=%s\n",
+                          __func__,
+                          rigerror(err));
+            }
+
+            // switch back to the starting vfo
+            if (rig->state.vfo_list & RIG_VFO_MAIN)
+            {
+                err = rig_set_vfo(rig, vfotmp == RIG_VFO_MAIN ? RIG_VFO_MAIN : RIG_VFO_SUB);
+            }
+            else
+            {
+                err = rig_set_vfo(rig, vfotmp == RIG_VFO_A ? RIG_VFO_A : RIG_VFO_B);
+            }
+
+            if (err != RIG_OK)
+            {
+                rig_debug(RIG_DEBUG_ERR, "%s: rig_set_vfo failed: %s\n", __func__,
+                          rigerror(err));
+                return err;
+            }
+
             // after band select re-read things -- may not have to change anything
             freq_t tmp_freqA, tmp_freqB;
             rmode_t tmp_mode;
             pbwidth_t tmp_width;
-            rig_get_freq(rig, RIG_VFO_A, &tmp_freqA);
-            rig_get_freq(rig, RIG_VFO_B, &tmp_freqB);
-            rig_get_mode(rig, RIG_VFO_A, &tmp_mode, &tmp_width);
-            rig_get_mode(rig, RIG_VFO_B, &tmp_mode, &tmp_width);
+            rig_get_freq(rig, RIG_VFO_MAIN, &tmp_freqA);
+            rig_get_freq(rig, RIG_VFO_SUB, &tmp_freqB);
+            rig_get_mode(rig, RIG_VFO_MAIN, &tmp_mode, &tmp_width);
+            rig_get_mode(rig, RIG_VFO_SUB, &tmp_mode, &tmp_width);
+
             if ((target_vfo == 0 && tmp_freqA == freq)
-                || (target_vfo == 1 && tmp_freqB == freq))
+                    || (target_vfo == 1 && tmp_freqB == freq))
             {
-                rig_debug(RIG_DEBUG_VERBOSE, "%s: freq after band select already set to %"PRIfreq"\n", __func__, freq);
+                rig_debug(RIG_DEBUG_VERBOSE,
+                          "%s: freq after band select already set to %"PRIfreq"\n", __func__, freq);
                 return RIG_OK; // we're done then!!
             }
         }
@@ -2568,7 +2660,7 @@ int newcat_set_ctcss_tone(RIG *rig, vfo_t vfo, tone_t tone)
     if (tone == 0) /* turn off ctcss */
     {
         snprintf(priv->cmd_str, sizeof(priv->cmd_str), "CT%c0%c", main_sub_vfo,
-                cat_term);
+                 cat_term);
     }
     else
     {
@@ -3282,7 +3374,8 @@ int newcat_set_level(RIG *rig, vfo_t vfo, setting_t level, value_t val)
 
         break;
 
-    case RIG_LEVEL_IF: {
+    case RIG_LEVEL_IF:
+    {
         pbwidth_t width;
         rmode_t mode = 0;
 
@@ -3335,11 +3428,13 @@ int newcat_set_level(RIG *rig, vfo_t vfo, setting_t level, value_t val)
         // Some Yaesu rigs reject this command in AM/FM modes
         if (is_ft991 || is_ftdx5000 || is_ftdx101)
         {
-            if (mode & RIG_MODE_AM || mode & RIG_MODE_FM || mode & RIG_MODE_AMN || mode & RIG_MODE_FMN)
+            if (mode & RIG_MODE_AM || mode & RIG_MODE_FM || mode & RIG_MODE_AMN
+                    || mode & RIG_MODE_FMN)
             {
                 priv->question_mark_response_means_rejected = 1;
             }
         }
+
         break;
     }
 
@@ -3388,7 +3483,8 @@ int newcat_set_level(RIG *rig, vfo_t vfo, setting_t level, value_t val)
         snprintf(priv->cmd_str, sizeof(priv->cmd_str), "KS%03d%c", val.i, cat_term);
         break;
 
-    case RIG_LEVEL_MICGAIN: {
+    case RIG_LEVEL_MICGAIN:
+    {
         pbwidth_t width;
         rmode_t mode = 0;
 
@@ -3422,6 +3518,7 @@ int newcat_set_level(RIG *rig, vfo_t vfo, setting_t level, value_t val)
                 priv->question_mark_response_means_rejected = 1;
             }
         }
+
         break;
     }
 
@@ -3628,6 +3725,7 @@ int newcat_set_level(RIG *rig, vfo_t vfo, setting_t level, value_t val)
                 priv->cmd_str[2] = main_sub_vfo;
             }
         }
+
         break;
 
     case RIG_LEVEL_COMP:
@@ -4051,7 +4149,8 @@ int newcat_get_level(RIG *rig, vfo_t vfo, setting_t level, value_t *val)
                  cat_term);
         break;
 
-    case RIG_LEVEL_IF: {
+    case RIG_LEVEL_IF:
+    {
         pbwidth_t width;
         rmode_t mode = 0;
 
@@ -4076,11 +4175,13 @@ int newcat_get_level(RIG *rig, vfo_t vfo, setting_t level, value_t *val)
         // Some Yaesu rigs reject this command in AM/FM modes
         if (is_ft991 || is_ftdx5000 || is_ftdx101)
         {
-            if (mode & RIG_MODE_AM || mode & RIG_MODE_FM || mode & RIG_MODE_AMN || mode & RIG_MODE_FMN)
+            if (mode & RIG_MODE_AM || mode & RIG_MODE_FM || mode & RIG_MODE_AMN
+                    || mode & RIG_MODE_FMN)
             {
                 priv->question_mark_response_means_rejected = 1;
             }
         }
+
         break;
     }
 
@@ -4102,7 +4203,8 @@ int newcat_get_level(RIG *rig, vfo_t vfo, setting_t level, value_t *val)
         snprintf(priv->cmd_str, sizeof(priv->cmd_str), "KS%c", cat_term);
         break;
 
-    case RIG_LEVEL_MICGAIN: {
+    case RIG_LEVEL_MICGAIN:
+    {
         pbwidth_t width;
         rmode_t mode = 0;
 
@@ -4126,6 +4228,7 @@ int newcat_get_level(RIG *rig, vfo_t vfo, setting_t level, value_t *val)
                 priv->question_mark_response_means_rejected = 1;
             }
         }
+
         break;
     }
 
@@ -4948,7 +5051,8 @@ int newcat_set_func(RIG *rig, vfo_t vfo, setting_t func, int status)
 
     switch (func)
     {
-    case RIG_FUNC_ANF: {
+    case RIG_FUNC_ANF:
+    {
         pbwidth_t width;
         rmode_t mode = 0;
 
@@ -4978,10 +5082,12 @@ int newcat_set_func(RIG *rig, vfo_t vfo, setting_t func, int status)
                 priv->question_mark_response_means_rejected = 1;
             }
         }
-        break;
-        }
 
-    case RIG_FUNC_MN: {
+        break;
+    }
+
+    case RIG_FUNC_MN:
+    {
         pbwidth_t width;
         rmode_t mode = 0;
 
@@ -5011,6 +5117,7 @@ int newcat_set_func(RIG *rig, vfo_t vfo, setting_t func, int status)
                 priv->question_mark_response_means_rejected = 1;
             }
         }
+
         break;
     }
 
@@ -5102,7 +5209,8 @@ int newcat_set_func(RIG *rig, vfo_t vfo, setting_t func, int status)
 
         break;
 
-    case RIG_FUNC_NR: {
+    case RIG_FUNC_NR:
+    {
         pbwidth_t width;
         rmode_t mode = 0;
 
@@ -5132,10 +5240,12 @@ int newcat_set_func(RIG *rig, vfo_t vfo, setting_t func, int status)
                 priv->question_mark_response_means_rejected = 1;
             }
         }
+
         break;
     }
 
-    case RIG_FUNC_COMP: {
+    case RIG_FUNC_COMP:
+    {
         pbwidth_t width;
         rmode_t mode = 0;
 
@@ -5164,12 +5274,14 @@ int newcat_set_func(RIG *rig, vfo_t vfo, setting_t func, int status)
         // Some Yaesu rigs reject this command in AM/FM/RTTY modes
         if (is_ft991 || is_ftdx5000 || is_ftdx101)
         {
-            if (mode & RIG_MODE_AM || mode & RIG_MODE_FM || mode & RIG_MODE_AMN || mode & RIG_MODE_FMN ||
+            if (mode & RIG_MODE_AM || mode & RIG_MODE_FM || mode & RIG_MODE_AMN
+                    || mode & RIG_MODE_FMN ||
                     mode & RIG_MODE_RTTY || mode & RIG_MODE_RTTYR)
             {
                 priv->question_mark_response_means_rejected = 1;
             }
         }
+
         break;
     }
 
@@ -5245,7 +5357,8 @@ int newcat_get_func(RIG *rig, vfo_t vfo, setting_t func, int *status)
 
     switch (func)
     {
-    case RIG_FUNC_ANF: {
+    case RIG_FUNC_ANF:
+    {
         pbwidth_t width;
         rmode_t mode = 0;
 
@@ -5274,6 +5387,7 @@ int newcat_get_func(RIG *rig, vfo_t vfo, setting_t func, int *status)
                 priv->question_mark_response_means_rejected = 1;
             }
         }
+
         break;
     }
 
@@ -9241,6 +9355,7 @@ int newcat_get_cmd(RIG *rig)
     while (rc != RIG_OK && retry_count++ <= state->rigport.retry)
     {
         rig_flush(&state->rigport);  /* discard any unsolicited data */
+
         if (rc != -RIG_BUSBUSY)
         {
             /* send the command */
@@ -9308,6 +9423,7 @@ int newcat_get_cmd(RIG *rig)
                 break;            /* retry */
 
             case '?':
+
                 /* The ? response is ambiguous and undocumented by Yaesu, but for get commands it seems to
                  * indicate that the rig rejected the command because the state of the rig is not valid for the command
                  * or that the command parameter is invalid. Retrying the command does not fix the issue,
@@ -9328,13 +9444,14 @@ int newcat_get_cmd(RIG *rig)
                  */
                 if (priv->question_mark_response_means_rejected)
                 {
-                    rig_debug(RIG_DEBUG_ERR, "%s: Command rejected by the rig (get): '%s'\n", __func__,
-                            priv->cmd_str);
+                    rig_debug(RIG_DEBUG_ERR, "%s: Command rejected by the rig (get): '%s'\n",
+                              __func__,
+                              priv->cmd_str);
                     return -RIG_ERJCTED;
                 }
 
                 rig_debug(RIG_DEBUG_WARN, "%s: Rig busy - retrying %d of %d: '%s'\n", __func__,
-                        retry_count, state->rigport.retry, priv->cmd_str);
+                          retry_count, state->rigport.retry, priv->cmd_str);
 
                 rc = -RIG_ERJCTED; /* retry */
                 break;
@@ -9372,6 +9489,99 @@ int newcat_get_cmd(RIG *rig)
 }
 
 /*
+ * This tries to set and read to validate the set command actually worked
+ * returns RIG_OK if set, -RIG_EIMPL if not implemented yet, or -RIG_EPROTO if unsuccesful
+ */
+int newcat_set_cmd_validate(RIG *rig)
+{
+    struct rig_state *state = &rig->state;
+    struct newcat_priv_data *priv = (struct newcat_priv_data *)rig->state.priv;
+    char valcmd[16];
+    int retries = 8;
+    int retry = 0;
+    int sleepms = 50;
+    int rc = -RIG_EPROTO;
+
+    rig_debug(RIG_DEBUG_TRACE, "%s: priv->cmd_str=%s\n", __func__, priv->cmd_str);
+
+    if ((strncmp(priv->cmd_str, "FA", 2) == 0) && (strlen(priv->cmd_str) > 3))
+    {
+        strcpy(valcmd, "FA;");
+    }
+    else if ((strncmp(priv->cmd_str, "FB", 2) == 0) && (strlen(priv->cmd_str) > 3))
+    {
+        strcpy(valcmd, "FB;");
+    }
+    else if ((strncmp(priv->cmd_str, "MD", 2) == 0) && (strlen(priv->cmd_str) > 3))
+    {
+        strcpy(valcmd, priv->cmd_str); // pull the needed part of the cmd
+        valcmd[3] = ';';
+        valcmd[4] = 0;
+    }
+    else if ((strncmp(priv->cmd_str, "TX", 2) == 0) && (strlen(priv->cmd_str) > 3))
+    {
+        strcpy(valcmd, "TX;");
+    }
+    else if ((strncmp(priv->cmd_str, "FT", 2) == 0) && (strlen(priv->cmd_str) > 3))
+    {
+        strcpy(valcmd, "FT;");
+    }
+    else if ((strncmp(priv->cmd_str, "AI", 2) == 0) && (strlen(priv->cmd_str) > 3))
+    {
+        strcpy(valcmd, "AI;");
+    }
+    else if ((strncmp(priv->cmd_str, "VS", 2) == 0) && (strlen(priv->cmd_str) > 3))
+    {
+        strcpy(valcmd, "VS;");
+    }
+    else
+    {
+        rig_debug(RIG_DEBUG_ERR, "%s: %s not implemented\n", __func__, priv->cmd_str);
+        return -RIG_ENIMPL;
+    }
+
+    while (rc != RIG_OK && retry++ < retries)
+    {
+        int bytes;
+        char cmd[256]; // big enough
+        rig_flush(&state->rigport);  /* discard any unsolicited data */
+        snprintf(cmd, sizeof(cmd), "%s%s", priv->cmd_str, valcmd);
+        rc = write_block(&state->rigport, cmd, strlen(cmd));
+
+        if (rc != RIG_OK) { return -RIG_EIO; }
+
+        bytes = read_string(&state->rigport, priv->ret_data, sizeof(priv->ret_data),
+                            &cat_term, sizeof(cat_term));
+
+        if (strncmp(priv->cmd_str, "FT", 2) == 0
+                && strncmp(priv->ret_data, "FT", 2) == 0)
+        {
+            // FT command does not echo what's sent so we just check the basic command
+            return RIG_OK;
+        }
+
+        if (strncmp(priv->cmd_str, "TX", 2) == 0
+                && strncmp(priv->ret_data, "TX", 2) == 0)
+        {
+            // TX command does not echo what's sent so we just check the basic command
+            return RIG_OK;
+        }
+
+        if (bytes > 0)
+        {
+            // if they match we are validated
+            if (strcmp(priv->cmd_str, priv->ret_data) == 0) { return RIG_OK; }
+            else { rc = -RIG_EPROTO; }
+        }
+
+        rig_debug(RIG_DEBUG_ERR, "%s: cmd validation failed, '%s'!='%s', try#%d\n",
+                  __func__, priv->cmd_str, priv->ret_data, retry);
+        hl_usleep(sleepms * 1000);
+    }
+
+    return -RIG_EPROTO;
+}
+/*
  * Writes a null  terminated command string from  priv->cmd_str to the
  * CAT  port that is not expected to have a response.
  *
@@ -9398,6 +9608,22 @@ int newcat_set_cmd(RIG *rig)
         /* send the command */
         rig_debug(RIG_DEBUG_TRACE, "cmd_str = %s\n", priv->cmd_str);
 
+        rc =  newcat_set_cmd_validate(rig);
+
+        if (rc == RIG_OK)
+        {
+            rig_debug(RIG_DEBUG_TRACE, "%s: cmd_validate OK\n", __func__);
+            return RIG_OK;
+        }
+        else if (rc == -RIG_EPROTO)
+        {
+            rig_debug(RIG_DEBUG_TRACE, "%s: set_cmd_validate failed\n", __func__);
+            return rc;
+        }
+
+        rig_debug(RIG_DEBUG_TRACE,
+                  "%s: newcat_set_cmd_validate not implemented...continuing\n", __func__);
+
         if (RIG_OK != (rc = write_block(&state->rigport, priv->cmd_str,
                                         strlen(priv->cmd_str))))
         {
@@ -9410,9 +9636,10 @@ int newcat_set_cmd(RIG *rig)
             return RIG_OK;
         }
 
-        if (strncmp(priv->cmd_str,"BS",2)==0)
-        {   // the BS command needs time to do it's thing
-            hl_usleep(200*1000); 
+        if (strncmp(priv->cmd_str, "BS", 2) == 0)
+        {
+            // the BS command needs time to do it's thing
+            hl_usleep(200 * 1000);
             priv->cache_start.tv_sec = 0; // invalidate the cache
         }
 
@@ -9485,14 +9712,15 @@ int newcat_set_cmd(RIG *rig)
                  */
                 if (priv->question_mark_response_means_rejected)
                 {
-                    rig_debug(RIG_DEBUG_ERR, "%s: Command rejected by the rig (set): '%s'\n", __func__,
+                    rig_debug(RIG_DEBUG_ERR, "%s: Command rejected by the rig (set): '%s'\n",
+                              __func__,
                               priv->cmd_str);
                     return -RIG_ERJCTED;
                 }
 
                 /* Rig busy wait please */
                 rig_debug(RIG_DEBUG_WARN, "%s: Rig busy - retrying: '%s'\n", __func__,
-                        priv->cmd_str);
+                          priv->cmd_str);
 
                 /* read/flush the verify command reply which should still be there */
                 if ((rc = read_string(&state->rigport, priv->ret_data, sizeof(priv->ret_data),

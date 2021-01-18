@@ -248,14 +248,19 @@ int prm80_reset(RIG *rig, reset_t reset)
 int prm80_set_freq(RIG *rig, vfo_t vfo, freq_t freq)
 {
     char freqbuf[BUFSZ];
+    char data[BUFSZ];
     int freq_len;
+    int rc;
+    struct rig_state *rs = &rig->state;
 
     /* wild guess */
     freq_len = sprintf(freqbuf, "R%04X%04X",
                        (unsigned)(freq / 12500.),
                        (unsigned)(freq / 12500.));
 
-    return prm80_transaction(rig, freqbuf, freq_len, NULL, NULL);
+    rc = prm80_transaction(rig, freqbuf, freq_len, NULL, NULL);
+    read_string(&rs->rigport, data, BUFSZ, LF, strlen(LF));
+    return rc;
 }
 
 /*
@@ -366,12 +371,13 @@ int prm80_get_channel(RIG *rig, vfo_t vfo, channel_t *chan, int read_only)
 
     if (ret != RIG_OK)
     {
-        return ret;
+        RETURNFUNC(ret);
     }
 
     if (statebuf_len < 20)
     {
-        return -RIG_EPROTO;
+        rig_debug(RIG_DEBUG_ERR, "%s: statebuf_len < 20, statebuf='%s'\n", __func__, statebuf);
+        RETURNFUNC(-RIG_EPROTO);
     }
 
     /* Example: 1240080AFF0033F02D40 */
@@ -403,10 +409,10 @@ int prm80_get_channel(RIG *rig, vfo_t vfo, channel_t *chan, int read_only)
     {
         // Set rig to channel values
         rig_debug(RIG_DEBUG_ERR,
-                  "%s: please contact hamlib mailing list to implement this\n", __func__);
+                  "%s: please contact hamlib mailing list to implement this, rxfreq=%.0f, txfreq=%.0f\n", __func__, chan->freq, chan->tx_freq);
         rig_debug(RIG_DEBUG_ERR,
                   "%s: need to know if rig updates when channel read or not\n", __func__);
-        return -RIG_ENIMPL;
+        //return -RIG_ENIMPL;
     }
 
     return RIG_OK;
@@ -501,7 +507,7 @@ int prm80_get_level(RIG *rig, vfo_t vfo, setting_t level, value_t *val)
     memset(&chan, 0, sizeof(chan));
     chan.vfo = RIG_VFO_CURR;
 
-    ret = prm80_get_channel(rig, vfo, &chan, 1);
+    ret = prm80_get_channel(rig, vfo, &chan, 0);
 
     if (ret != RIG_OK)
     {

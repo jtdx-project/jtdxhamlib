@@ -1634,16 +1634,18 @@ int HAMLIB_API parse_hoststr(char *hoststr, char host[256], char port[6])
     port[0] = 0;
     dummy[0] = 0;
 
+    // Exclude any names that aren't a host:port format
     // Handle device names 1st
     if (strstr(hoststr, "/dev")) { return -1; }
 
-    if (strstr(hoststr, "/")) { return -1; } // posible path -- no hostname starts with /
+    if (strstr(hoststr, "/")) { return -1; } // probably a path so not a hoststr 
 
     if (strncasecmp(hoststr, "com", 3) == 0) { return -1; }
 
     // escaped COM port like \\.\COM3
     if (strstr(hoststr, "\\\\.\\")) { return -1; }
 
+    // Now let's try and parse a host:port thing
     // bracketed IPV6 with optional port
     int n = sscanf(hoststr, "[%255[^]]]:%5s", host, port);
 
@@ -2131,6 +2133,13 @@ const char *rig_get_caps_cptr(rig_model_t rig_model,
         return "Unknown caps value";
     }
 }
+
+void errmsg(int err, char *s, const char *func, const char *file, int line)
+{
+    rig_debug(RIG_DEBUG_ERR, "%s(%s:%d): %s: %s\b", __func__, file, line, s,
+              rigerror(err));
+}
+
 
 //! @endcond
 

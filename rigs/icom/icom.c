@@ -704,7 +704,7 @@ int icom_get_usb_echo_off(RIG *rig)
     rig_debug(RIG_DEBUG_VERBOSE, "%s called\n", __func__);
 
     // reduce the retry here so it's quicker
-    rs->rigport.retry = 1;
+    rs->rigport.retry = 0;
     // Check for echo on first
     priv->serial_USB_echo_off = 0;
 
@@ -6255,6 +6255,7 @@ int icom_set_powerstat(RIG *rig, powerstat_t status)
         retval =
             icom_transaction(rig, C_SET_PWR, pwr_sc, NULL, 0, ackbuf, &ack_len);
         rs->rigport.retry = retry;
+        hl_usleep(3000*1000); // give it 3 seconds to wake up
 
         break;
 

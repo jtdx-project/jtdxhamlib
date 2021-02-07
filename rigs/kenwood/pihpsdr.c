@@ -103,7 +103,7 @@ const struct rig_caps pihpsdr_caps =
     RIG_MODEL(RIG_MODEL_HPSDR),
     .model_name = "PiHPSDR",
     .mfg_name =  "OpenHPSDR",
-    .version =  BACKEND_VER ".0",
+    .version =  BACKEND_VER ".1",
     .copyright =  "LGPL",
     .status =  RIG_STATUS_STABLE,
     .rig_type =  RIG_TYPE_TRANSCEIVER,
@@ -1117,7 +1117,7 @@ int pihpsdr_get_level(RIG *rig, vfo_t vfo, setting_t level, value_t *val)
             return -RIG_ERJCTED;
         }
 
-        sscanf(lvlbuf + 3, "%d", &lvl);
+        sscanf(lvlbuf + 2, "%d", &lvl);
         val->f = lvl / 100.0; /* FIXME: for 1.2GHZ need to divide by 10 */
         break;
 

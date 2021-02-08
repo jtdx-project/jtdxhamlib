@@ -454,7 +454,7 @@ RIG *HAMLIB_API rig_init(rig_model_t rig_model)
     rs->transceive = RIG_TRN_OFF;
     rs->poll_interval = 500;
     rs->lo_freq = 0;
-    rs->cache.timeout_ms = 500;  // 500ms cache timeout by default
+    rs->cache.timeout_ms = 400;  // 500ms cache timeout by default
 
     // We are using range_list1 as the default
     // Eventually we will have separate model number for different rig variations

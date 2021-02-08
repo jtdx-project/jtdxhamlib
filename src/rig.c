@@ -1394,13 +1394,10 @@ static int set_cache_freq(RIG *rig, vfo_t vfo, freq_t freq)
         elapsed_ms(&rig->state.cache.time_freqMainB, HAMLIB_ELAPSED_SET);
         break;
 
-#if 0
-
     case RIG_VFO_C: // is there a MainC/SubC we need to cover?
         rig->state.cache.freqMainC = freq;
         elapsed_ms(&rig->state.cache.time_freqMainC, HAMLIB_ELAPSED_SET);
         break;
-#endif
 
     case RIG_VFO_SUB_A:
         rig->state.cache.freqSubA = freq;
@@ -1410,6 +1407,11 @@ static int set_cache_freq(RIG *rig, vfo_t vfo, freq_t freq)
     case RIG_VFO_SUB_B:
         rig->state.cache.freqSubB = freq;
         elapsed_ms(&rig->state.cache.time_freqSubB, HAMLIB_ELAPSED_SET);
+        break;
+
+    case RIG_VFO_MEM:
+        rig->state.cache.freqMem = freq;
+        elapsed_ms(&rig->state.cache.time_freqMem, HAMLIB_ELAPSED_SET);
         break;
 
     default:
@@ -1460,19 +1462,23 @@ static int get_cache_freq(RIG *rig, vfo_t vfo, freq_t *freq, int *cache_ms)
         *cache_ms = elapsed_ms(&rig->state.cache.time_freqSubB, HAMLIB_ELAPSED_GET);
         break;
 
-#if 0 // future
-
     case RIG_VFO_C:
-    case RIG_VFO_MAINC:
+    //case RIG_VFO_MAINC: // not used by any rig yet
         *freq = rig->state.cache.freqMainC;
-        *cache_ms = rig->state.cache.time_freqMainC;
+        *cache_ms = elapsed_ms(&rig->state.cache.time_freqMainC, HAMLIB_ELAPSED_GET);
         break;
 
+#if 0 // no known rigs use this yet
     case RIG_VFO_SUBC:
         *freq = rig->state.cache.freqSubC;
         *cache_ms = rig->state.cache.time_freqSubC;
         break;
 #endif
+
+    case RIG_VFO_MEM:
+        *freq = rig->state.cache.freqMem;
+        *cache_ms = elapsed_ms(&rig->state.cache.time_freqMem, HAMLIB_ELAPSED_GET);
+        break;
 
     default:
         rig_debug(RIG_DEBUG_ERR, "%s: unknown vfo?, vfo=%s\n", __func__,
@@ -5550,6 +5556,40 @@ const char *HAMLIB_API rig_get_info(RIG *rig)
     RETURNFUNC(rig->caps->get_info(rig));
 }
 
+/**
+ * \brief get freq/mode/width for requested VFO
+ * \param rig   The rig handle
+ * \param vfo   The VFO to get
+ * \param *freq frequency answer
+ * \param *mode mode answer
+ * \param *width bandwidth answer
+ *
+ *  Gets the current VFO information. The VFO can be RIG_VFO_A, RIG_VFO_B, RIG_VFO_C
+ *  for VFOA, VFOB, VFOC respectively or RIG_VFO_MEM for Memory mode.
+ *  Supported VFOs depends on rig capabilities.
+ *
+ * \RETURNFUNC(RIG_OK) if the operation has been successful, otherwise
+ * a negative value if an error occurred (in which case use rigerror(return)
+ * for error message).
+ *
+ */
+int HAMLIB_API rig_get_vfo_info(RIG *rig, vfo_t vfo, freq_t *freq, rmode_t *mode, pbwidth_t *width)
+{
+    int retcode;
+
+    ENTERFUNC;
+    rig_debug(RIG_DEBUG_VERBOSE, "%s called vfo=%s\n", __func__, rig_strvfo(vfo));
+
+    if (CHECK_RIG_ARG(rig))
+    {
+        RETURNFUNC(-RIG_EINVAL);
+    }
+
+    retcode = rig_get_freq(rig,vfo,freq);
+    if (retcode != RIG_OK) RETURNFUNC(retcode);
+    retcode = rig_get_mode(rig,vfo,mode,width);
+    RETURNFUNC(retcode);
+}
 
 /**
  * \brief get the Hamlib license

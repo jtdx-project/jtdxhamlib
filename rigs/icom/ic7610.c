@@ -158,7 +158,7 @@ const struct rig_caps ic7610_caps =
     RIG_MODEL(RIG_MODEL_IC7610),
     .model_name = "IC-7610",
     .mfg_name =  "Icom",
-    .version =  BACKEND_VER ".0",
+    .version =  BACKEND_VER ".1",
     .copyright =  "LGPL",
     .status =  RIG_STATUS_STABLE,
     .rig_type =  RIG_TYPE_TRANSCEIVER,

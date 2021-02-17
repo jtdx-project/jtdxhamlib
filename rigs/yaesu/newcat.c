@@ -3332,6 +3332,8 @@ int newcat_get_ant(RIG *rig, vfo_t vfo, ant_t dummy, value_t *option,
 
     ENTERFUNC;
 
+    option->i = 0;  // default to no options
+
     if (!newcat_valid_command(rig, command))
     {
         RETURNFUNC(-RIG_ENAVAIL);
@@ -3387,6 +3389,8 @@ int newcat_get_ant(RIG *rig, vfo_t vfo, ant_t dummy, value_t *option,
         *ant_curr = RIG_ANT_UNKNOWN;
         RETURNFUNC(-RIG_EPROTO);
     }
+
+    *ant_tx = * ant_rx = *ant_curr;
 
     RETURNFUNC(RIG_OK);
 }

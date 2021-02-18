@@ -1511,8 +1511,6 @@ pbwidth_t icom_get_dsp_flt(RIG *rig, rmode_t mode)
     return 0;
 }
 
-#ifdef XXREMOVEDXX
-// not referenced anywhere
 int icom_set_dsp_flt(RIG *rig, rmode_t mode, pbwidth_t width)
 {
     int retval, rfstatus;
@@ -1596,7 +1594,6 @@ int icom_set_dsp_flt(RIG *rig, rmode_t mode, pbwidth_t width)
 
     return RIG_OK;
 }
-#endif
 
 /*
  * icom_set_mode_with_data
@@ -1785,19 +1782,14 @@ int icom_set_mode(RIG *rig, vfo_t vfo, rmode_t mode, pbwidth_t width)
         return -RIG_ERJCTED;
     }
 
-#if 0
-
-    /* Tentative DSP filter setting ($1A$03), but not supported by every rig,
+    /* DSP filter setting ($1A$03), but not supported by every rig,
      * and some models like IC910/Omni VI Plus have a different meaning for
      * this subcommand
      */
-    if ((rig->caps->rig_model != RIG_MODEL_IC910) &&
-            (rig->caps->rig_model != RIG_MODEL_OMNIVIP))
+    if (rig->caps->rig_model == RIG_MODEL_IC7000)
     {
         icom_set_dsp_flt(rig, mode, width);
     }
-
-#endif
 
     return RIG_OK;
 }

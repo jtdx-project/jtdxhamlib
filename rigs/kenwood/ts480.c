@@ -39,7 +39,7 @@
 #define TS480_AM_TX_MODES RIG_MODE_AM
 #define TS480_VFO (RIG_VFO_A|RIG_VFO_B)
 
-#define TS480_LEVEL_ALL (RIG_LEVEL_RFPOWER|RIG_LEVEL_AF|RIG_LEVEL_RF|RIG_LEVEL_SQL|RIG_LEVEL_AGC)
+#define TS480_LEVEL_ALL (RIG_LEVEL_RFPOWER|RIG_LEVEL_AF|RIG_LEVEL_RF|RIG_LEVEL_SQL|RIG_LEVEL_AGC|RIG_LEVEL_MICGAIN|RIG_LEVEL_STRENGTH)
 #define TS480_FUNC_ALL (RIG_FUNC_NB|RIG_FUNC_COMP|RIG_FUNC_VOX|RIG_FUNC_NR|RIG_FUNC_NR|RIG_FUNC_BC|RIG_FUNC_BC2|RIG_FUNC_RIT|RIG_FUNC_XIT)
 #define TS890_FUNC_ALL (RIG_FUNC_NB|RIG_FUNC_NB2|RIG_FUNC_COMP|RIG_FUNC_VOX|RIG_FUNC_NR|RIG_FUNC_NR|RIG_FUNC_BC|RIG_FUNC_BC2|RIG_FUNC_RIT|RIG_FUNC_XIT)
 
@@ -105,6 +105,7 @@ kenwood_ts480_set_level(RIG *rig, vfo_t vfo, setting_t level, value_t val)
     char levelbuf[16];
     int kenwood_val;
     int rf_max_level = 100; /* 100 for TS-480 and 255 for TS-890S */
+    struct kenwood_priv_data *priv = rig->state.priv;
 
     rig_debug(RIG_DEBUG_TRACE, "%s called\n", __func__);
 
@@ -114,6 +115,7 @@ kenwood_ts480_set_level(RIG *rig, vfo_t vfo, setting_t level, value_t val)
         return kenwood_set_level(rig, vfo, level, val);
 
     case RIG_LEVEL_AF:
+        priv->ag_format =22;
         return kenwood_set_level(rig, vfo, level, val);
 
     case RIG_LEVEL_RF:
@@ -447,7 +449,7 @@ const struct rig_caps ts480_caps =
     RIG_MODEL(RIG_MODEL_TS480),
     .model_name = "TS-480",
     .mfg_name = "Kenwood",
-    .version = BACKEND_VER ".0",
+    .version = BACKEND_VER ".1",
     .copyright = "LGPL",
     .status = RIG_STATUS_STABLE,
     .rig_type = RIG_TYPE_TRANSCEIVER,

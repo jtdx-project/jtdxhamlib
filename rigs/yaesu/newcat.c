@@ -594,7 +594,7 @@ int newcat_close(RIG *rig)
                                                    case it's not
                                                    supported */
     }
-    if (priv->poweron != 0 && rig_s->auto_power_on)
+    if (priv->poweron != 0 && rig_s->auto_power_off)
     {
         rig_set_powerstat(rig, 0);
         priv->poweron = 0;

@@ -844,7 +844,7 @@ icom_rig_close(RIG *rig)
     
     rig_debug(RIG_DEBUG_TRACE, "%s: called\n", __func__);
     
-    if (priv->poweron != 0 && rs->auto_power_on) {
+    if (priv->poweron != 0 && rs->auto_power_off) {
         // maybe we need power off?
         rig_debug(RIG_DEBUG_VERBOSE, "%s trying power off\n", __func__);
         retval = abs(rig_set_powerstat(rig, 0));

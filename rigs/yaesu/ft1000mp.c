@@ -1150,6 +1150,11 @@ int ft1000mp_get_vfo(RIG *rig, vfo_t *vfo)
     {
         *vfo = RIG_VFO_MEM;
     }
+    else // we are emulating vfo status
+    {
+        return rig->state.current_vfo;
+    }
+#if 0
     else if (p->update_data[FT1000MP_SUMO_DISPLAYED_STATUS] & SF_VFOAB)
     {
         *vfo = rig->state.current_vfo = RIG_VFO_B;
@@ -1158,6 +1163,7 @@ int ft1000mp_get_vfo(RIG *rig, vfo_t *vfo)
     {
         *vfo = rig->state.current_vfo = RIG_VFO_A;
     }
+#endif
 
     rig_debug(RIG_DEBUG_TRACE, "%s: vfo status = %x %x\n", __func__,
               p->update_data[0], p->update_data[1]);
@@ -1535,7 +1541,6 @@ static int ft1000mp_get_update_data(RIG *rig, unsigned char ci,
     struct rig_state *rig_s;
     struct ft1000mp_priv_data *p;
     int n;                        /* for read_  */
-    int retry = rig->state.rigport.retry;
 
     ENTERFUNC;
 
@@ -1544,23 +1549,17 @@ static int ft1000mp_get_update_data(RIG *rig, unsigned char ci,
 
     // timeout retries are done in read_block now
     // based on rig backed retry value
-//    do
+    /* send UPDATE command to fetch data*/
+    ft1000mp_send_priv_cmd(rig, ci);
+
+    n = read_block(&rig_s->rigport, (char *) p->update_data, rl);
+
+    if (n == -RIG_ETIMEOUT)
     {
-        /* send UPDATE command to fetch data*/
-        ft1000mp_send_priv_cmd(rig, ci);
-
-        n = read_block(&rig_s->rigport, (char *) p->update_data, rl);
-
-        if (n == -RIG_ETIMEOUT)
-        {
-            rig_debug(RIG_DEBUG_TRACE, "%s: Timeout retry count = %d\n", __func__, retry);
-            //rig_debug(RIG_DEBUG_TRACE, "%s: Timeout\n", __func__, retry);
-        }
+        rig_debug(RIG_DEBUG_TRACE, "%s: Timeout\n", __func__);
     }
-//    while (retry-- && n == -RIG_ETIMEOUT);
 
     RETURNFUNC(n);
-
 }
 
 

@@ -700,7 +700,7 @@ int newcat_get_conf(RIG *rig, token_t token, char *val)
 
 
 /*
- * rig_set_freq
+ * newcat_set_freq
  *
  * Set frequency for a given VFO
  * RIG_TARGETABLE_VFO
@@ -1000,7 +1000,7 @@ int newcat_set_freq(RIG *rig, vfo_t vfo, freq_t freq)
         // after band select re-read things -- may not have to change anything
         // reading both VFOs is really only needed for rigs with just one VFO stack
         // but we read them all to ensure we cover both types
-        freq_t tmp_freqA, tmp_freqB;
+        freq_t tmp_freqA=0, tmp_freqB=0;
         rmode_t tmp_mode;
         pbwidth_t tmp_width;
 
@@ -2249,7 +2249,7 @@ int newcat_get_split_mode(RIG *rig, vfo_t vfo, rmode_t *tx_mode,
 int newcat_set_split_vfo(RIG *rig, vfo_t vfo, split_t split, vfo_t tx_vfo)
 {
     int err;
-    vfo_t rx_vfo;
+    vfo_t rx_vfo=RIG_VFO_NONE;
 
     ENTERFUNC;
 
@@ -9669,13 +9669,16 @@ int newcat_set_cmd_validate(RIG *rig)
     ENTERFUNC;
     rig_debug(RIG_DEBUG_TRACE, "%s: priv->cmd_str=%s\n", __func__, priv->cmd_str);
 
+    // For FA and FB rig.c now tries to verify the set_freq actually works
+    // Seem the FT-2000 can't do a FA set followed by an immediate read
+    // So we'll use the old "ID" to verify the command.
     if ((strncmp(priv->cmd_str, "FA", 2) == 0) && (strlen(priv->cmd_str) > 3))
     {
-        strcpy(valcmd, "FA;");
+        strcpy(valcmd, ""); // No validation done -- rig.c now does followup query
     }
     else if ((strncmp(priv->cmd_str, "FB", 2) == 0) && (strlen(priv->cmd_str) > 3))
     {
-        strcpy(valcmd, "FB;");
+        strcpy(valcmd, ""); // No validation done -- rig.c now does followup query
     }
     else if ((strncmp(priv->cmd_str, "MD", 2) == 0) && (strlen(priv->cmd_str) > 3))
     {
@@ -9718,6 +9721,12 @@ int newcat_set_cmd_validate(RIG *rig)
         bytes = read_string(&state->rigport, priv->ret_data, sizeof(priv->ret_data),
                             &cat_term, sizeof(cat_term));
 
+        // FA and FB success is now verified in rig.c with a followup query
+        // so no validation is needed
+        if (strncmp(priv->cmd_str, "FA", 2)==0 || strncmp(priv->cmd_str, "FB", 2))
+        {
+            return RIG_OK;
+        }
         if (strncmp(priv->cmd_str, "FT", 2) == 0
                 && strncmp(priv->ret_data, "FT", 2) == 0)
         {

@@ -183,7 +183,7 @@ const struct rig_caps k3_caps =
     RIG_MODEL(RIG_MODEL_K3),
     .model_name =       "K3",
     .mfg_name =     "Elecraft",
-    .version =      BACKEND_VER ".5",
+    .version =      BACKEND_VER ".6",
     .copyright =        "LGPL",
     .status =       RIG_STATUS_STABLE,
     .rig_type =     RIG_TYPE_TRANSCEIVER,
@@ -334,7 +334,7 @@ const struct rig_caps k3s_caps =
     RIG_MODEL(RIG_MODEL_K3S),
     .model_name =       "K3S",
     .mfg_name =     "Elecraft",
-    .version =      BACKEND_VER ".4",
+    .version =      BACKEND_VER ".5",
     .copyright =        "LGPL",
     .status =       RIG_STATUS_STABLE,
     .rig_type =     RIG_TYPE_TRANSCEIVER,
@@ -484,7 +484,7 @@ const struct rig_caps k4_caps =
     RIG_MODEL(RIG_MODEL_K4),
     .model_name =       "K4",
     .mfg_name =     "Elecraft",
-    .version =      BACKEND_VER ".4",
+    .version =      BACKEND_VER ".5",
     .copyright =        "LGPL",
     .status =       RIG_STATUS_ALPHA,
     .rig_type =     RIG_TYPE_TRANSCEIVER,
@@ -633,7 +633,7 @@ const struct rig_caps kx3_caps =
     RIG_MODEL(RIG_MODEL_KX3),
     .model_name =       "KX3",
     .mfg_name =     "Elecraft",
-    .version =      BACKEND_VER ".4",
+    .version =      BACKEND_VER ".5",
     .copyright =        "LGPL",
     .status =       RIG_STATUS_STABLE,
     .rig_type =     RIG_TYPE_TRANSCEIVER,
@@ -782,7 +782,7 @@ const struct rig_caps kx2_caps =
     RIG_MODEL(RIG_MODEL_KX2),
     .model_name =       "KX2",
     .mfg_name =     "Elecraft",
-    .version =      BACKEND_VER ".4",
+    .version =      BACKEND_VER ".5",
     .copyright =        "LGPL",
     .status =       RIG_STATUS_BETA,
     .rig_type =     RIG_TYPE_TRANSCEIVER,
@@ -1173,6 +1173,12 @@ int k3_set_vfo(RIG *rig, vfo_t vfo)
 
     ENTERFUNC;
 
+    if (priv->is_kx3)
+    {
+        rig->state.current_vfo = vfo;
+        return (RIG_OK);
+    }
+
     // vfo is toggle so we check first to see if we need to switch
     vfo_t tvfo;
     err = rig_get_vfo(rig, &tvfo);
@@ -1184,10 +1190,13 @@ int k3_set_vfo(RIG *rig, vfo_t vfo)
     
     if (tvfo == vfo) RETURNFUNC(RIG_OK);
 
+#if 0 // this doesn't seem to work and IC command VFO B indicator doesn't change
     if (priv->is_kx3)
     {
+
         cmd = "SWT24";
     }
+#endif
     else if (priv->is_k4)
     {
         cmd = "AB2";
@@ -1208,6 +1217,12 @@ int k3_get_vfo(RIG *rig, vfo_t *vfo)
     int ret;
     struct kenwood_priv_data *priv = rig->state.priv;
 
+    if (priv->is_kx3) // we emulate VFO set/get as SW24 and IC don't seem to work
+    {
+        *vfo = rig->state.current_vfo;
+        RETURNFUNC(RIG_OK);
+    }
+
     ret = write_block(&rig->state.rigport, "IC;", 3);
 
     if (ret != RIG_OK)
@@ -1222,7 +1237,7 @@ int k3_get_vfo(RIG *rig, vfo_t *vfo)
         rig_debug(RIG_DEBUG_ERR, "%s: expected 8 bytes from '%s', got %d bytes\n", __func__, buf, ret);
         RETURNFUNC(-RIG_EPROTO);
     }
-    if (buf[6] == '0') *vfo = RIG_VFO_B;
+    if ((buf[6]&0x02) == 0) *vfo = RIG_VFO_B;
     else *vfo = RIG_VFO_A;
 
     RETURNFUNC(RIG_OK);

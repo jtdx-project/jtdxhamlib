@@ -183,7 +183,7 @@ const struct rig_caps k3_caps =
     RIG_MODEL(RIG_MODEL_K3),
     .model_name =       "K3",
     .mfg_name =     "Elecraft",
-    .version =      BACKEND_VER ".6",
+    .version =      BACKEND_VER ".7",
     .copyright =        "LGPL",
     .status =       RIG_STATUS_STABLE,
     .rig_type =     RIG_TYPE_TRANSCEIVER,
@@ -334,7 +334,7 @@ const struct rig_caps k3s_caps =
     RIG_MODEL(RIG_MODEL_K3S),
     .model_name =       "K3S",
     .mfg_name =     "Elecraft",
-    .version =      BACKEND_VER ".5",
+    .version =      BACKEND_VER ".6",
     .copyright =        "LGPL",
     .status =       RIG_STATUS_STABLE,
     .rig_type =     RIG_TYPE_TRANSCEIVER,
@@ -484,7 +484,7 @@ const struct rig_caps k4_caps =
     RIG_MODEL(RIG_MODEL_K4),
     .model_name =       "K4",
     .mfg_name =     "Elecraft",
-    .version =      BACKEND_VER ".5",
+    .version =      BACKEND_VER ".6",
     .copyright =        "LGPL",
     .status =       RIG_STATUS_ALPHA,
     .rig_type =     RIG_TYPE_TRANSCEIVER,
@@ -633,7 +633,7 @@ const struct rig_caps kx3_caps =
     RIG_MODEL(RIG_MODEL_KX3),
     .model_name =       "KX3",
     .mfg_name =     "Elecraft",
-    .version =      BACKEND_VER ".5",
+    .version =      BACKEND_VER ".6",
     .copyright =        "LGPL",
     .status =       RIG_STATUS_STABLE,
     .rig_type =     RIG_TYPE_TRANSCEIVER,
@@ -782,7 +782,7 @@ const struct rig_caps kx2_caps =
     RIG_MODEL(RIG_MODEL_KX2),
     .model_name =       "KX2",
     .mfg_name =     "Elecraft",
-    .version =      BACKEND_VER ".5",
+    .version =      BACKEND_VER ".6",
     .copyright =        "LGPL",
     .status =       RIG_STATUS_BETA,
     .rig_type =     RIG_TYPE_TRANSCEIVER,
@@ -1021,7 +1021,14 @@ int k3_get_mode(RIG *rig, vfo_t vfo, rmode_t *mode, pbwidth_t *width)
     /* The K3 is not limited to specific filter widths so we can query
      * the actual bandwidth using the BW command
      */
+    if (vfo == RIG_VFO_B)
+    {
+    err = kenwood_safe_transaction(rig, "BW$", buf, KENWOOD_MAX_BUF_LEN, 7);
+    }
+    else
+    {
     err = kenwood_safe_transaction(rig, "BW", buf, KENWOOD_MAX_BUF_LEN, 6);
+    }
 
     if (err != RIG_OK)
     {
@@ -1029,7 +1036,14 @@ int k3_get_mode(RIG *rig, vfo_t vfo, rmode_t *mode, pbwidth_t *width)
         return err;
     }
 
-    *width = atoi(&buf[2]) * 10;
+    if (vfo == RIG_VFO_B)
+    {
+        *width = atoi(&buf[3]) * 10;
+    }
+    else
+    {
+        *width = atoi(&buf[2]) * 10;
+    }
 
     return RIG_OK;
 }
@@ -1131,7 +1145,15 @@ int k3_set_mode(RIG *rig, vfo_t vfo, rmode_t mode, pbwidth_t width)
             width = pb_wid;
         }
 
-        snprintf(cmd_s, sizeof(cmd_s), "BW%04ld", width / 10);
+        if (vfo == RIG_VFO_B)
+        {
+            snprintf(cmd_s, sizeof(cmd_s), "BW$%04ld", width / 10);
+        }
+        else
+        {
+            snprintf(cmd_s, sizeof(cmd_s), "BW%04ld", width / 10);
+        }
+
         err = kenwood_transaction(rig, cmd_s, NULL, 0);
 
         if (err != RIG_OK)
@@ -1157,94 +1179,25 @@ int k3_set_mode(RIG *rig, vfo_t vfo, rmode_t mode, pbwidth_t width)
     return RIG_OK;
 }
 
-
-/* The K3 changes "VFOs" by swapping the contents of
- * the upper display with the lower display.  This function
- * accomplishes this by sending the emulation command, SWT11, KX3 is SWT24;
- * to the K3 to emulate a tap of the A/B button.
+/* Elecraft rigs don't really know about swappings vfos.
+ * We just emulate them so rigctl can work correctly.
  */
 
 int k3_set_vfo(RIG *rig, vfo_t vfo)
 {
-    int err;
-    // Does SWT11 work for the K4 or do we need to emulate set/get vfo?
-    char *cmd = "SWT11";
-    struct kenwood_priv_data *priv = rig->state.priv;
-
     ENTERFUNC;
 
-    if (priv->is_kx3)
-    {
-        rig->state.current_vfo = vfo;
-        return (RIG_OK);
-    }
-
-    // vfo is toggle so we check first to see if we need to switch
-    vfo_t tvfo;
-    err = rig_get_vfo(rig, &tvfo);
-
-    if (err != RIG_OK)
-    {
-        RETURNFUNC(err);
-    }
-
-    if (tvfo == vfo) { RETURNFUNC(RIG_OK); }
-
-#if 0 // this doesn't seem to work and IC command VFO B indicator doesn't change
-
-    if (priv->is_kx3)
-    {
-
-        cmd = "SWT24";
-    }
-
-#endif
-    else if (priv->is_k4)
-    {
-        cmd = "AB2";
-    }
-
-    err = kenwood_transaction(rig, cmd, NULL, 0);
-
-    if (err != RIG_OK)
-    {
-        RETURNFUNC(err);
-    }
+    // we emulate vfo selection for Elecraft
+    rig->state.current_vfo = vfo;
 
     RETURNFUNC(RIG_OK);
 }
 
 int k3_get_vfo(RIG *rig, vfo_t *vfo)
 {
-    char buf[KENWOOD_MAX_BUF_LEN];
-    int ret;
-    struct kenwood_priv_data *priv = rig->state.priv;
+    ENTERFUNC;
 
-    if (priv->is_kx3) // we emulate VFO set/get as SW24 and IC don't seem to work
-    {
-        *vfo = rig->state.current_vfo;
-        RETURNFUNC(RIG_OK);
-    }
-
-    ret = write_block(&rig->state.rigport, "IC;", 3);
-
-    if (ret != RIG_OK)
-    {
-        rig_debug(RIG_DEBUG_VERBOSE, "%s: Cannot write K3 IC value\n", __func__);
-        RETURNFUNC(ret);
-    }
-
-    ret = read_block(&rig->state.rigport, buf, 8);
-
-    if (ret != 8)
-    {
-        rig_debug(RIG_DEBUG_ERR, "%s: expected 8 bytes from '%s', got %d bytes\n",
-                  __func__, buf, ret);
-        RETURNFUNC(-RIG_EPROTO);
-    }
-
-    if ((buf[6] & 0x02) == 0) { *vfo = RIG_VFO_B; }
-    else { *vfo = RIG_VFO_A; }
+    *vfo = rig->state.current_vfo;
 
     RETURNFUNC(RIG_OK);
 }

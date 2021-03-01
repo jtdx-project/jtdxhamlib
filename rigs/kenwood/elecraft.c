@@ -184,6 +184,7 @@ int elecraft_open(RIG *rig)
     case RIG_MODEL_K3S:
     case RIG_MODEL_KX2:
     case RIG_MODEL_KX3:
+    case RIG_MODEL_K4:
         // we need to know what's hooked up for PC command max levels
         err =  kenwood_safe_transaction(rig, "OM", buf, KENWOOD_MAX_BUF_LEN, 15);
 
@@ -193,10 +194,10 @@ int elecraft_open(RIG *rig)
         priv->has_kpa3 = 0;
 
         if (strstr(buf, "P")) { priv->has_kpa3 = 1; }
-
-        if (strstr(buf, "R")) { priv->is_k3s = 1; }
+        // could also use K4; command
+        if (rig->caps->rig_model == RIG_MODEL_K4) { priv->is_k4 = 1; }
+        else if (strstr(buf, "R")) { priv->is_k3s = 1; }
         else if (strncmp(&buf[13], "--", 2) == 0) { priv->is_k3 = 1; }
-        else if (strncmp(&buf[11], "----", 4) == 0) { priv->is_k4 = 1; }
 
         if (buf[13] == '0') // then we have a KX3 or KX2
         {

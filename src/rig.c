@@ -2011,8 +2011,16 @@ int HAMLIB_API rig_set_mode(RIG *rig, vfo_t vfo, rmode_t mode, pbwidth_t width)
         rig->state.current_width = width;
     }
 
-    rig->state.cache.mode = mode;
-    rig->state.cache.vfo_mode = vfo;
+    if (vfo == RIG_VFO_B || vfo == RIG_VFO_SUB || vfo == RIG_VFO_MAIN_B)
+    {
+        rig->state.cache.mode = mode;
+    }
+    else
+    {
+        rig->state.cache.modeB = mode;
+    }
+
+    rig->state.cache.vfo_mode = mode; // is this still needed?
     elapsed_ms(&rig->state.cache.time_mode, HAMLIB_ELAPSED_SET);
 
     RETURNFUNC(retcode);
@@ -2062,13 +2070,20 @@ int HAMLIB_API rig_get_mode(RIG *rig,
     }
 
     cache_ms = elapsed_ms(&rig->state.cache.time_mode, HAMLIB_ELAPSED_GET);
-    rig_debug(RIG_DEBUG_TRACE, "%s: cache check age=%dms\n", __func__, cache_ms);
+    rig_debug(RIG_DEBUG_TRACE, "%s: %s cache check age=%dms\n", __func__,
+              rig_strvfo(vfo), cache_ms);
 
     if (cache_ms < rig->state.cache.timeout_ms && rig->state.cache.vfo_mode == vfo)
     {
         rig_debug(RIG_DEBUG_TRACE, "%s: cache hit age=%dms\n", __func__, cache_ms);
         *mode = rig->state.cache.mode;
         *width = rig->state.cache.width;
+
+        if (vfo == RIG_VFO_B || vfo == RIG_VFO_SUB || vfo == RIG_VFO_MAIN_B)
+        {
+            *width = rig->state.cache.widthB;
+        }
+
         RETURNFUNC(RIG_OK);
     }
     else
@@ -2129,8 +2144,21 @@ int HAMLIB_API rig_get_mode(RIG *rig,
     }
 
     rig->state.cache.mode = *mode;
-    rig->state.cache.width = *width;
-    rig->state.cache.vfo_mode = vfo;
+
+    if (vfo == RIG_VFO_B || vfo == RIG_VFO_SUB || vfo == RIG_VFO_MAIN_B)
+    {
+        rig->state.cache.widthB = *width;
+
+        if (*width == 0) { *width = rig->state.cache.width; }
+
+        rig->state.cache.modeB = vfo;
+    }
+    else
+    {
+        rig->state.cache.width = *width;
+        rig->state.cache.vfo_mode = vfo;
+    }
+
     cache_ms = elapsed_ms(&rig->state.cache.time_mode, HAMLIB_ELAPSED_SET);
 
     RETURNFUNC(retcode);
@@ -3840,13 +3868,15 @@ int HAMLIB_API rig_set_split_freq_mode(RIG *rig,
         freq_t tfreq;
         int retry = 3;
         int retcode2;
+
         // we query freq after set to ensure it really gets done
         do
         {
             retcode = caps->set_split_freq_mode(rig, vfo, tx_freq, tx_mode, tx_width);
             retcode2 = rig_get_split_freq(rig, vfo, &tfreq);
         }
-        while (tfreq != tx_freq && retry-- > 0 && retcode == RIG_OK && retcode2 == RIG_OK);
+        while (tfreq != tx_freq && retry-- > 0 && retcode == RIG_OK
+                && retcode2 == RIG_OK);
 
         if (tfreq != tx_freq) { retcode = -RIG_EPROTO; }
 
@@ -5741,8 +5771,6 @@ const char *HAMLIB_API rig_get_info(RIG *rig)
 int HAMLIB_API rig_get_vfo_info(RIG *rig, vfo_t vfo, freq_t *freq,
                                 rmode_t *mode, pbwidth_t *width, split_t *split)
 {
-    int retcode;
-
     ENTERFUNC;
     rig_debug(RIG_DEBUG_VERBOSE, "%s called vfo=%s\n", __func__, rig_strvfo(vfo));
 
@@ -5751,14 +5779,38 @@ int HAMLIB_API rig_get_vfo_info(RIG *rig, vfo_t vfo, freq_t *freq,
         RETURNFUNC(-RIG_EINVAL);
     }
 
-    retcode = rig_get_freq(rig, vfo, freq);
+    if (vfo == RIG_VFO_CURR) { vfo = rig->state.current_vfo; }
 
-    if (retcode != RIG_OK) { RETURNFUNC(retcode); }
+    if (vfo == RIG_VFO_A || vfo == RIG_VFO_MAIN || vfo == RIG_VFO_MAIN_A)
+    {
+        *freq = rig->state.cache.freqMainA;
+        *width = rig->state.cache.width;
+    }
+    else if (vfo == RIG_VFO_MAIN_B)
+    {
+        *freq = rig->state.cache.freqMainB;
+        *width = rig->state.cache.width;
 
-    retcode = rig_get_mode(rig, vfo, mode, width);
+        if (rig->state.cache.widthB) { *width = rig->state.cache.widthB; }
+    }
+    else if (vfo == RIG_VFO_SUB_B)
+    {
+        *freq = rig->state.cache.freqSubB;
+        *width = rig->state.cache.width;
+
+        if (rig->state.cache.widthB) { *width = rig->state.cache.widthB; }
+    }
+    else
+    {
+        *freq = rig->state.cache.freqMainB;
+        *width = rig->state.cache.width;
+
+        if (rig->state.cache.widthB) { *width = rig->state.cache.widthB; }
+    }
+
     *split = rig->state.cache.split;
 
-    RETURNFUNC(retcode);
+    RETURNFUNC(RIG_OK);
 }
 
 /**

@@ -366,8 +366,6 @@ RIG *HAMLIB_API rig_init(rig_model_t rig_model)
     struct rig_state *rs;
     int i;
 
-    ENTERFUNC;
-
     rig_check_rig_caps();
 
     rig_check_backend(rig_model);
@@ -376,7 +374,7 @@ RIG *HAMLIB_API rig_init(rig_model_t rig_model)
 
     if (!caps)
     {
-        RETURNFUNC(NULL);
+        return(NULL);
     }
 
     /*
@@ -391,7 +389,7 @@ RIG *HAMLIB_API rig_init(rig_model_t rig_model)
          * FIXME: how can the caller know it's a memory shortage,
          *        and not "rig not found" ?
          */
-        RETURNFUNC(NULL);
+        return(NULL);
     }
 
     /* caps is const, so we need to tell compiler
@@ -486,7 +484,7 @@ RIG *HAMLIB_API rig_init(rig_model_t rig_model)
     if (rs->tx_range_list[0].startf == 0)
     {
         rig_debug(RIG_DEBUG_ERR, "%s: rig does not have tx_range!!\n", __func__);
-        //RETURNFUNC(NULL); // this is not fatal
+        //return(NULL); // this is not fatal
     }
 
 #if 0 // this is no longer applicable -- replace it with something?
@@ -614,11 +612,11 @@ RIG *HAMLIB_API rig_init(rig_model_t rig_model)
                       __func__);
             /* cleanup and exit */
             free(rig);
-            RETURNFUNC(NULL);
+            return(NULL);
         }
     }
 
-    RETURNFUNC(rig);
+    return(rig);
 }
 
 
@@ -4804,16 +4802,14 @@ int HAMLIB_API rig_mW2power(RIG *rig,
 {
     const freq_range_t *txrange;
 
-    ENTERFUNC;
-
     if (!rig || !rig->caps || !power || mwpower == 0)
     {
-        RETURNFUNC(-RIG_EINVAL);
+        return(-RIG_EINVAL);
     }
 
     if (rig->caps->mW2power != NULL)
     {
-        RETURNFUNC(rig->caps->mW2power(rig, power, mwpower, freq, mode));
+        return(rig->caps->mW2power(rig, power, mwpower, freq, mode));
     }
 
     txrange = rig_get_range(rig->state.tx_range_list, freq, mode);
@@ -4823,13 +4819,13 @@ int HAMLIB_API rig_mW2power(RIG *rig,
         /*
          * freq is not on the tx range!
          */
-        RETURNFUNC(-RIG_ECONF); /* could be RIG_EINVAL ? */
+        return(-RIG_ECONF); /* could be RIG_EINVAL ? */
     }
 
     if (txrange->high_power == 0)
     {
         *power = 0.0;
-        RETURNFUNC(RIG_OK);
+        return(RIG_OK);
     }
 
     *power = (float)mwpower / txrange->high_power;
@@ -4839,7 +4835,7 @@ int HAMLIB_API rig_mW2power(RIG *rig,
         *power = 1.0;
     }
 
-    RETURNFUNC(mwpower > txrange->high_power ? RIG_OK : -RIG_ETRUNC);
+    return(mwpower > txrange->high_power ? RIG_OK : -RIG_ETRUNC);
 }
 
 
@@ -5686,24 +5682,22 @@ const freq_range_t *HAMLIB_API rig_get_range(const freq_range_t *range_list,
 {
     int i;
 
-    ENTERFUNC;
-
     for (i = 0; i < FRQRANGESIZ; i++)
     {
         if (range_list[i].startf == 0 && range_list[i].endf == 0)
         {
-            RETURNFUNC(NULL);
+            return(NULL);
         }
 
         if (freq >= range_list[i].startf && freq <= range_list[i].endf &&
                 (range_list[i].modes & mode))
         {
             const freq_range_t *f = &range_list[i];
-            RETURNFUNC(f);
+            return(f);
         }
     }
 
-    RETURNFUNC(NULL);
+    return(NULL);
 }
 
 /**
@@ -5738,19 +5732,17 @@ int HAMLIB_API rig_set_vfo_opt(RIG *rig, int status)
  */
 const char *HAMLIB_API rig_get_info(RIG *rig)
 {
-    ENTERFUNC;
-
     if (CHECK_RIG_ARG(rig))
     {
-        RETURNFUNC(NULL);
+        return(NULL);
     }
 
     if (rig->caps->get_info == NULL)
     {
-        RETURNFUNC(NULL);
+        return(NULL);
     }
 
-    RETURNFUNC(rig->caps->get_info(rig));
+    return(rig->caps->get_info(rig));
 }
 
 /**

@@ -6547,8 +6547,6 @@ const char *newcat_get_info(RIG *rig)
     struct newcat_priv_data *priv = (struct newcat_priv_data *)rig->state.priv;
     static char idbuf[129]; /* extra large static string array */
 
-    ENTERFUNC;
-
     /* Build the command string */
     snprintf(priv->cmd_str, sizeof(priv->cmd_str), "ID;");
 
@@ -6557,13 +6555,13 @@ const char *newcat_get_info(RIG *rig)
     /* Get Identification Channel */
     if (RIG_OK != newcat_get_cmd(rig))
     {
-        RETURNFUNC(NULL);
+        return(NULL);
     }
 
     priv->ret_data[6] = '\0';
     snprintf(idbuf, sizeof(idbuf), "%s", priv->ret_data);
 
-    RETURNFUNC(idbuf);
+    return(idbuf);
 }
 
 

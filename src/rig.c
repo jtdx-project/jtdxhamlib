@@ -1616,9 +1616,9 @@ int HAMLIB_API rig_set_freq(RIG *rig, vfo_t vfo, freq_t freq)
         }
         while (tfreq != freq && retry-- > 0);
 
-        if (retry == 0)
+        if (retry == 0 && tfreq != freq)
         {
-            rig_debug(RIG_DEBUG_ERR, "%s: unable to set frequency!!\n", __func__);
+            rig_debug(RIG_DEBUG_ERR, "%s: unable to set frequency!!, asked for %.0f, got %.0f\n", __func__, freq, tfreq);
         }
     }
     else
@@ -3007,9 +3007,8 @@ int HAMLIB_API rig_get_dcd(RIG *rig, vfo_t vfo, dcd_t *dcd)
             RETURNFUNC(-RIG_ENIMPL);
         }
 
-        if ((caps->targetable_vfo & RIG_TARGETABLE_PURE)
-                || vfo == RIG_VFO_CURR
-                || vfo == rig->state.current_vfo)
+        if (vfo == RIG_VFO_CURR
+            || vfo == rig->state.current_vfo)
         {
             RETURNFUNC(caps->get_dcd(rig, vfo, dcd));
         }
@@ -3109,9 +3108,8 @@ int HAMLIB_API rig_set_rptr_shift(RIG *rig, vfo_t vfo, rptr_shift_t rptr_shift)
         RETURNFUNC(-RIG_ENAVAIL);
     }
 
-    if ((caps->targetable_vfo & RIG_TARGETABLE_PURE)
-            || vfo == RIG_VFO_CURR
-            || vfo == rig->state.current_vfo)
+    if (vfo == RIG_VFO_CURR
+        || vfo == rig->state.current_vfo)
     {
         RETURNFUNC(caps->set_rptr_shift(rig, vfo, rptr_shift));
     }
@@ -3177,9 +3175,8 @@ int HAMLIB_API rig_get_rptr_shift(RIG *rig, vfo_t vfo, rptr_shift_t *rptr_shift)
         RETURNFUNC(-RIG_ENAVAIL);
     }
 
-    if ((caps->targetable_vfo & RIG_TARGETABLE_PURE)
-            || vfo == RIG_VFO_CURR
-            || vfo == rig->state.current_vfo)
+    if (vfo == RIG_VFO_CURR
+        || vfo == rig->state.current_vfo)
     {
         RETURNFUNC(caps->get_rptr_shift(rig, vfo, rptr_shift));
     }
@@ -3245,9 +3242,8 @@ int HAMLIB_API rig_set_rptr_offs(RIG *rig, vfo_t vfo, shortfreq_t rptr_offs)
         RETURNFUNC(-RIG_ENAVAIL);
     }
 
-    if ((caps->targetable_vfo & RIG_TARGETABLE_PURE)
-            || vfo == RIG_VFO_CURR
-            || vfo == rig->state.current_vfo)
+    if (vfo == RIG_VFO_CURR
+        || vfo == rig->state.current_vfo)
     {
         RETURNFUNC(caps->set_rptr_offs(rig, vfo, rptr_offs));
     }
@@ -3313,9 +3309,8 @@ int HAMLIB_API rig_get_rptr_offs(RIG *rig, vfo_t vfo, shortfreq_t *rptr_offs)
         RETURNFUNC(-RIG_ENAVAIL);
     }
 
-    if ((caps->targetable_vfo & RIG_TARGETABLE_PURE)
-            || vfo == RIG_VFO_CURR
-            || vfo == rig->state.current_vfo)
+    if (vfo == RIG_VFO_CURR
+         || vfo == rig->state.current_vfo)
     {
         RETURNFUNC(caps->get_rptr_offs(rig, vfo, rptr_offs));
     }
@@ -3378,8 +3373,7 @@ int HAMLIB_API rig_set_split_freq(RIG *rig, vfo_t vfo, freq_t tx_freq)
     caps = rig->caps;
 
     if (caps->set_split_freq
-            && ((caps->targetable_vfo & RIG_TARGETABLE_PURE)
-                || vfo == RIG_VFO_CURR
+            && (vfo == RIG_VFO_CURR
                 || vfo == RIG_VFO_TX
                 || vfo == rig->state.current_vfo))
     {
@@ -3508,8 +3502,7 @@ int HAMLIB_API rig_get_split_freq(RIG *rig, vfo_t vfo, freq_t *tx_freq)
     caps = rig->caps;
 
     if (caps->get_split_freq
-            && ((caps->targetable_vfo & RIG_TARGETABLE_PURE)
-                || vfo == RIG_VFO_CURR
+            && (vfo == RIG_VFO_CURR
                 || vfo == RIG_VFO_TX
                 || vfo == rig->state.current_vfo))
     {
@@ -3637,8 +3630,7 @@ int HAMLIB_API rig_set_split_mode(RIG *rig,
     caps = rig->caps;
 
     if (caps->set_split_mode
-            && ((caps->targetable_vfo & RIG_TARGETABLE_PURE)
-                || vfo == RIG_VFO_CURR
+            && (vfo == RIG_VFO_CURR
                 || vfo == RIG_VFO_TX
                 || vfo == rig->state.current_vfo))
     {
@@ -3747,8 +3739,7 @@ int HAMLIB_API rig_get_split_mode(RIG *rig, vfo_t vfo, rmode_t *tx_mode,
     caps = rig->caps;
 
     if (caps->get_split_mode
-            && ((caps->targetable_vfo & RIG_TARGETABLE_PURE)
-                || vfo == RIG_VFO_CURR
+            && (vfo == RIG_VFO_CURR
                 || vfo == RIG_VFO_TX
                 || vfo == rig->state.current_vfo))
     {
@@ -3880,6 +3871,11 @@ int HAMLIB_API rig_set_split_freq_mode(RIG *rig,
         {
             retcode = caps->set_split_freq_mode(rig, vfo, tx_freq, tx_mode, tx_width);
             retcode2 = rig_get_split_freq(rig, vfo, &tfreq);
+            if (tfreq != tx_freq)
+            {
+                rig_debug(RIG_DEBUG_ERR, "%s: txfreq!=tfreq %.0f!=%.0f, retry=%d, rc1=%d, rc2=%d\n", __func__, tx_freq, tfreq, retry, retcode, retcode2);
+                hl_usleep(50*1000); // 50ms sleep may help here
+            }
         }
         while (tfreq != tx_freq && retry-- > 0 && retcode == RIG_OK
                 && retcode2 == RIG_OK);
@@ -4001,9 +3997,8 @@ int HAMLIB_API rig_set_split_vfo(RIG *rig,
 
     vfo = vfo_fixup(rig, vfo);
 
-    if ((caps->targetable_vfo & RIG_TARGETABLE_PURE)
-            || vfo == RIG_VFO_CURR
-            || vfo == rig->state.current_vfo)
+    if (vfo == RIG_VFO_CURR
+        || vfo == rig->state.current_vfo)
     {
         retcode = caps->set_split_vfo(rig, vfo, split, tx_vfo);
 
@@ -4117,9 +4112,8 @@ int HAMLIB_API rig_get_split_vfo(RIG *rig,
     /* overridden by backend at will */
     *tx_vfo = rig->state.tx_vfo;
 
-    if ((caps->targetable_vfo & RIG_TARGETABLE_PURE)
-            || vfo == RIG_VFO_CURR
-            || vfo == rig->state.current_vfo)
+    if (vfo == RIG_VFO_CURR
+        || vfo == rig->state.current_vfo)
     {
         retcode = caps->get_split_vfo(rig, vfo, split, tx_vfo);
         rig->state.cache.split = *split;
@@ -4474,9 +4468,8 @@ int HAMLIB_API rig_set_ts(RIG *rig, vfo_t vfo, shortfreq_t ts)
         RETURNFUNC(-RIG_ENAVAIL);
     }
 
-    if ((caps->targetable_vfo & RIG_TARGETABLE_PURE)
-            || vfo == RIG_VFO_CURR
-            || vfo == rig->state.current_vfo)
+    if (vfo == RIG_VFO_CURR
+        || vfo == rig->state.current_vfo)
     {
         RETURNFUNC(caps->set_ts(rig, vfo, ts));
     }
@@ -4542,9 +4535,8 @@ int HAMLIB_API rig_get_ts(RIG *rig, vfo_t vfo, shortfreq_t *ts)
         RETURNFUNC(-RIG_ENAVAIL);
     }
 
-    if ((caps->targetable_vfo & RIG_TARGETABLE_PURE)
-            || vfo == RIG_VFO_CURR
-            || vfo == rig->state.current_vfo)
+    if (vfo == RIG_VFO_CURR
+        || vfo == rig->state.current_vfo)
     {
         RETURNFUNC(caps->get_ts(rig, vfo, ts));
     }
@@ -5112,9 +5104,8 @@ int HAMLIB_API rig_vfo_op(RIG *rig, vfo_t vfo, vfo_op_t op)
         RETURNFUNC(-RIG_ENAVAIL);
     }
 
-    if ((caps->targetable_vfo & RIG_TARGETABLE_PURE)
-            || vfo == RIG_VFO_CURR
-            || vfo == rig->state.current_vfo)
+    if (vfo == RIG_VFO_CURR
+        || vfo == rig->state.current_vfo)
     {
         RETURNFUNC(caps->vfo_op(rig, vfo, op));
     }
@@ -5212,9 +5203,8 @@ int HAMLIB_API rig_scan(RIG *rig, vfo_t vfo, scan_t scan, int ch)
         RETURNFUNC(-RIG_ENAVAIL);
     }
 
-    if ((caps->targetable_vfo & RIG_TARGETABLE_PURE)
-            || vfo == RIG_VFO_CURR
-            || vfo == rig->state.current_vfo)
+    if (vfo == RIG_VFO_CURR
+        || vfo == rig->state.current_vfo)
     {
         RETURNFUNC(caps->scan(rig, vfo, scan, ch));
     }
@@ -5280,9 +5270,8 @@ int HAMLIB_API rig_send_dtmf(RIG *rig, vfo_t vfo, const char *digits)
         RETURNFUNC(-RIG_ENAVAIL);
     }
 
-    if ((caps->targetable_vfo & RIG_TARGETABLE_PURE)
-            || vfo == RIG_VFO_CURR
-            || vfo == rig->state.current_vfo)
+    if (vfo == RIG_VFO_CURR
+        || vfo == rig->state.current_vfo)
     {
         RETURNFUNC(caps->send_dtmf(rig, vfo, digits));
     }
@@ -5349,9 +5338,8 @@ int HAMLIB_API rig_recv_dtmf(RIG *rig, vfo_t vfo, char *digits, int *length)
         RETURNFUNC(-RIG_ENAVAIL);
     }
 
-    if ((caps->targetable_vfo & RIG_TARGETABLE_PURE)
-            || vfo == RIG_VFO_CURR
-            || vfo == rig->state.current_vfo)
+    if (vfo == RIG_VFO_CURR
+        || vfo == rig->state.current_vfo)
     {
         RETURNFUNC(caps->recv_dtmf(rig, vfo, digits, length));
     }
@@ -5417,9 +5405,8 @@ int HAMLIB_API rig_send_morse(RIG *rig, vfo_t vfo, const char *msg)
         RETURNFUNC(-RIG_ENAVAIL);
     }
 
-    if ((caps->targetable_vfo & RIG_TARGETABLE_PURE)
-            || vfo == RIG_VFO_CURR
-            || vfo == rig->state.current_vfo)
+    if (vfo == RIG_VFO_CURR
+        || vfo == rig->state.current_vfo)
     {
         RETURNFUNC(caps->send_morse(rig, vfo, msg));
     }
@@ -5476,9 +5463,8 @@ int HAMLIB_API rig_stop_morse(RIG *rig, vfo_t vfo)
         RETURNFUNC(-RIG_ENAVAIL);
     }
 
-    if ((caps->targetable_vfo & RIG_TARGETABLE_PURE)
-            || vfo == RIG_VFO_CURR
-            || vfo == rig->state.current_vfo)
+    if (vfo == RIG_VFO_CURR
+        || vfo == rig->state.current_vfo)
     {
         RETURNFUNC(caps->stop_morse(rig, vfo));
     }
@@ -5567,9 +5553,8 @@ int HAMLIB_API rig_wait_morse(RIG *rig, vfo_t vfo)
     ENTERFUNC;
     caps = rig->caps;
 
-    if ((caps->targetable_vfo & RIG_TARGETABLE_PURE)
-            || vfo == RIG_VFO_CURR
-            || vfo == rig->state.current_vfo)
+    if (vfo == RIG_VFO_CURR
+        || vfo == rig->state.current_vfo)
     {
         RETURNFUNC(wait_morse_ptt(rig, vfo));
     }
@@ -5635,9 +5620,8 @@ int HAMLIB_API rig_send_voice_mem(RIG *rig, vfo_t vfo, int ch)
         RETURNFUNC(-RIG_ENAVAIL);
     }
 
-    if ((caps->targetable_vfo & RIG_TARGETABLE_PURE)
-            || vfo == RIG_VFO_CURR
-            || vfo == rig->state.current_vfo)
+    if (vfo == RIG_VFO_CURR
+        || vfo == rig->state.current_vfo)
     {
         RETURNFUNC(caps->send_voice_mem(rig, vfo, ch));
     }
@@ -5812,15 +5796,12 @@ int HAMLIB_API rig_get_vfo_list(RIG *rig, char *buf, int buflen)
 {
     ENTERFUNC;
 
-    // to be completed
     if (CHECK_RIG_ARG(rig))
     {
         RETURNFUNC(-RIG_EINVAL);
     }
 
-    char s[256];
-    rig_sprintf_vfo(s, sizeof(s), rig->state.vfo_list);
-
+    rig_sprintf_vfo(buf, buflen - 1, rig->state.vfo_list);
 
     RETURNFUNC(RIG_OK);
 }

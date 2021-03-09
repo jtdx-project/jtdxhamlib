@@ -510,6 +510,7 @@ int newcat_open(RIG *rig)
 
     ENTERFUNC;
 
+    rig_debug(RIG_DEBUG_TRACE, "%s: Rig=%s, version=%s\n", __func__, rig->caps->model_name, rig->caps->version);
     rig_debug(RIG_DEBUG_TRACE, "%s: write_delay = %i msec\n",
               __func__, rig_s->rigport.write_delay);
 
@@ -3134,7 +3135,6 @@ int newcat_set_powerstat(RIG *rig, powerstat_t status)
     case RIG_POWER_OFF:
     case RIG_POWER_STANDBY:
         ps = '0';
-        write_block(&state->rigport, "\n", 0);
         break;
 
     default:
@@ -3163,6 +3163,8 @@ int newcat_set_powerstat(RIG *rig, powerstat_t status)
             }
 
             rig_debug(RIG_DEBUG_TRACE, "%s: Wait #%d for power up\n", __func__, i + 1);
+            retval = write_block(&state->rigport, priv->cmd_str, strlen(priv->cmd_str));
+            if (retval != RIG_OK) RETURNFUNC(retval);
         }
     }
 
@@ -9805,7 +9807,9 @@ int newcat_set_cmd(RIG *rig)
 
         if (rc == RIG_OK)
         {
+            // if we were able to set and and validate we're done
             rig_debug(RIG_DEBUG_TRACE, "%s: cmd_validate OK\n", __func__);
+            RETURNFUNC(RIG_OK);
         }
         else if (rc == -RIG_EPROTO)
         {

@@ -440,7 +440,6 @@ static int read_transaction(RIG *rig, char *xml, int xml_len)
        if (len <= 0)
        {
            rig_debug(RIG_DEBUG_ERR, "%s: read_string error=%d\n", __func__, len);
-           //RETURNFUNC(-(100 + RIG_EPROTO));
            continue;
        }
 
@@ -747,8 +746,34 @@ static int flrig_open(RIG *rig)
    struct flrig_priv_data *priv = (struct flrig_priv_data *) rig->state.priv;
 
    ENTERFUNC;
-   rig_debug(RIG_DEBUG_TRACE, "%s version %s\n", __func__, BACKEND_VER);
+   rig_debug(RIG_DEBUG_VERBOSE, "%s version %s\n", __func__, BACKEND_VER);
 
+   retval = flrig_transaction(rig, "main.get_version", NULL, value, sizeof(value));
+
+   if (retval != RIG_OK)
+   {
+       rig_debug(RIG_DEBUG_ERR, "%s: get_version failed: %s\n", __func__,
+                 rigerror(retval));
+       RETURNFUNC(retval);
+   }
+   rig_debug(RIG_DEBUG_VERBOSE, "%s FlRig version %s\n", __func__, value);
+
+   retval = flrig_transaction(rig, "rig.get_xcvr", NULL, value, sizeof(value));
+
+   if (retval != RIG_OK)
+   {
+       rig_debug(RIG_DEBUG_ERR, "%s: get_xcvr failed: %s\n", __func__,
+                 rigerror(retval));
+       RETURNFUNC(retval);
+   }
+   retval = flrig_transaction(rig, "rig.get_xcvr", NULL, value, sizeof(value));
+
+   if (retval != RIG_OK)
+   {
+       rig_debug(RIG_DEBUG_ERR, "%s: get_xcvr failed: %s\n", __func__,
+                 rigerror(retval));
+       RETURNFUNC(retval);
+   }
    retval = flrig_transaction(rig, "rig.get_xcvr", NULL, value, sizeof(value));
 
    if (retval != RIG_OK)
@@ -831,7 +856,7 @@ static int flrig_open(RIG *rig)
 
    if (retval != RIG_OK) { RETURNFUNC(retval); }
 
-   rig_debug(RIG_DEBUG_TRACE, "%s: modes=%s\n", __func__, value);
+   rig_debug(RIG_DEBUG_VERBOSE, "%s: modes=%s\n", __func__, value);
    modes = 0;
    pr = value;
 
@@ -1046,7 +1071,7 @@ static int flrig_get_freq(RIG *rig, vfo_t vfo, freq_t *freq)
    {
        rig_debug(RIG_DEBUG_ERR, "%s: freq==0??\nvalue=%s\n", __func__,
                  value);
-       RETURNFUNC(-(102 + RIG_EPROTO));
+       RETURNFUNC(-RIG_EPROTO);
    }
    else
    {

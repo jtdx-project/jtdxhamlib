@@ -716,7 +716,7 @@ int icom_get_usb_echo_off(RIG *rig)
     // reduce the retry here so it's quicker
     rs->rigport.retry = 0;
     // Check for echo on first by assuming echo is off and checking the answer
-    priv->serial_USB_echo_off = 1;
+    priv->serial_USB_echo_off = 0;
 
     rig_debug(RIG_DEBUG_VERBOSE, "%s: retry temp set to %d\n", __func__,
               rs->rigport.retry);
@@ -724,17 +724,18 @@ int icom_get_usb_echo_off(RIG *rig)
     retval = icom_transaction(rig, C_RD_FREQ, -1, NULL, 0, ackbuf, &ack_len);
 
     // if rig is not powered on we get no data and TIMEOUT
-    if (ack_len == 0 && retval == -RIG_ETIMEOUT) { RETURNFUNC(retval); }
+    if (ack_len == 0 && retval == -RIG_ETIMEOUT) {RETURNFUNC(retval); }
 
     rig_debug(RIG_DEBUG_VERBOSE, "%s: ack_len=%d\n", __func__, ack_len);
 
-    if (ack_len == 1) // then we got an echo of the cmd
+    if (ack_len > 0) // then we got an echo of the cmd
     {
         priv->serial_USB_echo_off = 0;
         rig_debug(RIG_DEBUG_VERBOSE, "%s: USB echo on detected\n", __func__);
     }
     else
     {
+        priv->serial_USB_echo_off = 1;
         rig_debug(RIG_DEBUG_VERBOSE, "%s: USB echo off detected\n", __func__);
     }
 
@@ -761,13 +762,13 @@ icom_rig_open(RIG *rig)
               rig->caps->version);
     retval = icom_get_usb_echo_off(rig);
 
-    if (retval == RIG_OK) // then echo is on so let's try freq now
-    {
+//    if (retval == RIG_OK) // then echo is on so let's try freq now
+//    {
         // some rigs like the IC7100 still echo when in standby
         // so asking for freq now should timeout if such a rig
-        freq_t tfreq;
-        retval = rig_get_freq(rig, RIG_VFO_A, &tfreq);
-    }
+//        freq_t tfreq;
+//        retval = rig_get_freq(rig, RIG_VFO_A, &tfreq);
+//    }
 
     if (retval != RIG_OK && priv->poweron == 0 && rs->auto_power_on)
     {

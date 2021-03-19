@@ -716,7 +716,7 @@ int icom_get_usb_echo_off(RIG *rig)
     // reduce the retry here so it's quicker
     rs->rigport.retry = 0;
     // Check for echo on first by assuming echo is off and checking the answer
-    priv->serial_USB_echo_off = 1;
+    priv->serial_USB_echo_off = 0;
 
     rig_debug(RIG_DEBUG_VERBOSE, "%s: retry temp set to %d\n", __func__,
               rs->rigport.retry);
@@ -724,22 +724,18 @@ int icom_get_usb_echo_off(RIG *rig)
     retval = icom_transaction(rig, C_RD_FREQ, -1, NULL, 0, ackbuf, &ack_len);
 
     // if rig is not powered on we get no data and TIMEOUT
-    if (ack_len == 0 && retval == -RIG_ETIMEOUT) { RETURNFUNC(retval); }
+    if (ack_len == 0 && retval == -RIG_ETIMEOUT) {RETURNFUNC(retval); }
 
     rig_debug(RIG_DEBUG_VERBOSE, "%s: ack_len=%d\n", __func__, ack_len);
 
-    if (ack_len == 1) // then we got an echo of the cmd
+    if (ack_len > 0) // then we got an echo of the cmd
     {
-        struct rig_state *rs = &rig->state;
-        unsigned char buf[16];
         priv->serial_USB_echo_off = 0;
         rig_debug(RIG_DEBUG_VERBOSE, "%s: USB echo on detected\n", __func__);
-        // we should have a freq response so we'll read it and don't really care
-        // flushing doesn't always work as it depends on timing
-        read_icom_frame(&rs->rigport,buf,sizeof(buf));
     }
     else
     {
+        priv->serial_USB_echo_off = 1;
         rig_debug(RIG_DEBUG_VERBOSE, "%s: USB echo off detected\n", __func__);
     }
 

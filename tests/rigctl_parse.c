@@ -1732,7 +1732,7 @@ int rigctl_parse(RIG *my_rig, FILE *fin, FILE *fout, char *argv[], int argc,
 
 void version()
 {
-    printf("rigctl(d), %s\n\n", hamlib_version);
+    printf("rigctl(d), %s\n\n", hamlib_version2);
     printf("%s\n", hamlib_copyright);
 }
 
@@ -2227,18 +2227,23 @@ declare_proto_rig(get_vfo_info)
     split_t split;
     retval = rig_get_vfo_info(rig, vfo, &freq, &mode, &width, &split);
 
-    rig_debug(RIG_DEBUG_ERR, "%s: vfo=%s\n", __func__, rig_strvfo(vfo));
+    if (retval != RIG_OK)
+    {
+        rig_debug(RIG_DEBUG_ERR, "%s: vfo=%s\n", __func__, rig_strvfo(vfo));
+    }
 
+    const char * modestr = rig_strrmode(mode);
+    if (strlen(modestr) == 0) modestr = "None";
     if ((interactive && prompt) || (interactive && !prompt && ext_resp))
     {
         fprintf(fout, "%s: %.0f\n", cmd->arg1, freq);
-        fprintf(fout, "%s: %s\n", cmd->arg2, rig_strrmode(mode));
+        fprintf(fout, "%s: %s\n", cmd->arg2, modestr);
         fprintf(fout, "%s: %d\n", cmd->arg3, (int)width);
         fprintf(fout, "%s: %d\n", cmd->arg4, (int)split);
     }
     else
     {
-        fprintf(fout, "%.0f\n%s\n%d\n", freq, rig_strrmode(mode), (int)width);
+        fprintf(fout, "%.0f\n%s\n%d\n", freq, modestr, (int)width);
     }
 
     RETURNFUNC(retval);

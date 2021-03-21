@@ -72,6 +72,7 @@
 #include "gpio.h"
 #include "misc.h"
 #include "sprintflst.h"
+#include "hamlibdatetime.h"
 
 /**
  * \brief Hamlib release number
@@ -86,7 +87,7 @@
 const char *hamlib_license = "LGPL";
 //! @cond Doxygen_Suppress
 const char hamlib_version[21] = "Hamlib " PACKAGE_VERSION;
-const char *hamlib_version2 = "Hamlib " PACKAGE_VERSION;
+const char *hamlib_version2 = "Hamlib " PACKAGE_VERSION " " HAMLIBDATETIME;
 //! @endcond
 
 struct rig_caps caps_test;
@@ -2640,6 +2641,7 @@ int HAMLIB_API rig_set_ptt(RIG *rig, vfo_t vfo, ptt_t ptt)
 
                 if (retcode != RIG_OK) { RETURNFUNC(retcode); }
 
+#if 0
                 hl_usleep(50 * 1000); // give PTT a chance to do it's thing
 
                 // don't use the cached value and check to see if it worked
@@ -2655,8 +2657,10 @@ int HAMLIB_API rig_set_ptt(RIG *rig, vfo_t vfo, ptt_t ptt)
                               rigerror(retcode));
                     retcode = RIG_OK; // fake the retcode so we retry
                 }
-
                 if (tptt != ptt) { rig_debug(RIG_DEBUG_WARN, "%s: failed, retry=%d\n", __func__, retry); }
+#else
+                tptt = ptt;
+#endif
             }
             while (tptt != ptt && retry-- > 0 && retcode == RIG_OK);
         }
@@ -2684,9 +2688,13 @@ int HAMLIB_API rig_set_ptt(RIG *rig, vfo_t vfo, ptt_t ptt)
 
                     if (retcode != RIG_OK) { RETURNFUNC(retcode); }
 
+#if 0
                     retcode = rig_get_ptt(rig, vfo, &tptt);
 
                     if (tptt != ptt) { rig_debug(RIG_DEBUG_WARN, "%s: failed, retry=%d\n", __func__, retry); }
+#else
+                    tptt = ptt;
+#endif
                 }
                 while (tptt != ptt && retry-- > 0 && retcode == RIG_OK);
 

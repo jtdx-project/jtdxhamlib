@@ -878,6 +878,30 @@ static int handle_ts2000(void *arg)
         return write_block2((void *)__func__, &my_com, response, strlen(response));
     }
     // Now some commands to set things
+    else if (strncmp(arg, "SA", 2) == 0)
+    {
+        if (strcmp(arg, "SA;") == 0)
+        {
+            // should we silently fail with RIG_OK instead? TBD
+            RETURNFUNC(-RIG_ENIMPL);
+        }
+
+        if (strlen(arg) > 3 && ((char *)arg)[2] == '1')
+        {
+            if (my_rig->caps->has_set_func)
+            {
+                int retval = rig_set_func(my_rig, RIG_VFO_CURR, RIG_FUNC_SATMODE,
+                                          ((char *)arg)[2] == '1' ? 1 : 0);
+                return retval;
+            }
+            else
+            {
+                RETURNFUNC(-RIG_ENAVAIL);
+            }
+        }
+
+        return RIG_OK;
+    }
     else if (strcmp(arg, "TX;") == 0)
     {
         return rig_set_ptt(my_rig, vfo_fixup(my_rig, RIG_VFO_A), 1);
@@ -1483,7 +1507,7 @@ static int handle_ts2000(void *arg)
         freq_t freq;
 
         sscanf((char *)arg + 2, "%"SCNfreq, &freq);
-        return rig_set_freq(my_rig, vfo_fixup(my_rig, RIG_VFO_A), freq);
+        return rig_set_freq(my_rig, vfo_fixup(my_rig, RIG_VFO_B), freq);
     }
     else if (strncmp(arg, "MD", 2) == 0)
     {

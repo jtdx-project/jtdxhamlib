@@ -1340,6 +1340,8 @@ static int set_cache_mode(RIG *rig, vfo_t vfo, mode_t mode, pbwidth_t width)
     // pick a sane default
     if (vfo == RIG_VFO_NONE || vfo == RIG_VFO_CURR) { vfo = RIG_VFO_A; }
 
+    if (vfo == RIG_VFO_SUB && rig->state.cache.satmode) { vfo = RIG_VFO_SUB_A; };
+
     switch (vfo)
     {
     case RIG_VFO_ALL: // we'll use NONE to reset all VFO caches
@@ -1410,6 +1412,8 @@ static int set_cache_freq(RIG *rig, vfo_t vfo, freq_t freq)
 
     // pick a sane default
     if (vfo == RIG_VFO_NONE || vfo == RIG_VFO_CURR) { vfo = RIG_VFO_A; }
+
+    if (vfo == RIG_VFO_SUB && rig->state.cache.satmode) { vfo = RIG_VFO_SUB_A; };
 
     rig_debug(RIG_DEBUG_TRACE, "%s: set vfo=%s to freq=%.0f\n", __func__,
               rig_strvfo(vfo), freq);
@@ -1496,6 +1500,9 @@ int rig_get_cache(RIG *rig, vfo_t vfo, freq_t *freq, int *cache_ms_freq,
     // pick a sane default
     if (vfo == RIG_VFO_CURR || vfo == RIG_VFO_NONE) { vfo = RIG_VFO_A; }
 
+    // If we're in satmode we map SUB to SUB_A
+    if (vfo == RIG_VFO_SUB && rig->state.cache.satmode) { vfo = RIG_VFO_SUB_A; };
+
     // VFO_C to be implemented
     switch (vfo)
     {
@@ -1515,6 +1522,7 @@ int rig_get_cache(RIG *rig, vfo_t vfo, freq_t *freq, int *cache_ms_freq,
 
     case RIG_VFO_B:
     case RIG_VFO_SUB:
+    case RIG_VFO_MAIN_B:
         *freq = rig->state.cache.freqMainB;
         *mode = rig->state.cache.modeMainB;
         *width = rig->state.cache.widthMainB;
@@ -2483,7 +2491,7 @@ int HAMLIB_API rig_set_vfo(RIG *rig, vfo_t vfo)
     // we only get the freq if we set the vfo OK
     if (retcode == RIG_OK && caps->get_freq)
     {
-        retcode = caps->get_freq(rig, vfo, &curr_freq);
+        retcode = caps->get_freq(rig, RIG_VFO_CURR, &curr_freq);
         rig_debug(RIG_DEBUG_TRACE, "%s: retcode from rig_get_freq = %.10000s\n",
                   __func__,
                   rigerror(retcode));
@@ -3985,15 +3993,18 @@ int HAMLIB_API rig_set_split_freq_mode(RIG *rig,
 
     if (caps->set_split_freq_mode)
     {
+#if 0
         freq_t tfreq;
         int retry = 3;
         int retcode2;
+#endif
 
+        retcode = caps->set_split_freq_mode(rig, vfo, tx_freq, tx_mode, tx_width);
+#if 0 // this verification seems to be causing bad behavior on some reigs
         // we query freq after set to ensure it really gets done
         do
         {
             retcode = caps->set_split_freq_mode(rig, vfo, tx_freq, tx_mode, tx_width);
-#if 0 // this verification seems to be causing bad behavior on some reigs
             retcode2 = rig_get_split_freq(rig, vfo, &tfreq);
 
             if (tfreq != tx_freq)
@@ -4003,15 +4014,14 @@ int HAMLIB_API rig_set_split_freq_mode(RIG *rig,
                           tfreq, retry, retcode, retcode2);
                 hl_usleep(50 * 1000); // 50ms sleep may help here
             }
-#else
             tfreq = tx_freq;
             retcode2 = RIG_OK;
-#endif
         }
         while (tfreq != tx_freq && retry-- > 0 && retcode == RIG_OK
                 && retcode2 == RIG_OK);
 
         if (tfreq != tx_freq) { retcode = -RIG_EPROTO; }
+#endif
 
         RETURNFUNC(retcode);
     }

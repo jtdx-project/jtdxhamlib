@@ -3571,7 +3571,7 @@ int HAMLIB_API rig_set_split_freq(RIG *rig, vfo_t vfo, freq_t tx_freq)
 
             if (retcode != RIG_OK) { RETURNFUNC(retcode); }
 
-#if 0 // this verification seems to be causing bad behavior on some reigs
+#if 0 // this verification seems to be causing bad behavior on some rigs
             retcode = rig_get_freq(rig, tx_vfo, &tfreq);
 #else
             tfreq = tx_freq;
@@ -4039,6 +4039,10 @@ int HAMLIB_API rig_set_split_freq_mode(RIG *rig,
 
     caps = rig->caps;
 
+    // in split mode we alwasy use VFOB
+    // in the future we may start using RIG_VFO_TX and let the backend figure out what VFO to use
+    vfo = RIG_VFO_B; // in split mode we always use VFOB
+    rig_debug(RIG_DEBUG_VERBOSE, "%s: vfo=%s, tx_freq=%.0f, tx_mode=%s, tx_width=%d\n", __func__, rig_strvfo(vfo), tx_freq, rig_strvfo(tx_mode), (int)tx_width);
 
     if (caps->set_split_freq_mode)
     {

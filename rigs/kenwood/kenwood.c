@@ -131,6 +131,7 @@ static const struct kenwood_id_string kenwood_id_string_list[] =
     { RIG_MODEL_THF6A,  "TH-F6" },
     { RIG_MODEL_THF7E,  "TH-F7" },
     { RIG_MODEL_THG71,  "TH-G71" },
+    { RIG_MODEL_MALACHITE,  "020" },
     { RIG_MODEL_NONE, NULL }, /* end marker */
 };
 
@@ -334,7 +335,7 @@ transaction_write:
     if (retval == RIG_OK && strncmp(cmdstr, "RX", 2) == 0) { goto transaction_quit; }
 
     // Malachite SDR cannot send ID after FA
-    if (priv->no_id) { RETURNFUNC(RIG_OK); }
+    if (!datasize && priv->no_id) { RETURNFUNC(RIG_OK); }
 
     if (!datasize)
     {
@@ -745,6 +746,7 @@ int kenwood_open(RIG *rig)
 
     rig_debug(RIG_DEBUG_VERBOSE, "%s called\n", __func__);
 
+    id[0] = 0;
     rig->state.rigport.retry = 0;
     err = kenwood_get_id(rig, id);
 
@@ -866,7 +868,7 @@ int kenwood_open(RIG *rig)
                   id);
 
         // Malachite SDR gives no reponse to ID and is supposed to be TS480 compatible
-        if (RIG_IS_TS480) { strcpy(id, "ID020"); }
+        if (RIG_IS_MALACHITE) { strcpy(id, "ID020"); }
 
     }
 
@@ -909,6 +911,7 @@ int kenwood_open(RIG *rig)
             int retval;
             split_t split;
             vfo_t tx_vfo;
+            rig_debug(RIG_DEBUG_VERBOSE, "%s: found the right driver for %s(%d)\n", __func__, rig->caps->model_name, rig->caps->rig_model);
             /* get current AI state so it can be restored */
             kenwood_get_trn(rig, &priv->trn_state);  /* ignore errors */
 

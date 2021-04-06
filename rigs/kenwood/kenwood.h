@@ -28,7 +28,7 @@
 #include "token.h"
 #include "misc.h"
 
-#define BACKEND_VER "20210404"
+#define BACKEND_VER "20210406"
 
 #define EOM_KEN ';'
 #define EOM_TH '\r'
@@ -104,6 +104,7 @@ extern const struct confparams kenwood_cfg_params[];
 #define RIG_IS_XG3       (rig->caps->rig_model == RIG_MODEL_XG3)
 #define RIG_IS_PT8000A   (rig->caps->rig_model == RIG_MODEL_PT8000A)
 #define RIG_IS_POWERSDR  (rig->caps->rig_model == RIG_MODEL_POWERSDR)
+#define RIG_IS_MALACHITE (rig->caps->rig_model == RIG_MODEL_MALACHITE)
 
 struct kenwood_priv_caps
 {

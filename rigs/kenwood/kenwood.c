@@ -202,6 +202,10 @@ const struct confparams kenwood_cfg_params[] =
         TOK_RIT, "rit", "RIT", "RIT",
         NULL, RIG_CONF_CHECKBUTTON, { }
     },
+    {
+        TOK_NO_ID, "no_id", "No ID", "If true do not send ID; with set commands",
+        NULL, RIG_CONF_CHECKBUTTON, { }
+    },
     { RIG_CONF_END, NULL, }
 };
 
@@ -328,6 +332,9 @@ transaction_write:
     // The TS-480 PC Control says RX; should return RX0; but it doesn't
     // We may eventually want to verify PTT with rig_get_ptt instead
     if (retval == RIG_OK && strncmp(cmdstr, "RX", 2) == 0) { goto transaction_quit; }
+
+    // Malachite SDR cannot send ID after FA
+    if (priv->no_id) { RETURNFUNC(RIG_OK); }
 
     if (!datasize)
     {
@@ -855,9 +862,12 @@ int kenwood_open(RIG *rig)
     /* id is something like 'IDXXX' or 'ID XXX' */
     if (strlen(id) < 5)
     {
-        rig_debug(RIG_DEBUG_ERR, "%s: unknown id type (%s)\n", __func__, id);
-        rig->state.rigport.retry = retry_save;
-        RETURNFUNC(-RIG_EPROTO);
+        rig_debug(RIG_DEBUG_ERR, "%s: unknown id type (%s)...continuing\n", __func__,
+                  id);
+
+        // Malachite SDR gives no reponse to ID and is supposed to be TS480 compatible
+        if (RIG_IS_TS480) { strcpy(id, "ID020"); }
+
     }
 
     if (!strcmp("IDID900", id)    /* DDUtil in TS-2000 mode */
@@ -2803,6 +2813,7 @@ int kenwood_get_level(RIG *rig, vfo_t vfo, setting_t level, value_t *val)
         retval = kenwood_get_power_minmax(rig, &power_now, &power_min, &power_max, 1);
 
         if (retval != RIG_OK) { RETURNFUNC(retval); }
+
         power_min = 0; // our return scale is 0-max to match the input scale
         val->f = (power_now - power_min) / (float)(power_max - power_min);
         RETURNFUNC(RIG_OK);
@@ -3757,7 +3768,7 @@ int kenwood_set_ptt(RIG *rig, vfo_t vfo, ptt_t ptt)
 
     int retval = kenwood_transaction(rig, ptt_cmd, NULL, 0);
 
-    if (ptt == RIG_PTT_OFF) hl_usleep(100*1000); // a little time for PTT to turn off
+    if (ptt == RIG_PTT_OFF) { hl_usleep(100 * 1000); } // a little time for PTT to turn off
 
     RETURNFUNC(retval);
 }
@@ -4559,6 +4570,7 @@ int kenwood_set_channel(RIG *rig, vfo_t vfo, const channel_t *chan)
 
 int kenwood_set_ext_parm(RIG *rig, token_t token, value_t val)
 {
+    struct kenwood_priv_data *priv = rig->state.priv;
     char buf[4];
 
     rig_debug(RIG_DEBUG_VERBOSE, "%s called\n", __func__);
@@ -4579,6 +4591,10 @@ int kenwood_set_ext_parm(RIG *rig, token_t token, value_t val)
     case TOK_RIT:
         snprintf(buf, sizeof(buf), "RT%c", (val.i == 0) ? '0' : '1');
         RETURNFUNC(kenwood_transaction(rig, buf, NULL, 0));
+
+    case TOK_NO_ID:
+        priv->no_id = val.i;
+        RETURNFUNC(RIG_OK);
     }
 
     RETURNFUNC(-RIG_EINVAL);
@@ -4895,6 +4911,7 @@ DECLARE_INITRIG_BACKEND(kenwood)
     rig_register(&pihpsdr_caps);
     rig_register(&ts890s_caps);
     rig_register(&pt8000a_caps);
+    rig_register(&malachite_caps);
 
     RETURNFUNC(RIG_OK);
 }

@@ -145,7 +145,7 @@ const struct rig_caps flrig_caps =
     RIG_MODEL(RIG_MODEL_FLRIG),
     .model_name = "FLRig",
     .mfg_name = "FLRig",
-    .version = "20210407",
+    .version = "20210408",
     .copyright = "LGPL",
     .status = RIG_STATUS_STABLE,
     .rig_type = RIG_TYPE_TRANSCEIVER,
@@ -852,7 +852,11 @@ static int flrig_open(RIG *rig)
     value_t val;
     val.i = 1; // we'll try fast and if it fails turn it off
     priv->has_set_freq_fast = 1;
+#if 0
     priv->has_set_ptt_fast = 1; // they both will be there
+#else
+    priv->has_set_ptt_fast = 0; // Broken in FLRig 1.3.54.14 and before
+#endif
     rig_set_ext_parm(rig, TOK_FLRIG_FAST_SET_FREQ, val);
     rig_set_ext_parm(rig, TOK_FLRIG_FAST_SET_PTT, val);
 
@@ -1253,7 +1257,15 @@ static int flrig_set_ptt(RIG *rig, vfo_t vfo, ptt_t ptt)
     sprintf(cmd_arg,
             "<params><param><value><i4>%d</i4></value></param></params>",
             ptt);
-    retval = flrig_transaction(rig, "rig.set_ptt", cmd_arg, NULL, 0);
+
+    value_t val;
+    char *cmd = "rig.set_ptt";
+    rig_get_ext_parm(rig, TOK_FLRIG_FAST_SET_PTT, &val);
+    rig_debug(RIG_DEBUG_VERBOSE, "%s: fast_set_ptt=%d\n", __func__, val.i);
+
+    if (val.i) { cmd = "rig.set_ptt_fast"; }
+
+    retval = flrig_transaction(rig, cmd, cmd_arg, NULL, 0);
 
     if (retval != RIG_OK)
     {

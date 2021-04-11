@@ -767,6 +767,7 @@ int HAMLIB_API rig_open(RIG *rig)
 
     if (status < 0)
     {
+        rs->comm_state = 0;
         RETURNFUNC(status);
     }
 
@@ -1281,7 +1282,7 @@ int HAMLIB_API rig_set_twiddle(RIG *rig, int seconds)
 
     if (CHECK_RIG_ARG(rig))
     {
-        RETURNFUNC(-RIG_EINVAL);
+        RETURNFUNC(-RIG_EIO);
     }
 
     rig->state.twiddle_timeout = seconds;
@@ -1306,7 +1307,7 @@ int HAMLIB_API rig_set_uplink(RIG *rig, int val)
 
     if (CHECK_RIG_ARG(rig))
     {
-        RETURNFUNC(-RIG_EINVAL);
+        RETURNFUNC(-RIG_EIO);
     }
 
     rig->state.uplink = val;
@@ -1332,7 +1333,7 @@ int HAMLIB_API rig_get_twiddle(RIG *rig, int *seconds)
 
     if (CHECK_RIG_ARG(rig) || !seconds)
     {
-        RETURNFUNC(-RIG_EINVAL);
+        RETURNFUNC(-RIG_EIO);
     }
 
     *seconds = rig->state.twiddle_timeout;
@@ -1694,7 +1695,7 @@ int HAMLIB_API rig_set_freq(RIG *rig, vfo_t vfo, freq_t freq)
 
     if (CHECK_RIG_ARG(rig))
     {
-        RETURNFUNC(-RIG_EINVAL);
+        RETURNFUNC(-RIG_EIO);
     }
 
     caps = rig->caps;
@@ -1883,18 +1884,20 @@ int HAMLIB_API rig_get_freq(RIG *rig, vfo_t vfo, freq_t *freq)
     rmode_t mode;
     pbwidth_t width;
 
-    rig_debug(RIG_DEBUG_VERBOSE, "%s called vfo=%s\n", __func__, rig_strvfo(vfo));
-    cache_show(rig, __func__, __LINE__);
-
-#if 0 // don't think we really need this check
-
-    if (CHECK_RIG_ARG(rig) || !freq)
+    if (CHECK_RIG_ARG(rig))
     {
-        rig_debug(RIG_DEBUG_TRACE, "%s: rig or freq ptr invalid\n", __func__);
+        RETURNFUNC(-RIG_EIO);
+    }
+
+    if (!freq)
+    {
+        rig_debug(RIG_DEBUG_TRACE, "%s: freq ptr invalid\n", __func__);
         RETURNFUNC(-RIG_EINVAL);
     }
 
-#endif
+    rig_debug(RIG_DEBUG_VERBOSE, "%s called vfo=%s\n", __func__, rig_strvfo(vfo));
+    cache_show(rig, __func__, __LINE__);
+
 
     curr_vfo = rig->state.current_vfo; // save vfo for restore later
 
@@ -2116,7 +2119,7 @@ int HAMLIB_API rig_set_mode(RIG *rig, vfo_t vfo, rmode_t mode, pbwidth_t width)
 
     if (CHECK_RIG_ARG(rig))
     {
-        RETURNFUNC(-RIG_EINVAL);
+        RETURNFUNC(-RIG_EIO);
     }
 
     caps = rig->caps;
@@ -2203,7 +2206,12 @@ int HAMLIB_API rig_get_mode(RIG *rig,
 
     ENTERFUNC;
 
-    if (CHECK_RIG_ARG(rig) || !mode || !width)
+    if (CHECK_RIG_ARG(rig))
+    {
+        RETURNFUNC(-RIG_EIO);
+    }
+
+    if (!mode || !width)
     {
         RETURNFUNC(-RIG_EINVAL);
     }
@@ -2476,7 +2484,7 @@ int HAMLIB_API rig_set_vfo(RIG *rig, vfo_t vfo)
 
     if (CHECK_RIG_ARG(rig))
     {
-        RETURNFUNC(-RIG_EINVAL);
+        RETURNFUNC(-RIG_EIO);
     }
 
     if (vfo == RIG_VFO_CURR) { RETURNFUNC(RIG_OK); }
@@ -2517,7 +2525,7 @@ int HAMLIB_API rig_set_vfo(RIG *rig, vfo_t vfo)
 
     if (retcode == RIG_OK)
     {
-        rig->state.current_vfo = vfo;
+        vfo = rig->state.current_vfo; // vfo may change in the rig backend
         rig->state.cache.vfo = vfo;
         elapsed_ms(&rig->state.cache.time_vfo, HAMLIB_ELAPSED_SET);
         rig_debug(RIG_DEBUG_TRACE, "%s: rig->state.current_vfo=%s\n", __func__,
@@ -2586,7 +2594,12 @@ int HAMLIB_API rig_get_vfo(RIG *rig, vfo_t *vfo)
 
     if (CHECK_RIG_ARG(rig) || !vfo)
     {
-        rig_debug(RIG_DEBUG_ERR, "%s: no rig and/or vfo?  rig=%p, vfo=%p\n", __func__,
+        RETURNFUNC(-RIG_EIO);
+    }
+
+    if (!vfo)
+    {
+        rig_debug(RIG_DEBUG_ERR, "%s: no vfo?  rig=%p, vfo=%p\n", __func__,
                   rig, vfo);
         RETURNFUNC(-RIG_EINVAL);
     }
@@ -2660,7 +2673,7 @@ int HAMLIB_API rig_set_ptt(RIG *rig, vfo_t vfo, ptt_t ptt)
 
     if (CHECK_RIG_ARG(rig))
     {
-        RETURNFUNC(-RIG_EINVAL);
+        RETURNFUNC(-RIG_EIO);
     }
 
     caps = rig->caps;
@@ -2914,7 +2927,12 @@ int HAMLIB_API rig_get_ptt(RIG *rig, vfo_t vfo, ptt_t *ptt)
 
     ENTERFUNC;
 
-    if (CHECK_RIG_ARG(rig) || !ptt)
+    if (CHECK_RIG_ARG(rig))
+    {
+        RETURNFUNC(-RIG_EIO);
+    }
+
+    if (!ptt)
     {
         RETURNFUNC(-RIG_EINVAL);
     }
@@ -3148,7 +3166,12 @@ int HAMLIB_API rig_get_dcd(RIG *rig, vfo_t vfo, dcd_t *dcd)
 
     ENTERFUNC;
 
-    if (CHECK_RIG_ARG(rig) || !dcd)
+    if (CHECK_RIG_ARG(rig))
+    {
+        RETURNFUNC(-RIG_EIO);
+    }
+
+    if (!dcd)
     {
         RETURNFUNC(-RIG_EINVAL);
     }
@@ -3257,7 +3280,7 @@ int HAMLIB_API rig_set_rptr_shift(RIG *rig, vfo_t vfo, rptr_shift_t rptr_shift)
 
     if (CHECK_RIG_ARG(rig))
     {
-        RETURNFUNC(-RIG_EINVAL);
+        RETURNFUNC(-RIG_EIO);
     }
 
     caps = rig->caps;
@@ -3323,7 +3346,12 @@ int HAMLIB_API rig_get_rptr_shift(RIG *rig, vfo_t vfo, rptr_shift_t *rptr_shift)
 
     ENTERFUNC;
 
-    if (CHECK_RIG_ARG(rig) || !rptr_shift)
+    if (CHECK_RIG_ARG(rig))
+    {
+        RETURNFUNC(-RIG_EIO);
+    }
+
+    if (!rptr_shift)
     {
         RETURNFUNC(-RIG_EINVAL);
     }
@@ -3393,7 +3421,7 @@ int HAMLIB_API rig_set_rptr_offs(RIG *rig, vfo_t vfo, shortfreq_t rptr_offs)
 
     if (CHECK_RIG_ARG(rig))
     {
-        RETURNFUNC(-RIG_EINVAL);
+        RETURNFUNC(-RIG_EIO);
     }
 
     caps = rig->caps;
@@ -3459,7 +3487,12 @@ int HAMLIB_API rig_get_rptr_offs(RIG *rig, vfo_t vfo, shortfreq_t *rptr_offs)
 
     ENTERFUNC;
 
-    if (CHECK_RIG_ARG(rig) || !rptr_offs)
+    if (CHECK_RIG_ARG(rig))
+    {
+        RETURNFUNC(-RIG_EIO);
+    }
+
+    if (!rptr_offs)
     {
         RETURNFUNC(-RIG_EINVAL);
     }
@@ -3527,7 +3560,7 @@ int HAMLIB_API rig_set_split_freq(RIG *rig, vfo_t vfo, freq_t tx_freq)
 
     if (CHECK_RIG_ARG(rig))
     {
-        RETURNFUNC(-RIG_EINVAL);
+        RETURNFUNC(-RIG_EIO);
     }
 
     rig_debug(RIG_DEBUG_VERBOSE, "%s called vfo=%s, curr_vfo=%s\n", __func__,
@@ -3663,7 +3696,12 @@ int HAMLIB_API rig_get_split_freq(RIG *rig, vfo_t vfo, freq_t *tx_freq)
 
     ENTERFUNC;
 
-    if (CHECK_RIG_ARG(rig) || !tx_freq)
+    if (CHECK_RIG_ARG(rig))
+    {
+        RETURNFUNC(-RIG_EIO);
+    }
+
+    if (!tx_freq)
     {
         RETURNFUNC(-RIG_EINVAL);
     }
@@ -3740,10 +3778,8 @@ int HAMLIB_API rig_get_split_freq(RIG *rig, vfo_t vfo, freq_t *tx_freq)
     if (caps->set_vfo)
     {
         // If we started with RIG_VFO_CURR we need to choose VFO_A/MAIN as appropriate to return to
-        if (save_vfo == RIG_VFO_CURR)
-        {
-            save_vfo = VFO_HAS_A_B_ONLY ? RIG_VFO_A : RIG_VFO_MAIN;
-        }
+        //rig_debug(RIG_DEBUG_TRACE, "%s: save_vfo=%s, hasmainsub=%d\n",__func__, rig_strvfo(save_vfo), VFO_HAS_MAIN_SUB);
+        save_vfo = VFO_HAS_MAIN_SUB ? RIG_VFO_MAIN : RIG_VFO_A;
 
         rig_debug(RIG_DEBUG_TRACE, "%s: restoring vfo=%s\n", __func__,
                   rig_strvfo(save_vfo));
@@ -3797,7 +3833,7 @@ int HAMLIB_API rig_set_split_mode(RIG *rig,
 
     if (CHECK_RIG_ARG(rig))
     {
-        RETURNFUNC(-RIG_EINVAL);
+        RETURNFUNC(-RIG_EIO);
     }
 
     caps = rig->caps;
@@ -3906,7 +3942,12 @@ int HAMLIB_API rig_get_split_mode(RIG *rig, vfo_t vfo, rmode_t *tx_mode,
 
     ENTERFUNC;
 
-    if (CHECK_RIG_ARG(rig) || !tx_mode || !tx_width)
+    if (CHECK_RIG_ARG(rig))
+    {
+        RETURNFUNC(-RIG_EIO);
+    }
+
+    if (!tx_mode || !tx_width)
     {
         RETURNFUNC(-RIG_EINVAL);
     }
@@ -4031,7 +4072,7 @@ int HAMLIB_API rig_set_split_freq_mode(RIG *rig,
 
     if (CHECK_RIG_ARG(rig))
     {
-        RETURNFUNC(-RIG_EINVAL);
+        RETURNFUNC(-RIG_EIO);
     }
 
     caps = rig->caps;
@@ -4130,7 +4171,12 @@ int HAMLIB_API rig_get_split_freq_mode(RIG *rig,
 
     ENTERFUNC;
 
-    if (CHECK_RIG_ARG(rig) || !tx_freq || !tx_mode || !tx_width)
+    if (CHECK_RIG_ARG(rig))
+    {
+        RETURNFUNC(-RIG_EIO);
+    }
+
+    if (!tx_freq || !tx_mode || !tx_width)
     {
         RETURNFUNC(-RIG_EINVAL);
     }
@@ -4182,7 +4228,7 @@ int HAMLIB_API rig_set_split_vfo(RIG *rig,
 
     if (CHECK_RIG_ARG(rig))
     {
-        RETURNFUNC(-RIG_EINVAL);
+        RETURNFUNC(-RIG_EIO);
     }
 
     caps = rig->caps;
@@ -4279,7 +4325,12 @@ int HAMLIB_API rig_get_split_vfo(RIG *rig,
 
     ENTERFUNC;
 
-    if (CHECK_RIG_ARG(rig) || !split || !tx_vfo)
+    if (CHECK_RIG_ARG(rig))
+    {
+        RETURNFUNC(-RIG_EIO);
+    }
+
+    if (!split || !tx_vfo)
     {
         RETURNFUNC(-RIG_EINVAL);
     }
@@ -4383,7 +4434,7 @@ int HAMLIB_API rig_set_rit(RIG *rig, vfo_t vfo, shortfreq_t rit)
 
     if (CHECK_RIG_ARG(rig))
     {
-        RETURNFUNC(-RIG_EINVAL);
+        RETURNFUNC(-RIG_EIO);
     }
 
     caps = rig->caps;
@@ -4450,7 +4501,12 @@ int HAMLIB_API rig_get_rit(RIG *rig, vfo_t vfo, shortfreq_t *rit)
 
     ENTERFUNC;
 
-    if (CHECK_RIG_ARG(rig) || !rit)
+    if (CHECK_RIG_ARG(rig))
+    {
+        RETURNFUNC(-RIG_EIO);
+    }
+
+    if (!rit)
     {
         RETURNFUNC(-RIG_EINVAL);
     }
@@ -4521,7 +4577,7 @@ int HAMLIB_API rig_set_xit(RIG *rig, vfo_t vfo, shortfreq_t xit)
 
     if (CHECK_RIG_ARG(rig))
     {
-        RETURNFUNC(-RIG_EINVAL);
+        RETURNFUNC(-RIG_EIO);
     }
 
     caps = rig->caps;
@@ -4588,7 +4644,12 @@ int HAMLIB_API rig_get_xit(RIG *rig, vfo_t vfo, shortfreq_t *xit)
 
     ENTERFUNC;
 
-    if (CHECK_RIG_ARG(rig) || !xit)
+    if (CHECK_RIG_ARG(rig))
+    {
+        RETURNFUNC(-RIG_EIO);
+    }
+
+    if (!xit)
     {
         RETURNFUNC(-RIG_EINVAL);
     }
@@ -4659,7 +4720,7 @@ int HAMLIB_API rig_set_ts(RIG *rig, vfo_t vfo, shortfreq_t ts)
 
     if (CHECK_RIG_ARG(rig))
     {
-        RETURNFUNC(-RIG_EINVAL);
+        RETURNFUNC(-RIG_EIO);
     }
 
     caps = rig->caps;
@@ -4725,7 +4786,12 @@ int HAMLIB_API rig_get_ts(RIG *rig, vfo_t vfo, shortfreq_t *ts)
 
     ENTERFUNC;
 
-    if (CHECK_RIG_ARG(rig) || !ts)
+    if (CHECK_RIG_ARG(rig))
+    {
+        RETURNFUNC(-RIG_EIO);
+    }
+
+    if (!ts)
     {
         RETURNFUNC(-RIG_EINVAL);
     }
@@ -4800,7 +4866,7 @@ int HAMLIB_API rig_set_ant(RIG *rig, vfo_t vfo, ant_t ant, value_t option)
 
     if (CHECK_RIG_ARG(rig))
     {
-        RETURNFUNC(-RIG_EINVAL);
+        RETURNFUNC(-RIG_EIO);
     }
 
     caps = rig->caps;
@@ -4874,7 +4940,12 @@ int HAMLIB_API rig_get_ant(RIG *rig, vfo_t vfo, ant_t ant, value_t *option,
 
     *ant_tx = *ant_rx = RIG_ANT_UNKNOWN;
 
-    if (CHECK_RIG_ARG(rig) || !ant_curr)
+    if (CHECK_RIG_ARG(rig))
+    {
+        RETURNFUNC(-RIG_EIO);
+    }
+
+    if (ant_curr)
     {
         RETURNFUNC(-RIG_EINVAL);
     }
@@ -5102,7 +5173,7 @@ int HAMLIB_API rig_set_powerstat(RIG *rig, powerstat_t status)
 
     if (CHECK_RIG_ARG(rig))
     {
-        RETURNFUNC(-RIG_EINVAL);
+        RETURNFUNC(-RIG_EIO);
     }
 
     if (rig->caps->set_powerstat == NULL)
@@ -5136,7 +5207,12 @@ int HAMLIB_API rig_get_powerstat(RIG *rig, powerstat_t *status)
 
     ENTERFUNC;
 
-    if (CHECK_RIG_ARG(rig) || !status)
+    if (CHECK_RIG_ARG(rig))
+    {
+        RETURNFUNC(-RIG_EIO);
+    }
+
+    if (!status)
     {
         RETURNFUNC(-RIG_EINVAL);
     }
@@ -5173,7 +5249,7 @@ int HAMLIB_API rig_reset(RIG *rig, reset_t reset)
 
     if (CHECK_RIG_ARG(rig))
     {
-        RETURNFUNC(-RIG_EINVAL);
+        RETURNFUNC(-RIG_EIO);
     }
 
     if (rig->caps->reset == NULL)
@@ -5311,7 +5387,7 @@ int HAMLIB_API rig_vfo_op(RIG *rig, vfo_t vfo, vfo_op_t op)
 
     if (CHECK_RIG_ARG(rig))
     {
-        RETURNFUNC(-RIG_EINVAL);
+        RETURNFUNC(-RIG_EIO);
     }
 
     caps = rig->caps;
@@ -5413,7 +5489,7 @@ int HAMLIB_API rig_scan(RIG *rig, vfo_t vfo, scan_t scan, int ch)
 
     if (CHECK_RIG_ARG(rig))
     {
-        RETURNFUNC(-RIG_EINVAL);
+        RETURNFUNC(-RIG_EIO);
     }
 
     caps = rig->caps;
@@ -5480,7 +5556,12 @@ int HAMLIB_API rig_send_dtmf(RIG *rig, vfo_t vfo, const char *digits)
 
     ENTERFUNC;
 
-    if (CHECK_RIG_ARG(rig) || !digits)
+    if (CHECK_RIG_ARG(rig))
+    {
+        RETURNFUNC(-RIG_EIO);
+    }
+
+    if (!digits)
     {
         RETURNFUNC(-RIG_EINVAL);
     }
@@ -5549,7 +5630,12 @@ int HAMLIB_API rig_recv_dtmf(RIG *rig, vfo_t vfo, char *digits, int *length)
 
     ENTERFUNC;
 
-    if (CHECK_RIG_ARG(rig) || !digits || !length)
+    if (CHECK_RIG_ARG(rig))
+    {
+        RETURNFUNC(-RIG_EIO);
+    }
+
+    if (!digits || !length)
     {
         RETURNFUNC(-RIG_EINVAL);
     }
@@ -5617,7 +5703,12 @@ int HAMLIB_API rig_send_morse(RIG *rig, vfo_t vfo, const char *msg)
 
     ENTERFUNC;
 
-    if (CHECK_RIG_ARG(rig) || !msg)
+    if (CHECK_RIG_ARG(rig))
+    {
+        RETURNFUNC(-RIG_EIO);
+    }
+
+    if (!msg)
     {
         RETURNFUNC(-RIG_EINVAL);
     }
@@ -5835,7 +5926,7 @@ int HAMLIB_API rig_send_voice_mem(RIG *rig, vfo_t vfo, int ch)
 
     if CHECK_RIG_ARG(rig)
     {
-        RETURNFUNC(-RIG_EINVAL);
+        RETURNFUNC(-RIG_EIO);
     }
 
     caps = rig->caps;
@@ -5991,7 +6082,7 @@ int HAMLIB_API rig_get_vfo_info(RIG *rig, vfo_t vfo, freq_t *freq,
 
     if (CHECK_RIG_ARG(rig))
     {
-        RETURNFUNC(-RIG_EINVAL);
+        RETURNFUNC(-RIG_EIO);
     }
 
     //if (vfo == RIG_VFO_CURR) { vfo = rig->state.current_vfo; }
@@ -6047,7 +6138,7 @@ int HAMLIB_API rig_get_vfo_list(RIG *rig, char *buf, int buflen)
 
     if (CHECK_RIG_ARG(rig))
     {
-        RETURNFUNC(-RIG_EINVAL);
+        RETURNFUNC(-RIG_EIO);
     }
 
     rig_sprintf_vfo(buf, buflen - 1, rig->state.vfo_list);

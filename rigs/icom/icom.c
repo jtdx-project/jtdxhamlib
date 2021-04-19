@@ -1584,6 +1584,8 @@ int icom_set_dsp_flt(RIG *rig, rmode_t mode, pbwidth_t width)
     unsigned char fw_sub_cmd = RIG_MODEL_IC7200 == rig->caps->rig_model ? 0x02 :
                                S_MEM_FILT_WDTH;
 
+    ENTERFUNC;
+
     if (RIG_PASSBAND_NOCHANGE == width)
     {
         RETURNFUNC(RIG_OK);
@@ -1682,7 +1684,7 @@ int icom_set_mode_with_data(RIG *rig, vfo_t vfo, rmode_t mode,
                       || rig->caps->rig_model == RIG_MODEL_IC9700
                       || rig->caps->rig_model == RIG_MODEL_IC705;
 
-    rig_debug(RIG_DEBUG_VERBOSE, "%s called\n", __func__);
+    ENTERFUNC;
 
     switch (mode)
     {
@@ -2131,6 +2133,7 @@ int icom_get_mode(RIG *rig, vfo_t vfo, rmode_t *mode, pbwidth_t *width)
                 rig_set_vfo(rig, RIG_VFO_B);
                 retval = icom_get_dsp_flt(rig, *mode);
                 *width = retval;
+                if (*width == 0) *width = rig->state.cache.widthMainA; // we'll use VFOA's width
                 // dont' really care about cache time here
                 // this is just to prevent vfo swapping while getting width
                 rig->state.cache.widthMainB = retval;

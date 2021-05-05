@@ -164,6 +164,8 @@ declare_proto_rig(set_xit);
 declare_proto_rig(get_xit);
 declare_proto_rig(set_mode);
 declare_proto_rig(get_mode);
+declare_proto_rig(get_modes);
+declare_proto_rig(get_mode_bandwidths);
 declare_proto_rig(set_vfo);
 declare_proto_rig(get_vfo);
 declare_proto_rig(get_rig_info);
@@ -251,7 +253,7 @@ declare_proto_rig(pause);
 static struct test_table test_list[] =
 {
 #if 0 // implement set_freq VFO later if it can be detected
-//    { 'F',  "set_freq",         ACTION(set_freq),       ARG_IN1 | ARG_OUT1, "Frequency" },
+    { 'F',  "set_freq",         ACTION(set_freq),       ARG_IN1 | ARG_OUT1, "Frequency" },
     { 'f',  "get_freq",         ACTION(get_freq),       ARG_OUT, "Frequency", "VFO" },
 #else
     { 'F',  "set_freq",         ACTION(set_freq),       ARG_IN1, "Frequency" },
@@ -333,9 +335,11 @@ static struct test_table test_list[] =
     { 0x8f, "dump_state",       ACTION(dump_state),     ARG_OUT | ARG_NOVFO },
     { 0xf0, "chk_vfo",          ACTION(chk_vfo),        ARG_NOVFO, "ChkVFO" },   /* rigctld only--check for VFO mode */
     { 0xf2, "set_vfo_opt",      ACTION(set_vfo_opt),    ARG_NOVFO | ARG_IN, "Status" }, /* turn vfo option on/off */
-    { 0xf3, "get_vfo_info",     ACTION(get_vfo_info),   ARG_IN1 | ARG_OUT4, "Freq", "Mode", "Width", "Split", "SatMode" }, /* get several vfo parameters at once */
+    { 0xf3, "get_vfo_info",     ACTION(get_vfo_info),   ARG_NOVFO | ARG_IN1 | ARG_OUT4, "Freq", "Mode", "Width", "Split", "SatMode" }, /* get several vfo parameters at once */
     { 0xf5, "get_rig_info",     ACTION(get_rig_info),   ARG_NOVFO | ARG_OUT, "RigInfo" }, /* get several vfo parameters at once */
-    { 0xf4,  "get_vfo_list",    ACTION(get_vfo_list),       ARG_OUT | ARG_NOVFO, "VFOs" },
+    { 0xf4, "get_vfo_list",    ACTION(get_vfo_list),   ARG_OUT | ARG_NOVFO, "VFOs" },
+    { 0xf6, "get_modes",       ACTION(get_modes),   ARG_OUT | ARG_NOVFO, "Modes" },
+    { 0xf7, "get_mode_bandwidths", ACTION(get_mode_bandwidths),   ARG_IN | ARG_NOVFO, "Mode" },
     { 0xf1, "halt",             ACTION(halt),           ARG_NOVFO },   /* rigctld only--halt the daemon */
     { 0x8c, "pause",            ACTION(pause),          ARG_IN, "Seconds" },
     { 0x00, "", NULL },
@@ -2221,8 +2225,10 @@ declare_proto_rig(get_rig_info)
     int ret;
     ENTERFUNC;
     ret = rig_get_rig_info(rig, buf, sizeof(buf));
-    if (ret != RIG_OK) RETURNFUNC(ret);
-    fprintf(fout,"%s\n", buf);
+
+    if (ret != RIG_OK) { RETURNFUNC(ret); }
+
+    fprintf(fout, "%s\n", buf);
     RETURNFUNC(RIG_OK);
 }
 
@@ -2292,6 +2298,91 @@ declare_proto_rig(get_vfo_list)
 
     RETURNFUNC(RIG_OK);
 }
+
+/* '\get_modes' */
+declare_proto_rig(get_modes)
+{
+    static char prntbuf[1024];
+    int i;
+    char freqbuf[32];
+
+    ENTERFUNC;
+
+    rig_strrmodes(rig->state.mode_list, prntbuf, sizeof(prntbuf));
+
+    if ((interactive && prompt) || (interactive && !prompt && ext_resp))
+    {
+        fprintf(fout, "%s: ", cmd->arg1);
+    }
+
+    fprintf(fout, "%s%c", prntbuf[0] ? prntbuf : "None", ext_resp);
+
+    fprintf(fout, "\nBandwidths:");
+
+    for (i = 1; i < RIG_MODE_TESTS_MAX; i <<= 1)
+    {
+        pbwidth_t pbnorm = rig_passband_normal(rig, i);
+
+        if (pbnorm == 0)
+        {
+            continue;
+        }
+
+        sprintf_freq(freqbuf, sizeof(freqbuf), pbnorm);
+        fprintf(fout, "\n\t%s\tNormal: %s,\t", rig_strrmode(i), freqbuf);
+
+        sprintf_freq(freqbuf, sizeof(freqbuf), rig_passband_narrow(rig, i));
+        fprintf(fout, "Narrow: %s,\t", freqbuf);
+
+        sprintf_freq(freqbuf, sizeof(freqbuf), rig_passband_wide(rig, i));
+        fprintf(fout, "Wide: %s", freqbuf);
+    }
+
+
+    RETURNFUNC(RIG_OK);
+}
+
+declare_proto_rig(get_mode_bandwidths)
+{
+    int i;
+    char freqbuf[32];
+
+    ENTERFUNC;
+
+    rmode_t mode = rig_parse_mode(arg1);
+
+    for (i = 1; i < RIG_MODE_TESTS_MAX; i <<= 1)
+    {
+        if (i != mode) { continue; }
+
+        if (mode == RIG_MODE_CWR) { mode = RIG_MODE_CW; }
+
+        if (mode == RIG_MODE_RTTYR) { mode = RIG_MODE_RTTY; }
+
+        pbwidth_t pbnorm = rig_passband_normal(rig, i);
+
+        if (pbnorm == 0)
+        {
+            continue;
+        }
+
+//        sprintf_freq(freqbuf, sizeof(freqbuf), pbnorm);
+        snprintf(freqbuf, sizeof(freqbuf), "%ldHz", pbnorm);
+        fprintf(fout, "Mode=%s\n", rig_strrmode(i));
+        fprintf(fout, "Normal=%s\n", freqbuf);
+
+        snprintf(freqbuf, sizeof(freqbuf), "%ldHz", rig_passband_narrow(rig, i));
+        fprintf(fout, "Narrow=%s\n", freqbuf);
+
+        snprintf(freqbuf, sizeof(freqbuf), "%ldHz", rig_passband_wide(rig, i));
+        fprintf(fout, "Wide=%s", freqbuf);
+    }
+
+
+    RETURNFUNC(RIG_OK);
+}
+
+
 
 
 /* 'T' */
@@ -4342,7 +4433,48 @@ declare_proto_rig(dump_state)
         fprintf(fout, "has_get_vfo=%d\n", rig->caps->get_vfo != NULL);
         fprintf(fout, "has_set_freq=%d\n", rig->caps->set_freq != NULL);
         fprintf(fout, "has_get_freq=%d\n", rig->caps->get_freq != NULL);
+        fprintf(fout, "has_set_conf=%d\n", rig->caps->set_conf != NULL);
+        fprintf(fout, "has_get_conf=%d\n", rig->caps->get_conf != NULL);
+#if 0
+        fprintf(fout, "has_set_parm=%d\n", rig->caps->set_parm != NULL);
+        fprintf(fout, "has_get_parm=%d\n", rig->caps->get_parm != NULL);
+        fprintf(fout, "parm_gran=0x%x\n", rig->caps->parm_gran);
+#endif
+        // for the future
+//        fprintf(fout, "has_set_trn=%d\n", rig->caps->set_trn != NULL);
+//        fprintf(fout, "has_get_trn=%d\n", rig->caps->get_trn != NULL);
+        fprintf(fout, "has_power2mW=%d\n", rig->caps->power2mW != NULL);
+        fprintf(fout, "has_mW2power=%d\n", rig->caps->mW2power != NULL);
         fprintf(fout, "timeout=%d\n", rig->caps->timeout);
+
+        if (rig->caps->ctcss_list)
+        {
+            fprintf(fout, "ctcss_list=");
+
+            for (i = 0; i < CTCSS_LIST_SIZE && rig->caps->ctcss_list[i] != 0; i++)
+            {
+                fprintf(fout,
+                        " %u.%1u",
+                        rig->caps->ctcss_list[i] / 10, rig->caps->ctcss_list[i] % 10);
+            }
+
+            fprintf(fout, "\n");
+        }
+
+        if (rig->caps->dcs_list)
+        {
+            fprintf(fout, "dcs_list=");
+
+            for (i = 0; i < DCS_LIST_SIZE && rig->caps->dcs_list[i] != 0; i++)
+            {
+                fprintf(fout,
+                        " %u",
+                        rig->caps->dcs_list[i]);
+            }
+
+            fprintf(fout, "\n");
+        }
+
         fprintf(fout, "done\n");
     }
 

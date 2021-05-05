@@ -4496,6 +4496,7 @@ int icom_get_split_freq(RIG *rig, vfo_t vfo, freq_t *tx_freq)
                                           &ack_len);
 
                 rs->rigport.retry = retry_save;
+
                 if (retval == RIG_OK) // then we're done!!
                 {
                     *tx_freq = from_bcd(ackbuf + 2, (priv->civ_731_mode ? 4 : 5) * 2);
@@ -6614,7 +6615,8 @@ int icom_set_powerstat(RIG *rig, powerstat_t status)
         retval =
             icom_transaction(rig, C_SET_PWR, pwr_sc, NULL, 0, ackbuf, &ack_len);
         rs->rigport.retry = retry;
-        hl_usleep(3000 * 1000); // give it 3 seconds to wake up
+        // why was this sleep here?  We'll try without it
+        //hl_usleep(3000 * 1000); // give it 3 seconds to wake up
 
         break;
 

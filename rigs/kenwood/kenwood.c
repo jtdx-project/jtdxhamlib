@@ -157,7 +157,7 @@ rmode_t kenwood_mode_table[KENWOOD_MODE_TABLE_MAX] =
 /*
  * 38 CTCSS sub-audible tones
  */
-const tone_t kenwood38_ctcss_list[] =
+tone_t kenwood38_ctcss_list[] =
 {
     670,  719,  744,  770,  797,  825,  854,  885,  915,  948,
     974, 1000, 1035, 1072, 1109, 1148, 1188, 1230, 1273, 1318,
@@ -170,7 +170,7 @@ const tone_t kenwood38_ctcss_list[] =
 /*
  * 42 CTCSS sub-audible tones
  */
-const tone_t kenwood42_ctcss_list[] =
+tone_t kenwood42_ctcss_list[] =
 {
     670,  693,  719,  744,  770,  797,  825,  854,  885,  915,  948,
     974, 1000, 1035, 1072, 1109, 1148, 1188, 1230, 1273, 1318,
@@ -184,7 +184,7 @@ const tone_t kenwood42_ctcss_list[] =
  *
  * See enum rig_conf_e and struct confparams in rig.h
  */
-const struct confparams kenwood_cfg_params[] =
+struct confparams kenwood_cfg_params[] =
 {
     {
         TOK_FINE, "fine", "Fine", "Fine step mode",
@@ -337,7 +337,9 @@ transaction_write:
         int skip = strncmp(cmdstr, "RX", 2) == 0;
         skip |= strncmp(cmdstr, "RU", 2) == 0;
         skip |= strncmp(cmdstr, "RD", 2) == 0;
-        if (skip) {
+
+        if (skip)
+        {
             goto transaction_quit;
         }
     }
@@ -1784,11 +1786,13 @@ int kenwood_set_rit(RIG *rig, vfo_t vfo, shortfreq_t rit)
     // by getting current rit we can determine how to handle change
     // we just use curr_rit - rit to determine how far we need to move
     // No need to zero out rit
-    retval = kenwood_get_rit(rig,RIG_VFO_CURR,&curr_rit);
+    retval = kenwood_get_rit(rig, RIG_VFO_CURR, &curr_rit);
+
     if (retval != RIG_OK)
     {
         RETURNFUNC(retval);
     }
+
 #if 0 // no longer needed if diff can be done
     retval = kenwood_transaction(rig, "RC", NULL, 0);
 
@@ -1796,6 +1800,7 @@ int kenwood_set_rit(RIG *rig, vfo_t vfo, shortfreq_t rit)
     {
         RETURNFUNC(retval);
     }
+
 #endif
 
     if (rit == 0 && curr_rit == 0)
@@ -1806,15 +1811,18 @@ int kenwood_set_rit(RIG *rig, vfo_t vfo, shortfreq_t rit)
     if (priv->has_rit2)
     {
         diff = rit - curr_rit;
-        rig_debug(RIG_DEBUG_TRACE, "%s: rit=%ld, curr_rit=%ld, diff=%d\n", __func__, rit, curr_rit, diff);
+        rig_debug(RIG_DEBUG_TRACE, "%s: rit=%ld, curr_rit=%ld, diff=%d\n", __func__,
+                  rit, curr_rit, diff);
         snprintf(buf, sizeof(buf), "R%c%05d", (diff > 0) ? 'U' : 'D', abs((int) diff));
         retval = kenwood_transaction(rig, buf, NULL, 0);
     }
     else
     {
         snprintf(buf, sizeof(buf), "R%c", (rit > 0) ? 'U' : 'D');
-        diff = labs(((curr_rit - rit) + (curr_rit - rit) >= 0 ? 5 : -5) / 10); // round to nearest 10Hz
-        rig_debug(RIG_DEBUG_TRACE, "%s: rit=%ld, curr_rit=%ld, diff=%d\n", __func__, rit, curr_rit, diff);
+        diff = labs(((curr_rit - rit) + (curr_rit - rit) >= 0 ? 5 : -5) /
+                    10); // round to nearest 10Hz
+        rig_debug(RIG_DEBUG_TRACE, "%s: rit=%ld, curr_rit=%ld, diff=%d\n", __func__,
+                  rit, curr_rit, diff);
         rig_debug(RIG_DEBUG_TRACE, "%s: rit change loop=%d\n", __func__, diff);
 
         for (i = 0; i < diff; i++)

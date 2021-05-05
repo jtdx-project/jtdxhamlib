@@ -1005,6 +1005,7 @@ int HAMLIB_API rig_open(RIG *rig)
      * trigger state->current_vfo first retrieval
      */
     TRACE;
+
     if (rig_get_vfo(rig, &rs->current_vfo) == RIG_OK)
     {
         rs->tx_vfo = rs->current_vfo;
@@ -1744,10 +1745,13 @@ int HAMLIB_API rig_set_freq(RIG *rig, vfo_t vfo, freq_t freq)
         {
             rig_debug(RIG_DEBUG_TRACE, "%s: Ignoring set_freq due to VFO twiddling\n",
                       __func__);
-            if (vfo != vfo_save && vfo != RIG_VFO_CURR) {
+
+            if (vfo != vfo_save && vfo != RIG_VFO_CURR)
+            {
                 TRACE;
                 rig_set_vfo(rig, vfo_save);
             }
+
             RETURNFUNC(
                 RIG_OK); // would be better as error but other software won't handle errors
         }
@@ -1814,10 +1818,13 @@ int HAMLIB_API rig_set_freq(RIG *rig, vfo_t vfo, freq_t freq)
         {
             rig_debug(RIG_DEBUG_TRACE, "%s: Ignoring set_freq due to VFO twiddling\n",
                       __func__);
-            if (vfo != vfo_save && vfo != RIG_VFO_CURR) {
+
+            if (vfo != vfo_save && vfo != RIG_VFO_CURR)
+            {
                 TRACE;
                 rig_set_vfo(rig, vfo_save);
             }
+
             RETURNFUNC(
                 RIG_OK); // would be better as error but other software won't handle errors
         }
@@ -1862,7 +1869,8 @@ int HAMLIB_API rig_set_freq(RIG *rig, vfo_t vfo, freq_t freq)
 
     set_cache_freq(rig, vfo, freq_new);
 
-    if (vfo != vfo_save && vfo != RIG_VFO_CURR) {
+    if (vfo != vfo_save && vfo != RIG_VFO_CURR)
+    {
         TRACE;
         rig_set_vfo(rig, vfo_save);
     }
@@ -1914,7 +1922,7 @@ int HAMLIB_API rig_get_freq(RIG *rig, vfo_t vfo, freq_t *freq)
 
     vfo = vfo_fixup(rig, vfo);
 
-    if (vfo == RIG_VFO_CURR) vfo = curr_vfo;
+    if (vfo == RIG_VFO_CURR) { vfo = curr_vfo; }
 
     // we ignore get_freq for the uplink VFO for gpredict to behave better
     if ((rig->state.uplink == 1 && vfo == RIG_VFO_SUB)
@@ -2146,8 +2154,9 @@ int HAMLIB_API rig_set_mode(RIG *rig, vfo_t vfo, rmode_t mode, pbwidth_t width)
         RETURNFUNC(-RIG_ENAVAIL);
     }
 
+    if (vfo == RIG_VFO_CURR) vfo = rig->state.current_vfo;
+
     if ((caps->targetable_vfo & RIG_TARGETABLE_MODE)
-            || vfo == RIG_VFO_CURR
             || vfo == rig->state.current_vfo)
     {
         TRACE;
@@ -2358,6 +2367,10 @@ pbwidth_t HAMLIB_API rig_passband_normal(RIG *rig, rmode_t mode)
     }
 
     rs = &rig->state;
+
+    // return CW for CWR and RTTY for RTTYR
+    if (mode == RIG_MODE_CWR) mode = RIG_MODE_CW;
+    if (mode == RIG_MODE_RTTYR) mode = RIG_MODE_RTTY;
 
     for (i = 0; i < HAMLIB_FLTLSTSIZ && rs->filters[i].modes; i++)
     {
@@ -2929,6 +2942,11 @@ int HAMLIB_API rig_set_ptt(RIG *rig, vfo_t vfo, ptt_t ptt)
     {
         rs->transmit = ptt != RIG_PTT_OFF;
     }
+
+    // some rigs like the FT-2000 with the SCU-17 need just a bit of time to let the relays work
+    // can affect fake it mode in WSJT-X when the rig is still in transmit and freq change
+    // is requested on a rig that can't change freq on a transmitting VFO
+    if (ptt != RIG_PTT_ON) hl_usleep(10*1000);
 
     rig->state.cache.ptt = ptt;
     elapsed_ms(&rig->state.cache.time_ptt, HAMLIB_ELAPSED_SET);
@@ -3950,7 +3968,9 @@ int HAMLIB_API rig_set_split_mode(RIG *rig,
     }
     else
     {
-        rig_debug(RIG_DEBUG_WARN, "%s: rig does not have set_vfo or vfo_op. Assuming mode already set\n", __func__); 
+        rig_debug(RIG_DEBUG_WARN,
+                  "%s: rig does not have set_vfo or vfo_op. Assuming mode already set\n",
+                  __func__);
         RETURNFUNC(RIG_OK);
     }
 
@@ -6201,6 +6221,52 @@ const char *HAMLIB_API rig_get_info(RIG *rig)
     return (rig->caps->get_info(rig));
 }
 
+
+void make_crc_table(unsigned long crcTable[])
+{
+    unsigned long POLYNOMIAL = 0xEDB88320;
+    unsigned long remainder;
+    unsigned char b = 0;
+
+    do
+    {
+        // Start with the data byte
+        remainder = b;
+
+        for (unsigned long bit = 8; bit > 0; --bit)
+        {
+            if (remainder & 1)
+            {
+                remainder = (remainder >> 1) ^ POLYNOMIAL;
+            }
+            else
+            {
+                remainder = (remainder >> 1);
+            }
+        }
+
+        crcTable[(size_t)b] = remainder;
+    }
+    while (0 != ++b);
+}
+
+static unsigned long crcTable[256];
+
+unsigned long gen_crc(unsigned char *p, size_t n)
+{
+    unsigned long crc = 0xfffffffful;
+    size_t i;
+
+    if (crcTable[0] == 0) { make_crc_table(crcTable); }
+
+    for (i = 0; i < n; i++)
+    {
+        crc = crcTable[*p++ ^ (crc & 0xff)] ^ (crc >> 8);
+    }
+
+    return ((~crc) & 0xffffffff);
+}
+
 /**
  * \brief get freq/mode/width for requested VFO
  * \param rig   The rig handle
@@ -6209,38 +6275,59 @@ const char *HAMLIB_API rig_get_info(RIG *rig)
  */
 int HAMLIB_API rig_get_rig_info(RIG *rig, char *response, int max_response_len)
 {
-    vfo_t vfoA,vfoB;
-    freq_t freqA,freqB;
-    rmode_t modeA,modeB;
-    pbwidth_t widthA,widthB;
+    vfo_t vfoA, vfoB;
+    freq_t freqA, freqB;
+    rmode_t modeA, modeB;
+    char *modeAstr, *modeBstr;
+    pbwidth_t widthA, widthB;
     split_t split;
     int satmode;
     int ret;
     int rxa, txa, rxb, txb;
     response[0] = 0;
+    char crcstr[16];
 
     vfoA = vfo_fixup(rig, RIG_VFO_A);
     vfoB = vfo_fixup(rig, RIG_VFO_B);
-    ret = rig_get_vfo_info(rig, vfoA, &freqA, &modeA, &widthA, &split, &satmode); 
-    if (ret != RIG_OK) RETURNFUNC(ret);
+    ret = rig_get_vfo_info(rig, vfoA, &freqA, &modeA, &widthA, &split, &satmode);
+
+    if (ret != RIG_OK) { RETURNFUNC(ret); }
+
     // we need both vfo and mode targtable to avoid vfo swapping
-    if ((rig->caps->targetable_vfo & RIG_TARGETABLE_FREQ) && (rig->caps->targetable_vfo & RIG_TARGETABLE_MODE))
+    if ((rig->caps->targetable_vfo & RIG_TARGETABLE_FREQ)
+            && (rig->caps->targetable_vfo & RIG_TARGETABLE_MODE))
     {
-        ret = rig_get_vfo_info(rig, vfoB, &freqB, &modeB, &widthB, &split, &satmode); 
-        if (ret != RIG_OK) RETURNFUNC(ret);
+        ret = rig_get_vfo_info(rig, vfoB, &freqB, &modeB, &widthB, &split, &satmode);
+
+        if (ret != RIG_OK) { RETURNFUNC(ret); }
     }
     else
     {
         // we'll use cached info instead of doing the vfo swapping
         int cache_ms_freq, cache_ms_mode, cache_ms_width;
-        rig_get_cache(rig, vfoB, &freqB, &cache_ms_freq, &modeB, &cache_ms_mode, &widthB,
+        rig_get_cache(rig, vfoB, &freqB, &cache_ms_freq, &modeB, &cache_ms_mode,
+                      &widthB,
                       &cache_ms_width);
     }
+
+    modeAstr = (char *)rig_strrmode(modeA);
+    modeBstr = (char *)rig_strrmode(modeB);
+
+    if (modeAstr[0] == 0) { modeAstr = "None"; }
+
+    if (modeBstr[0] == 0) { modeBstr = "None"; }
+
     rxa = 1;
     txa = split == 0;
     rxb = !rxa;
     txb = split == 1;
-    snprintf(response,max_response_len,"VFO=%s Freq=%.0f Mode=%s Width=%d RX=%d TX=%d\nVFO=%s Freq=%.0f Mode=%s Width=%d RX=%d TX=%d\nSplit=%d SatMode=%d", rig_strvfo(vfoA), freqA, rig_strrmode(modeA), (int)widthA, rxa, txa, rig_strvfo(vfoB), freqB, rig_strrmode(modeB), (int)widthB, rxb, txb, split, satmode);
+    snprintf(response, max_response_len,
+             "VFO=%s Freq=%.0f Mode=%s Width=%d RX=%d TX=%d\nVFO=%s Freq=%.0f Mode=%s Width=%d RX=%d TX=%d\nSplit=%d SatMode=%d\nRig=%s\nApp=Hamlib\nVersion=20210429\n",
+             rig_strvfo(vfoA), freqA, modeAstr, (int)widthA, rxa, txa, rig_strvfo(vfoB),
+             freqB, modeBstr, (int)widthB, rxb, txb, split, satmode, rig->caps->model_name);
+    unsigned long crc = gen_crc((unsigned char *)response, strlen(response));
+    sprintf(crcstr, "CRC=0x%08lx\n", crc);
+    strcat(response, crcstr);
     RETURNFUNC(RIG_OK);
 }
 
@@ -6276,7 +6363,7 @@ int HAMLIB_API rig_get_vfo_info(RIG *rig, vfo_t vfo, freq_t *freq,
 
     //if (vfo == RIG_VFO_CURR) { vfo = rig->state.current_vfo; }
 
-    vfo = vfo_fixup(rig,vfo);
+    vfo = vfo_fixup(rig, vfo);
     // we can't use the cached values as some clients may only call this function
     // like Log4OM which mostly does polling
     TRACE;

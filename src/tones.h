@@ -117,17 +117,17 @@ static const tone_t static_full_dcs_list[] =
  * because DLL's vars don't have constant address.
  */
 #if (defined(_WIN32) || defined(__CYGWIN__)) // && !defined(IN_HAMLIB)
-#define common_ctcss_list static_common_ctcss_list
-#define full_ctcss_list static_full_ctcss_list
-#define full_dcs_list static_full_dcs_list
-#define common_dcs_list static_common_dcs_list
+#define common_ctcss_list (tone_t*)static_common_ctcss_list
+#define full_ctcss_list (tone_t*)static_full_ctcss_list
+#define full_dcs_list (tone_t*)static_full_dcs_list
+#define common_dcs_list (tone_t*)static_common_dcs_list
 
 #else
 
-extern const HAMLIB_EXPORT_VAR(tone_t) full_ctcss_list[];
-extern const HAMLIB_EXPORT_VAR(tone_t) common_ctcss_list[];
-extern const HAMLIB_EXPORT_VAR(tone_t) full_dcs_list[];
-extern const HAMLIB_EXPORT_VAR(tone_t) common_dcs_list[];
+extern HAMLIB_EXPORT_VAR(tone_t) full_ctcss_list[];
+extern HAMLIB_EXPORT_VAR(tone_t) common_ctcss_list[];
+extern HAMLIB_EXPORT_VAR(tone_t) full_dcs_list[];
+extern HAMLIB_EXPORT_VAR(tone_t) common_dcs_list[];
 
 #endif
 

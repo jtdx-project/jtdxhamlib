@@ -67,6 +67,7 @@ struct dummy_priv_data
     int bank;
     value_t parms[RIG_SETTING_MAX];
     int ant_option[4]; /* simulate 4 antennas */
+    int trn; /* transceive */
 
     channel_t *curr;    /* points to vfo_a, vfo_b or mem[] */
 
@@ -468,14 +469,22 @@ static int dummy_set_mode(RIG *rig, vfo_t vfo, rmode_t mode, pbwidth_t width)
     rig_debug(RIG_DEBUG_VERBOSE, "%s called: %s %s %s\n", __func__,
               rig_strvfo(vfo), rig_strrmode(mode), buf);
 
+    vfo = vfo_fixup(rig, vfo);
     switch (vfo)
     {
+    case RIG_VFO_MAIN:
     case RIG_VFO_A: priv->vfo_a.mode = mode; priv->vfo_a.width = width; break;
 
+    case RIG_VFO_SUB:
     case RIG_VFO_B: priv->vfo_b.mode = mode; priv->vfo_b.width = width; break;
 
     case RIG_VFO_C: priv->vfo_c.mode = mode; priv->vfo_c.width = width; break;
+    default:
+        rig_debug(RIG_DEBUG_ERR, "%s: unknown VFO=%s\n", __func__, rig_strvfo(vfo));
+        RETURNFUNC(-RIG_EINVAL);
     }
+
+    vfo = vfo_fixup(rig, vfo);
 
     if (RIG_PASSBAND_NOCHANGE == width) { RETURNFUNC(RIG_OK); }
 
@@ -1988,7 +1997,9 @@ static int dummy_get_channel(RIG *rig, vfo_t vfo, channel_t *chan,
 
 static int dummy_set_trn(RIG *rig, int trn)
 {
-    ENTERFUNC;
+    struct dummy_priv_data *priv = (struct dummy_priv_data *)rig->state.priv;
+
+    priv->trn = trn;
 
     RETURNFUNC(RIG_OK);
 }
@@ -1996,8 +2007,9 @@ static int dummy_set_trn(RIG *rig, int trn)
 
 static int dummy_get_trn(RIG *rig, int *trn)
 {
-    ENTERFUNC;
-    *trn = RIG_TRN_OFF;
+    struct dummy_priv_data *priv = (struct dummy_priv_data *)rig->state.priv;
+
+    *trn = priv->trn;
 
     RETURNFUNC(RIG_OK);
 }
@@ -2123,7 +2135,7 @@ struct rig_caps dummy_caps =
     RIG_MODEL(RIG_MODEL_DUMMY),
     .model_name =     "Dummy",
     .mfg_name =       "Hamlib",
-    .version =        "20210313.0",
+    .version =        "20210504.0",
     .copyright =      "LGPL",
     .status =         RIG_STATUS_STABLE,
     .rig_type =       RIG_TYPE_OTHER,
@@ -2288,7 +2300,7 @@ struct rig_caps dummy_no_vfo_caps =
     RIG_MODEL(RIG_MODEL_DUMMY_NOVFO),
     .model_name =     "Dummy No VFO",
     .mfg_name =       "Hamlib",
-    .version =        "20210218.0",
+    .version =        "20210504.0",
     .copyright =      "LGPL",
     .status =         RIG_STATUS_STABLE,
     .rig_type =       RIG_TYPE_OTHER,
@@ -2313,7 +2325,7 @@ struct rig_caps dummy_no_vfo_caps =
     },
     .scan_ops =    DUMMY_SCAN,
     .vfo_ops =     DUMMY_VFO_OP,
-    .transceive =     RIG_TRN_OFF,
+    .transceive =     RIG_TRN_RIG,
     .attenuator =     { 10, 20, 30, RIG_DBLST_END, },
     .preamp =          { 10, RIG_DBLST_END, },
     .rx_range_list1 =  { {

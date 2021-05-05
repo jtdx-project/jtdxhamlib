@@ -41,7 +41,7 @@
 #include "dummy.h"
 
 #define CMD_MAX 64
-#define BUF_MAX 96
+#define BUF_MAX 1024
 
 #define CHKSCN1ARG(a) if ((a) != 1) return -RIG_EPROTO; else do {} while(0)
 
@@ -197,6 +197,57 @@ static int netrigctl_cleanup(RIG *rig)
     rig->state.priv = NULL;
     return RIG_OK;
 }
+
+int parse_array_int(const char *s, const char *delim, int *array, int array_len)
+{
+    char *p;
+    char *dup = strdup(s);
+    char *rest = dup;
+    int n = 0;
+    ENTERFUNC;
+
+    while ((p = strtok_r(rest, delim, &rest)))
+    {
+        if (n == array_len)   // too many items
+        {
+            return n;
+        }
+
+        array[n] = atoi(p);
+        //printf("%d\n", array[n]);
+        ++n;
+    }
+
+    free(dup);
+    return n;
+}
+
+int parse_array_double(const char *s, const char *delim, double *array,
+                       int array_len)
+{
+    char *p;
+    char *dup = strdup(s);
+    char *rest = dup;
+    int n = 0;
+    ENTERFUNC;
+
+    while ((p = strtok_r(rest, delim, &rest)))
+    {
+        if (n == array_len)   // too many items
+        {
+            return n;
+        }
+
+        array[n] = atof(p);
+        //printf("%f\n", array[n]);
+        ++n;
+    }
+
+    free(dup);
+    return n;
+}
+
+
 
 static int netrigctl_open(RIG *rig)
 {
@@ -512,6 +563,8 @@ static int netrigctl_open(RIG *rig)
 
     rig->caps->has_get_level = rs->has_get_level = strtoll(buf, NULL, 0);
 
+#if 0 // don't think we need this anymore
+
     if (rs->has_get_level & RIG_LEVEL_RAWSTR)
     {
         /* include STRENGTH because the remote rig may be able to
@@ -520,6 +573,8 @@ static int netrigctl_open(RIG *rig)
         rs->has_get_level |= RIG_LEVEL_STRENGTH;
         rig->caps->has_get_level |= RIG_LEVEL_STRENGTH;
     }
+
+#endif
 
     ret = read_string(&rig->state.rigport, buf, BUF_MAX, "\n", 1);
 
@@ -574,7 +629,7 @@ static int netrigctl_open(RIG *rig)
 
     do
     {
-        char setting[32], value[256];
+        char setting[32], value[1024];
         ret = read_string(&rig->state.rigport, buf, BUF_MAX, "\n", 1);
         strtok(buf, "\r\n"); // chop the EOL
 
@@ -585,7 +640,7 @@ static int netrigctl_open(RIG *rig)
 
         if (strncmp(buf, "done", 4) == 0) { return RIG_OK; }
 
-        if (sscanf(buf, "%31[^=]=%255[^\t\n]", setting, value) == 2)
+        if (sscanf(buf, "%31[^=]=%1024[^\t\n]", setting, value) == 2)
         {
             if (strcmp(setting, "vfo_ops") == 0)
             {
@@ -645,12 +700,76 @@ static int netrigctl_open(RIG *rig)
 
                 if (!has) { rig->caps->get_freq = NULL; }
             }
+            else if (strcmp(setting, "has_set_conf") == 0)
+            {
+                int has = strtol(value, NULL, 0);
+
+                if (!has) { rig->caps->set_conf = NULL; }
+            }
+            else if (strcmp(setting, "has_get_conf") == 0)
+            {
+                int has = strtol(value, NULL, 0);
+
+                if (!has) { rig->caps->get_conf = NULL; }
+            }
+
+#if 0 // for the future
+            else if (strcmp(setting, "has_set_trn") == 0)
+            {
+                int has = strtol(value, NULL, 0);
+
+                if (!has) { rig->caps->set_trn = NULL; }
+            }
+            else if (strcmp(setting, "has_get_trn") == 0)
+            {
+                int has = strtol(value, NULL, 0);
+
+                if (!has) { rig->caps->get_trn = NULL; }
+            }
+
+#endif
+            else if (strcmp(setting, "has_power2mW") == 0)
+            {
+                int has = strtol(value, NULL, 0);
+
+                if (!has) { rig->caps->power2mW = NULL; }
+            }
+            else if (strcmp(setting, "has_mW2power") == 0)
+            {
+                int has = strtol(value, NULL, 0);
+
+                if (!has) { rig->caps->mW2power = NULL; }
+            }
             else if (strcmp(setting, "timeout") == 0)
             {
                 // use the rig's timeout value pluse 200ms for potential network delays
                 rig->caps->timeout = strtol(value, NULL, 0) + 200;
                 rig_debug(RIG_DEBUG_TRACE, "%s: timeout value = '%s', final timeout=%d\n",
                           __func__, value, rig->caps->timeout);
+            }
+            else if (strcmp(setting, "ctcss_list") == 0)
+            {
+                int i;
+                int n;
+                double ctcss[CTCSS_LIST_SIZE];
+                rig->caps->ctcss_list = calloc(CTCSS_LIST_SIZE, sizeof(tone_t));
+                n = parse_array_double(value, " \n\r", ctcss, CTCSS_LIST_SIZE);
+
+                for (i = 0; i < CTCSS_LIST_SIZE && ctcss[i] != 0; ++i) { rig->caps->ctcss_list[i] = ctcss[i] * 10; }
+
+                if (n < CTCSS_LIST_SIZE) { rig->caps->ctcss_list[n] = 0; }
+            }
+            else if (strcmp(setting, "dcs_list") == 0)
+            {
+                int i;
+                int n;
+                int dcs[DCS_LIST_SIZE + 1];
+                rig->caps->dcs_list = calloc(DCS_LIST_SIZE, sizeof(tone_t));
+                n = parse_array_int(value, " \n\r", dcs, DCS_LIST_SIZE);
+
+                for (i = 0; i < DCS_LIST_SIZE && dcs[i] != 0; i++) { rig->caps->dcs_list[i] = dcs[i]; }
+
+                if (n < DCS_LIST_SIZE) { rig->caps->dcs_list[n] = 0; }
             }
             else
             {
@@ -2319,6 +2438,101 @@ static int netrigctl_set_vfo_opt(RIG *rig, int status)
     return RIG_OK;
 }
 
+#if 0 // for the futurem -- would have to poll to get the pushed data
+static int netrigctl_set_trn(RIG *rig, int trn)
+{
+    char cmdbuf[32];
+    char buf[BUF_MAX];
+    int ret;
+
+    sprintf(cmdbuf, "\\set_trn %s\n", trn ? "ON" : "OFF");
+    ret = netrigctl_transaction(rig, cmdbuf, strlen(cmdbuf), buf);
+
+    if (ret < 0)
+    {
+        return -RIG_EPROTO;
+    }
+
+    return RIG_OK;
+}
+
+
+static int netrigctl_get_trn(RIG *rig, int *trn)
+{
+    char cmdbuf[32];
+    char buf[BUF_MAX];
+    int ret;
+
+    ENTERFUNC;
+    sprintf(cmdbuf, "\\get_trn\n");
+    ret = netrigctl_transaction(rig, cmdbuf, strlen(cmdbuf), buf);
+
+    if (ret <= 0)
+    {
+        return -RIG_EPROTO;
+    }
+
+    if (strstr(buf, "OFF")) { *trn = RIG_TRN_OFF; }
+    else if (strstr(buf, "RIG")) { *trn = RIG_TRN_RIG; }
+    else if (strstr(buf, "POLL")) { *trn = RIG_TRN_POLL; }
+    else
+    {
+        rig_debug(RIG_DEBUG_ERR, "%s: Expected OFF, RIG, or POLL, got '%s'\n", __func__,
+                  buf);
+        ret = -RIG_EINVAL;
+    }
+
+    RETURNFUNC(ret);
+}
+#endif
+
+static int netrigctl_mW2power(RIG *rig, float *power, unsigned int mwpower,
+                              freq_t freq, rmode_t mode)
+{
+    char cmdbuf[32];
+    char buf[BUF_MAX];
+    int ret;
+
+    ENTERFUNC;
+
+    sprintf(cmdbuf, "\\mW2power %u %.0f %s\n", mwpower, freq, rig_strrmode(mode));
+    ret = netrigctl_transaction(rig, cmdbuf, strlen(cmdbuf), buf);
+
+    if (ret <= 0)
+    {
+        return -RIG_EPROTO;
+    }
+
+    *power = atof(buf);
+
+    RETURNFUNC(RIG_OK);
+}
+
+
+static int netrigctl_power2mW(RIG *rig, unsigned int *mwpower, float power,
+                              freq_t freq, rmode_t mode)
+{
+    char cmdbuf[32];
+    char buf[BUF_MAX];
+    int ret;
+
+    ENTERFUNC;
+
+    sprintf(cmdbuf, "\\power2mW %f %.0f %s\n", power, freq, rig_strrmode(mode));
+    ret = netrigctl_transaction(rig, cmdbuf, strlen(cmdbuf), buf);
+
+    if (ret <= 0)
+    {
+        return -RIG_EPROTO;
+    }
+
+    *mwpower = atof(buf);
+
+    RETURNFUNC(RIG_OK);
+}
+
+
+
 /*
  * Netrigctl rig capabilities.
  */
@@ -2328,7 +2542,7 @@ struct rig_caps netrigctl_caps =
     RIG_MODEL(RIG_MODEL_NETRIGCTL),
     .model_name =     "NET rigctl",
     .mfg_name =       "Hamlib",
-    .version =        "20210409.0",
+    .version =        "20210428.0",
     .copyright =      "LGPL",
     .status =         RIG_STATUS_STABLE,
     .rig_type =       RIG_TYPE_OTHER,
@@ -2427,4 +2641,9 @@ struct rig_caps netrigctl_caps =
     .set_channel =    netrigctl_set_channel,
     .get_channel =    netrigctl_get_channel,
     .set_vfo_opt = netrigctl_set_vfo_opt,
+    //.set_trn =    netrigctl_set_trn,
+    //.get_trn =    netrigctl_get_trn,
+    .power2mW =   netrigctl_power2mW,
+    .mW2power =   netrigctl_mW2power,
+
 };

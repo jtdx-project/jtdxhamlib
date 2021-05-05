@@ -360,7 +360,9 @@ int dumpcaps(RIG *rig, FILE *fout)
 
     if (caps->has_set_level & RIG_LEVEL_READONLY_LIST)
     {
-        fprintf(fout, "Warning--backend can set readonly levels!\n");
+
+        //fprintf(fout, "Warning--backend can set readonly levels=0x%0llx\n", caps->has_set_level & RIG_LEVEL_READONLY_LIST);
+        fprintf(fout, "Warning--backend can set readonly levels\n");
         backend_warnings++;
     }
 
@@ -663,7 +665,7 @@ int dumpcaps(RIG *rig, FILE *fout)
 
         if (pbnorm == 0)
         {
-            continue;
+//            continue;
         }
 
         sprintf_freq(freqbuf, sizeof(freqbuf), pbnorm);

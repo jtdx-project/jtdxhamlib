@@ -7985,7 +7985,7 @@ static int set_roofing_filter(RIG *rig, vfo_t vfo, int index)
 
     roofing_filters = priv_caps->roofing_filters;
 
-    if (rig->caps->targetable_vfo & RIG_TARGETABLE_MODE)
+    if (rig->caps->targetable_vfo & RIG_TARGETABLE_ROOFING)
     {
         main_sub_vfo = (RIG_VFO_B == vfo || RIG_VFO_SUB == vfo) ? '1' : '0';
     }
@@ -8091,7 +8091,7 @@ static int get_roofing_filter(RIG *rig, vfo_t vfo,
 
     roofing_filters = priv_caps->roofing_filters;
 
-    if (rig->caps->targetable_vfo & RIG_TARGETABLE_MODE)
+    if (rig->caps->targetable_vfo & RIG_TARGETABLE_ROOFING)
     {
         main_sub_vfo = (RIG_VFO_B == vfo || RIG_VFO_SUB == vfo) ? '1' : '0';
     }

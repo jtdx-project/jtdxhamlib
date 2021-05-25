@@ -861,6 +861,10 @@ int HAMLIB_API rig_open(RIG *rig)
     case RIG_PTT_CM108:
         rs->pttport.fd = cm108_open(&rs->pttport);
 
+        strncpy(rs->rigport.pathname, DEFAULT_CM108_PORT, HAMLIB_FILPATHLEN);
+        rs->rigport.parm.cm108.ptt_bitnum = DEFAULT_CM108_PTT_BITNUM;
+        rs->pttport.parm.cm108.ptt_bitnum = DEFAULT_CM108_PTT_BITNUM;
+
         if (rs->pttport.fd < 0)
         {
             rig_debug(RIG_DEBUG_ERR,
@@ -2947,7 +2951,7 @@ int HAMLIB_API rig_set_ptt(RIG *rig, vfo_t vfo, ptt_t ptt)
     // some rigs like the FT-2000 with the SCU-17 need just a bit of time to let the relays work
     // can affect fake it mode in WSJT-X when the rig is still in transmit and freq change
     // is requested on a rig that can't change freq on a transmitting VFO
-    if (ptt != RIG_PTT_ON) { hl_usleep(10 * 1000); }
+    if (ptt != RIG_PTT_ON) { hl_usleep(50 * 1000); }
 
     rig->state.cache.ptt = ptt;
     elapsed_ms(&rig->state.cache.time_ptt, HAMLIB_ELAPSED_SET);
@@ -3639,6 +3643,7 @@ int HAMLIB_API rig_set_split_freq(RIG *rig, vfo_t vfo, freq_t tx_freq)
     {
         RETURNFUNC(-RIG_EIO);
     }
+
 
     rig_debug(RIG_DEBUG_VERBOSE, "%s called vfo=%s, curr_vfo=%s\n", __func__,
               rig_strvfo(vfo), rig_strvfo(rig->state.current_vfo));
@@ -6326,13 +6331,17 @@ int HAMLIB_API rig_get_rig_info(RIG *rig, char *response, int max_response_len)
     rxb = !rxa;
     txb = split == 1;
     snprintf(response, max_response_len,
-             "VFO=%s Freq=%.0f Mode=%s Width=%d RX=%d TX=%d\nVFO=%s Freq=%.0f Mode=%s Width=%d RX=%d TX=%d\nSplit=%d SatMode=%d\nRig=%s\nApp=Hamlib\nVersion=20210506\nCRC=0x00000000\n",
+             "VFO=%s Freq=%.0f Mode=%s Width=%d RX=%d TX=%d\nVFO=%s Freq=%.0f Mode=%s Width=%d RX=%d TX=%d\nSplit=%d SatMode=%d\nRig=%s\nApp=Hamlib\nVersion=20210506 1.0.0\nCRC=0x00000000\n",
              rig_strvfo(vfoA), freqA, modeAstr, (int)widthA, rxa, txa, rig_strvfo(vfoB),
              freqB, modeBstr, (int)widthB, rxb, txb, split, satmode, rig->caps->model_name);
     unsigned long crc = gen_crc((unsigned char *)response, strlen(response));
-    char *p = strstr(response,"CRC=");
+    char *p = strstr(response, "CRC=");
+
     if (p)
-    sprintf(p, "CRC=0x%08lx\n", crc);
+    {
+        sprintf(p, "CRC=0x%08lx\n", crc);
+    }
+
     strcat(response, crcstr);
     RETURNFUNC(RIG_OK);
 }
@@ -6461,5 +6470,124 @@ const char *HAMLIB_API rig_copyright()
 {
     return hamlib_copyright2;
 }
+
+/**
+ * \brief get a cookie to grab rig control
+ *
+ * RIG_COOKIE_GET must have cookie=NULL or NULL returned
+ * RIG_COOKIE_RENEW must have cookie!=NULL or NULL returned
+ * RIG_COOKIE_RELEASE must have cookie!=NULL or NULL returned;
+ * Cookies should only be used when needed to keep commands sequenced correctly
+ * For example, when setting both VFOA and VFOB frequency and mode
+ * Example to wait for cookie, do rig commands, and release
+ * while((cookie=rig_cookie(NULL, RIG_COOKIE_GET)) == NULL) hl_usleep(10*1000);
+ * set_freq A;set mode A;set freq B;set modeB;
+ * rig_cookie(cookie,RIG_COOKIE_RELEASE);
+ */
+int HAMLIB_API rig_cookie(RIG *rig, enum cookie_e cookie_cmd, char *cookie,
+                          int cookie_len)
+{
+    // only 1 client can have the cookie so these can be static
+    // this should also prevent problems with DLLs & shared libraies
+    // the debug_msg is another non-thread-safe which this will help fix
+    // 27 char cookie will last until the year 10000
+    static char cookie_save[HAMLIB_COOKIE_SIZE];  // only one client can have the 26-char cookie
+    static double time_last_used;
+    double time_curr;
+    struct timespec tp;
+
+    if (cookie_len < 27)
+    {
+        rig_debug(RIG_DEBUG_ERR, "%s(%d): cookie_len < 32 so returning NULL!!\n",
+                  __FILE__, __LINE__);
+        return -RIG_EINTERNAL;
+    }
+
+    switch (cookie_cmd)
+    {
+    case RIG_COOKIE_RELEASE:
+        if (cookie == NULL)
+        {
+            rig_debug(RIG_DEBUG_VERBOSE, "%s(%d): coookie NULL so nothing to do\n",
+                      __FILE__, __LINE__);
+            return -RIG_EINVAL; // nothing to do
+        }
+
+        if (cookie_save[0] != 0 && strcmp(cookie, cookie_save) == 0) // matching cookie so we'll clear it
+        {
+            rig_debug(RIG_DEBUG_VERBOSE, "%s(%d): %s coookie released\n",
+                      __FILE__, __LINE__, cookie_save);
+            memset(cookie_save, 0, sizeof(cookie_save));
+            return RIG_OK;
+        }
+        else // not the right cookie!!
+        {
+            rig_debug(RIG_DEBUG_ERR,
+                      "%s(%d): %s can't release cookie as cookie %s is active\n", __FILE__, __LINE__,
+                      cookie, cookie_save);
+            return -RIG_BUSBUSY;
+        }
+
+        break;
+
+    case RIG_COOKIE_RENEW:
+        rig_debug(RIG_DEBUG_VERBOSE, "%s(%d): %s comparing renew request to %s==%d\n",
+                  __FILE__, __LINE__, cookie, cookie_save, strcmp(cookie, cookie_save));
+
+        if (cookie_save[0] != 0 && strcmp(cookie, cookie_save) == 0) // matching cookie so we'll renew it
+        {
+            rig_debug(RIG_DEBUG_VERBOSE, "%s(%d) %s renew request granted\n", __FILE__,
+                      __LINE__, cookie);
+            clock_gettime(CLOCK_REALTIME, &tp);
+            time_last_used = tp.tv_sec + tp.tv_nsec / 1e9;
+            return RIG_OK;
+        }
+
+        rig_debug(RIG_DEBUG_ERR,
+                  "%s(%d): %s renew request refused %s is active\n",
+                  __FILE__, __LINE__, cookie, cookie_save);
+        return -RIG_EINVAL; // wrong cookie
+
+        break;
+
+    case RIG_COOKIE_GET:
+        // the way we expire cookies is if somebody else asks for one and the last renewal is > 1 second ago
+        // a polite client will have released the cookie
+        // we are just allow for a crashed client that fails to release:q
+        clock_gettime(CLOCK_REALTIME, &tp);
+        time_curr = tp.tv_sec + tp.tv_nsec / 1e9;
+
+        if (cookie_save[0] != 0 && (strcmp(cookie_save, cookie) == 0)
+                && (time_curr - time_last_used < 1))  // then we will deny the request
+        {
+            printf("Cookie %s in use\n", cookie_save);
+            rig_debug(RIG_DEBUG_ERR, "%s(%d): %s cookie is in use\n", __FILE__, __LINE__,
+                      cookie_save);
+            return -RIG_BUSBUSY;
+        }
+
+        if (cookie_save[0] != 0)
+        {
+            rig_debug(RIG_DEBUG_ERR,
+                      "%s(%d): %s cookie has expired after %.3f seconds....overriding with new cookie\n",
+                      __FILE__, __LINE__, cookie_save, time_curr - time_last_used);
+        }
+
+        date_strget(cookie_save, sizeof(cookie_save));
+        // add on our random number to ensure uniqueness
+        snprintf(cookie, cookie_len, "%s %d\n", cookie_save, rand());
+        strcpy(cookie_save, cookie);
+        time_last_used = time_curr;
+        rig_debug(RIG_DEBUG_VERBOSE, "%s(%d): %s new cookie request granted\n",
+                  __FILE__, __LINE__, cookie_save);
+        return RIG_OK;
+        break;
+
+    }
+
+    rig_debug(RIG_DEBUG_ERR, "%s(%d): unknown condition!!\n'", __FILE__, __LINE__);
+    return -RIG_EPROTO;
+}
+
 
 /*! @} */

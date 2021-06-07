@@ -60,6 +60,10 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <errno.h>
+#ifdef HAVE_PTHREAD
+#include <pthread.h>
+#endif
 
 
 #include <hamlib/rig.h>
@@ -88,6 +92,7 @@ const char *hamlib_license = "LGPL";
 //! @cond Doxygen_Suppress
 const char hamlib_version[21] = "Hamlib " PACKAGE_VERSION;
 const char *hamlib_version2 = "Hamlib " PACKAGE_VERSION " " HAMLIBDATETIME;
+HAMLIB_EXPORT_VAR(int) cookie_use;
 //! @endcond
 
 struct rig_caps caps_test;
@@ -716,6 +721,13 @@ int HAMLIB_API rig_open(RIG *rig)
         rig_debug(RIG_DEBUG_TRACE, "%s: using network address %s\n", __func__,
                   rs->rigport.pathname);
         rs->rigport.type.rig = RIG_PORT_NETWORK;
+
+        if (RIG_BACKEND_NUM(rig->caps->rig_model) == RIG_ICOM)
+        {
+            rig_debug(RIG_DEBUG_TRACE, "%s(%d): Icom rig UDP network enabled\n", __FILE__,
+                      __LINE__);
+            rs->rigport.type.rig = RIG_PORT_UDP_NETWORK;
+        }
     }
 
     if (rs->comm_state)
@@ -1095,6 +1107,27 @@ int HAMLIB_API rig_close(RIG *rig)
 
     ENTERFUNC;
 
+    // terminate the multicast server
+    extern int multicast_server_run;
+    multicast_server_run = 0;
+#ifdef HAVE_PTHREAD
+    extern pthread_t multicast_server_threadId;
+
+    if (multicast_server_threadId != 0)
+    {
+        int err = pthread_join(multicast_server_threadId, NULL);
+
+        if (err)
+        {
+            rig_debug(RIG_DEBUG_ERR, "%s(%d): pthread_join error %s\n", __FILE__, __LINE__,
+                      strerror(errno));
+            // just ignore it
+        }
+
+        multicast_server_threadId = 0;
+    }
+#endif
+
     if (!rig || !rig->caps)
     {
         RETURNFUNC(-RIG_EINVAL);
@@ -1425,10 +1458,14 @@ static int set_cache_freq(RIG *rig, vfo_t vfo, freq_t freq)
 {
     int flag = HAMLIB_ELAPSED_SET;
 
-    ENTERFUNC;
-    rig_debug(RIG_DEBUG_TRACE, "%s:  vfo=%s, current_vfo=%s\n", __func__,
+    if (rig_need_debug(RIG_DEBUG_CACHE))
+    {
+        ENTERFUNC;
+        cache_show(rig, __func__, __LINE__);
+    }
+
+    rig_debug(RIG_DEBUG_CACHE, "%s:  vfo=%s, current_vfo=%s\n", __func__,
               rig_strvfo(vfo), rig_strvfo(rig->state.current_vfo));
-    cache_show(rig, __func__, __LINE__);
 
     if (vfo == RIG_VFO_CURR)
     {
@@ -1444,8 +1481,11 @@ static int set_cache_freq(RIG *rig, vfo_t vfo, freq_t freq)
 
     if (vfo == RIG_VFO_SUB && rig->state.cache.satmode) { vfo = RIG_VFO_SUB_A; };
 
-    rig_debug(RIG_DEBUG_TRACE, "%s: set vfo=%s to freq=%.0f\n", __func__,
-              rig_strvfo(vfo), freq);
+    if (rig_need_debug(RIG_DEBUG_CACHE))
+    {
+        rig_debug(RIG_DEBUG_CACHE, "%s: set vfo=%s to freq=%.0f\n", __func__,
+                  rig_strvfo(vfo), freq);
+    }
 
     switch (vfo)
     {
@@ -1514,15 +1554,24 @@ static int set_cache_freq(RIG *rig, vfo_t vfo, freq_t freq)
         RETURNFUNC(-RIG_EINVAL);
     }
 
-    cache_show(rig, __func__, __LINE__);
-    RETURNFUNC(RIG_OK);
+    if (rig_need_debug(RIG_DEBUG_CACHE))
+    {
+        cache_show(rig, __func__, __LINE__);
+        RETURNFUNC(RIG_OK);
+    }
+
+    return RIG_OK;
 }
 
 int rig_get_cache(RIG *rig, vfo_t vfo, freq_t *freq, int *cache_ms_freq,
                   rmode_t *mode, int *cache_ms_mode, pbwidth_t *width, int *cache_ms_width)
 {
-    ENTERFUNC;
-    rig_debug(RIG_DEBUG_TRACE, "%s:  vfo=%s, current_vfo=%s\n", __func__,
+    if (rig_need_debug(RIG_DEBUG_CACHE))
+    {
+        ENTERFUNC;
+    }
+
+    rig_debug(RIG_DEBUG_CACHE, "%s:  vfo=%s, current_vfo=%s\n", __func__,
               rig_strvfo(vfo), rig_strvfo(rig->state.current_vfo));
 
     if (vfo == RIG_VFO_CURR) { vfo = rig->state.current_vfo; }
@@ -1628,9 +1677,15 @@ int rig_get_cache(RIG *rig, vfo_t vfo, freq_t *freq, int *cache_ms_freq,
         RETURNFUNC(-RIG_EINVAL);
     }
 
-    rig_debug(RIG_DEBUG_TRACE, "%s: vfo=%s, freq=%.0f\n", __func__, rig_strvfo(vfo),
+    rig_debug(RIG_DEBUG_CACHE, "%s: vfo=%s, freq=%.0f\n", __func__, rig_strvfo(vfo),
               (double)*freq);
-    RETURNFUNC(RIG_OK);
+
+    if (rig_need_debug(RIG_DEBUG_CACHE))
+    {
+        RETURNFUNC(RIG_OK);
+    }
+
+    return RIG_OK;
 }
 
 // detect if somebody is twiddling the VFO
@@ -1976,8 +2031,7 @@ int HAMLIB_API rig_get_freq(RIG *rig, vfo_t vfo, freq_t *freq)
     int cache_ms_freq, cache_ms_mode, cache_ms_width;
     rig_get_cache(rig, vfo, freq, &cache_ms_freq, &mode, &cache_ms_mode, &width,
                   &cache_ms_width);
-    rig_debug(RIG_DEBUG_TRACE, "%s: cache check1 age=%dms\n", __func__,
-              cache_ms_freq);
+    //rig_debug(RIG_DEBUG_TRACE, "%s: cache check1 age=%dms\n", __func__, cache_ms_freq);
 
     cache_show(rig, __func__, __LINE__);
 
@@ -2015,7 +2069,6 @@ int HAMLIB_API rig_get_freq(RIG *rig, vfo_t vfo, freq_t *freq)
                       rig_strvfo(vfo));
         }
 
-        TRACE;
         retcode = caps->get_freq(rig, vfo, freq);
 
         cache_show(rig, __func__, __LINE__);
@@ -3864,7 +3917,7 @@ int HAMLIB_API rig_get_split_freq(RIG *rig, vfo_t vfo, freq_t *tx_freq)
     else
     {
         TRACE;
-        retcode = caps->get_freq(rig, RIG_VFO_CURR, tx_freq);
+        retcode = caps->get_freq ? caps->get_freq(rig, RIG_VFO_CURR, tx_freq) :-RIG_ENIMPL;
     }
 
     /* try and revert even if we had an error above */
@@ -3993,7 +4046,7 @@ int HAMLIB_API rig_set_split_mode(RIG *rig,
     else
     {
         TRACE;
-        retcode = caps->set_mode(rig, RIG_VFO_CURR, tx_mode, tx_width);
+        retcode = caps->set_mode ? caps->set_mode(rig, RIG_VFO_CURR, tx_mode, tx_width) : -RIG_ENIMPL;
     }
 
     /* try and revert even if we had an error above */
@@ -4116,7 +4169,7 @@ int HAMLIB_API rig_get_split_mode(RIG *rig, vfo_t vfo, rmode_t *tx_mode,
     else
     {
         TRACE;
-        retcode = caps->get_mode(rig, RIG_VFO_CURR, tx_mode, tx_width);
+        retcode = caps->get_mode ? caps->get_mode(rig, RIG_VFO_CURR, tx_mode, tx_width) : -RIG_ENIMPL;
     }
 
     /* try and revert even if we had an error above */
@@ -5193,7 +5246,7 @@ int HAMLIB_API rig_power2mW(RIG *rig,
         /*
          * freq is not on the tx range!
          */
-        RETURNFUNC(-RIG_ECONF); /* could be RIG_EINVAL ? */
+        RETURNFUNC(-RIG_EINVAL);
     }
 
     *mwpower = (unsigned int)(power * txrange->high_power);
@@ -5247,7 +5300,7 @@ int HAMLIB_API rig_mW2power(RIG *rig,
         /*
          * freq is not on the tx range!
          */
-        return (-RIG_ECONF); /* could be RIG_EINVAL ? */
+        return (-RIG_EINVAL); /* could be RIG_EINVAL ? */
     }
 
     if (txrange->high_power == 0)
@@ -6294,7 +6347,6 @@ int HAMLIB_API rig_get_rig_info(RIG *rig, char *response, int max_response_len)
     int ret;
     int rxa, txa, rxb, txb;
     response[0] = 0;
-    char crcstr[16];
 
     vfoA = vfo_fixup(rig, RIG_VFO_A);
     vfoB = vfo_fixup(rig, RIG_VFO_B);
@@ -6342,7 +6394,13 @@ int HAMLIB_API rig_get_rig_info(RIG *rig, char *response, int max_response_len)
         sprintf(p, "CRC=0x%08lx\n", crc);
     }
 
-    strcat(response, crcstr);
+    if (strlen(response) >= max_response_len - 1)
+    {
+        rig_debug(RIG_DEBUG_ERR, "%s(%d): response len exceeded max %d chars\n",
+                  __FILE__, __LINE__, max_response_len);
+        RETURNFUNC(RIG_EINTERNAL);
+    }
+
     RETURNFUNC(RIG_OK);
 }
 
@@ -6483,6 +6541,7 @@ const char *HAMLIB_API rig_copyright()
  * while((cookie=rig_cookie(NULL, RIG_COOKIE_GET)) == NULL) hl_usleep(10*1000);
  * set_freq A;set mode A;set freq B;set modeB;
  * rig_cookie(cookie,RIG_COOKIE_RELEASE);
+ * if wait!=0 rig_cookie with RIG_COOKIE_GET will wait for the cookie to become available
  */
 int HAMLIB_API rig_cookie(RIG *rig, enum cookie_e cookie_cmd, char *cookie,
                           int cookie_len)
@@ -6491,10 +6550,14 @@ int HAMLIB_API rig_cookie(RIG *rig, enum cookie_e cookie_cmd, char *cookie,
     // this should also prevent problems with DLLs & shared libraies
     // the debug_msg is another non-thread-safe which this will help fix
     // 27 char cookie will last until the year 10000
-    static char cookie_save[HAMLIB_COOKIE_SIZE];  // only one client can have the 26-char cookie
+    static char
+    cookie_save[HAMLIB_COOKIE_SIZE];  // only one client can have the 26-char cookie
     static double time_last_used;
     double time_curr;
     struct timespec tp;
+#ifdef HAVE_PTHREAD
+    static pthread_mutex_t cookie_lock = PTHREAD_MUTEX_INITIALIZER;
+#endif
 
     if (cookie_len < 27)
     {
@@ -6513,7 +6576,8 @@ int HAMLIB_API rig_cookie(RIG *rig, enum cookie_e cookie_cmd, char *cookie,
             return -RIG_EINVAL; // nothing to do
         }
 
-        if (cookie_save[0] != 0 && strcmp(cookie, cookie_save) == 0) // matching cookie so we'll clear it
+        if (cookie_save[0] != 0
+                && strcmp(cookie, cookie_save) == 0) // matching cookie so we'll clear it
         {
             rig_debug(RIG_DEBUG_VERBOSE, "%s(%d): %s coookie released\n",
                       __FILE__, __LINE__, cookie_save);
@@ -6534,7 +6598,8 @@ int HAMLIB_API rig_cookie(RIG *rig, enum cookie_e cookie_cmd, char *cookie,
         rig_debug(RIG_DEBUG_VERBOSE, "%s(%d): %s comparing renew request to %s==%d\n",
                   __FILE__, __LINE__, cookie, cookie_save, strcmp(cookie, cookie_save));
 
-        if (cookie_save[0] != 0 && strcmp(cookie, cookie_save) == 0) // matching cookie so we'll renew it
+        if (cookie_save[0] != 0
+                && strcmp(cookie, cookie_save) == 0) // matching cookie so we'll renew it
         {
             rig_debug(RIG_DEBUG_VERBOSE, "%s(%d) %s renew request granted\n", __FILE__,
                       __LINE__, cookie);
@@ -6551,11 +6616,17 @@ int HAMLIB_API rig_cookie(RIG *rig, enum cookie_e cookie_cmd, char *cookie,
         break;
 
     case RIG_COOKIE_GET:
+
         // the way we expire cookies is if somebody else asks for one and the last renewal is > 1 second ago
         // a polite client will have released the cookie
         // we are just allow for a crashed client that fails to release:q
+
         clock_gettime(CLOCK_REALTIME, &tp);
         time_curr = tp.tv_sec + tp.tv_nsec / 1e9;
+
+#ifdef HAVE_PTHREAD
+        pthread_mutex_lock(&cookie_lock);
+#endif
 
         if (cookie_save[0] != 0 && (strcmp(cookie_save, cookie) == 0)
                 && (time_curr - time_last_used < 1))  // then we will deny the request
@@ -6563,8 +6634,12 @@ int HAMLIB_API rig_cookie(RIG *rig, enum cookie_e cookie_cmd, char *cookie,
             printf("Cookie %s in use\n", cookie_save);
             rig_debug(RIG_DEBUG_ERR, "%s(%d): %s cookie is in use\n", __FILE__, __LINE__,
                       cookie_save);
+#ifdef HAVE_PTHREAD
+            pthread_mutex_unlock(&cookie_lock);
+#endif
             return -RIG_BUSBUSY;
         }
+
 
         if (cookie_save[0] != 0)
         {
@@ -6580,14 +6655,36 @@ int HAMLIB_API rig_cookie(RIG *rig, enum cookie_e cookie_cmd, char *cookie,
         time_last_used = time_curr;
         rig_debug(RIG_DEBUG_VERBOSE, "%s(%d): %s new cookie request granted\n",
                   __FILE__, __LINE__, cookie_save);
+#ifdef HAVE_PTHREAD
+        pthread_mutex_unlock(&cookie_lock);
+#endif
         return RIG_OK;
         break;
-
     }
 
     rig_debug(RIG_DEBUG_ERR, "%s(%d): unknown condition!!\n'", __FILE__, __LINE__);
     return -RIG_EPROTO;
 }
 
+HAMLIB_EXPORT(void) sync_callback(int lock)
+{
+#ifdef HAVE_PTHREAD
+    static pthread_mutex_t client_lock = PTHREAD_MUTEX_INITIALIZER;
+
+    if (lock)
+    {
+        pthread_mutex_lock(&client_lock);
+        rig_debug(RIG_DEBUG_VERBOSE, "%s: client lock engaged\n", __func__);
+    }
+    else
+    {
+        rig_debug(RIG_DEBUG_VERBOSE, "%s: client lock disengaged\n", __func__);
+        pthread_mutex_unlock(&client_lock);
+    }
+
+#endif
+}
+
 
 /*! @} */
+

@@ -86,7 +86,7 @@ static void usage(void);
  * NB: do NOT use -W since it's reserved by POSIX.
  * TODO: add an option to read from a file
  */
-#define SHORT_OPTIONS "+m:r:p:d:P:D:s:c:t:lC:LuonvhVZ"
+#define SHORT_OPTIONS "+m:r:p:d:P:D:s:c:t:lC:LuonvhVZ!"
 static struct option long_options[] =
 {
     {"model",           1, 0, 'm'},
@@ -113,6 +113,7 @@ static struct option long_options[] =
     {"verbose",         0, 0, 'v'},
     {"help",            0, 0, 'h'},
     {"version",         0, 0, 'V'},
+    {"cookie",          0, 0, '!'},
     {0, 0, 0, 0}
 
 };
@@ -172,6 +173,9 @@ int main(int argc, char *argv[])
 
         switch (c)
         {
+        case '!':
+            cookie_use = 1;
+            break;
         case 'h':
             usage();
             exit(0);
@@ -548,7 +552,7 @@ int main(int argc, char *argv[])
 
     if (retcode != RIG_OK)
     {
-        fprintf(stderr, "rig_open: error = %s \n", rigerror(retcode));
+        fprintf(stderr, "rig_open: error = %s %s %s \n", rigerror(retcode), rig_file, strerror(errno));
 
         if (!ignore_rig_open_error) { exit(2); }
     }
@@ -716,7 +720,8 @@ void usage(void)
         "  -Y, --ignore_err              ignore rig_open errors\n"
         "  -Z, --debug-time-stamps       enable time stamps for debug messages\n"
         "  -h, --help                    display this help and exit\n"
-        "  -V, --version                 output version information and exit\n\n"
+        "  -V, --version                 output version information and exit\n"
+        "  -!, --cookie                  use cookie control\n\n"
     );
 
     usage_rig(stdout);

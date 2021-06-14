@@ -2627,7 +2627,7 @@ int HAMLIB_API rig_set_vfo(RIG *rig, vfo_t vfo)
 
     if (retcode == RIG_OK)
     {
-        vfo = rig->state.current_vfo; // vfo may change in the rig backend
+        //vfo = rig->state.current_vfo; // vfo may change in the rig backend
         rig->state.cache.vfo = vfo;
         elapsed_ms(&rig->state.cache.time_vfo, HAMLIB_ELAPSED_SET);
         rig_debug(RIG_DEBUG_TRACE, "%s: rig->state.current_vfo=%s\n", __func__,
@@ -4544,10 +4544,14 @@ int HAMLIB_API rig_get_split_vfo(RIG *rig,
             || vfo == rig->state.current_vfo)
     {
         TRACE;
-        retcode = caps->get_split_vfo(rig, vfo, split, tx_vfo);
-        rig->state.cache.split = *split;
-        rig->state.cache.split_vfo = *tx_vfo;
-        elapsed_ms(&rig->state.cache.time_split, HAMLIB_ELAPSED_SET);
+        retcode = RIG_OK;
+        if (rig->caps->rig_model != RIG_MODEL_NETRIGCTL)
+        { // rigctld doesn't like nested calls
+            retcode = caps->get_split_vfo(rig, vfo, split, tx_vfo);
+            rig->state.cache.split = *split;
+            rig->state.cache.split_vfo = *tx_vfo;
+            elapsed_ms(&rig->state.cache.time_split, HAMLIB_ELAPSED_SET);
+        }
         RETURNFUNC(retcode);
     }
 

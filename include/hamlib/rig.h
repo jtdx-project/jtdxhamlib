@@ -2485,9 +2485,16 @@ rig_get_mode HAMLIB_PARAMS((RIG *rig,
                             rmode_t *mode,
                             pbwidth_t *width));
 
+#if 0
+#define rig_set_vfo(r,v) rig_set_vfo(r,v,__builtin_FUNCTION())
+extern HAMLIB_EXPORT(int)
+rig_set_vfo HAMLIB_PARAMS((RIG *rig,
+                           vfo_t vfo, const char *func));
+#else
 extern HAMLIB_EXPORT(int)
 rig_set_vfo HAMLIB_PARAMS((RIG *rig,
                            vfo_t vfo));
+#endif
 extern HAMLIB_EXPORT(int)
 rig_get_vfo HAMLIB_PARAMS((RIG *rig,
                            vfo_t *vfo));

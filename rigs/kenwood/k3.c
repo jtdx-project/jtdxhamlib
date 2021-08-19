@@ -183,7 +183,7 @@ const struct rig_caps k3_caps =
     RIG_MODEL(RIG_MODEL_K3),
     .model_name =       "K3",
     .mfg_name =     "Elecraft",
-    .version =      BACKEND_VER ".15",
+    .version =      BACKEND_VER ".16",
     .copyright =        "LGPL",
     .status =       RIG_STATUS_STABLE,
     .rig_type =     RIG_TYPE_TRANSCEIVER,
@@ -334,7 +334,7 @@ const struct rig_caps k3s_caps =
     RIG_MODEL(RIG_MODEL_K3S),
     .model_name =       "K3S",
     .mfg_name =     "Elecraft",
-    .version =      BACKEND_VER ".13",
+    .version =      BACKEND_VER ".14",
     .copyright =        "LGPL",
     .status =       RIG_STATUS_STABLE,
     .rig_type =     RIG_TYPE_TRANSCEIVER,
@@ -484,7 +484,7 @@ const struct rig_caps k4_caps =
     RIG_MODEL(RIG_MODEL_K4),
     .model_name =       "K4",
     .mfg_name =     "Elecraft",
-    .version =      BACKEND_VER ".13",
+    .version =      BACKEND_VER ".14",
     .copyright =        "LGPL",
     .status =       RIG_STATUS_STABLE,
     .rig_type =     RIG_TYPE_TRANSCEIVER,
@@ -633,7 +633,7 @@ const struct rig_caps kx3_caps =
     RIG_MODEL(RIG_MODEL_KX3),
     .model_name =       "KX3",
     .mfg_name =     "Elecraft",
-    .version =      BACKEND_VER ".13",
+    .version =      BACKEND_VER ".14",
     .copyright =        "LGPL",
     .status =       RIG_STATUS_STABLE,
     .rig_type =     RIG_TYPE_TRANSCEIVER,
@@ -782,7 +782,7 @@ const struct rig_caps kx2_caps =
     RIG_MODEL(RIG_MODEL_KX2),
     .model_name =       "KX2",
     .mfg_name =     "Elecraft",
-    .version =      BACKEND_VER ".13",
+    .version =      BACKEND_VER ".14",
     .copyright =        "LGPL",
     .status =       RIG_STATUS_STABLE,
     .rig_type =     RIG_TYPE_TRANSCEIVER,
@@ -1513,7 +1513,7 @@ int k3_set_split_mode(RIG *rig, vfo_t vfo, rmode_t tx_mode, pbwidth_t tx_width)
     case RIG_MODE_PSK:
         tx_mode = RIG_MODE_PSK;
         snprintf(cmd_m, sizeof(cmd_m),
-                 "DT3;"); /* PSK D Mode - direct PSK keying, USB is "normal", VFO dial is MARK */
+                 "DT3;FT1;"); /* PSK D Mode - direct PSK keying, USB is "normal", VFO dial is MARK */
         if (priv->is_k4d || priv->is_k4hd) {
             strcat(cmd_m, "DT$3;");
         }
@@ -1527,6 +1527,10 @@ int k3_set_split_mode(RIG *rig, vfo_t vfo, rmode_t tx_mode, pbwidth_t tx_width)
 #if 1
 
     if (priv->is_k4d || priv->is_k4hd) {
+        // split can get turned off when modes are changing 
+        // so if the rig did this independtly of us we turn it back on
+        // even if the rig changes the split status should be the last thing we did
+        if (priv->split) strcat(cmd_m, "FT1;");
         /* Set data sub-mode.  K3 needs to be in a DATA mode before setting
          * the sub-mode or switching to VFOB so we do this before the MD$ command.
          */

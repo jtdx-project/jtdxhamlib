@@ -47,6 +47,98 @@
 #include "yaesu.h"
 #include "ft990.h"
 
+// FT990 native commands
+enum ft990_native_cmd_e {
+  FT990_NATIVE_SPLIT_OFF = 0,
+  FT990_NATIVE_SPLIT_ON,
+  FT990_NATIVE_RECALL_MEM,
+  FT990_NATIVE_VFO_TO_MEM,
+  FT990_NATIVE_LOCK_OFF,
+  FT990_NATIVE_LOCK_ON,
+  FT990_NATIVE_VFO_A,
+  FT990_NATIVE_VFO_B,
+  FT990_NATIVE_MEM_TO_VFO,
+  FT990_NATIVE_VFO_STEP_UP,
+  FT990_NATIVE_VFO_STEP_UP_FAST,
+  FT990_NATIVE_VFO_STEP_DOWN,
+  FT990_NATIVE_VFO_STEP_DOWN_FAST,
+  FT990_NATIVE_RX_CLARIFIER_OFF,
+  FT990_NATIVE_RX_CLARIFIER_ON,
+  FT990_NATIVE_TX_CLARIFIER_OFF,
+  FT990_NATIVE_TX_CLARIFIER_ON,
+  FT990_NATIVE_CLEAR_CLARIFIER_OFFSET,
+  FT990_NATIVE_CLARIFIER_OPS,
+  FT990_NATIVE_FREQ_SET,
+  FT990_NATIVE_MODE_SET_LSB,
+  FT990_NATIVE_MODE_SET_USB,
+  FT990_NATIVE_MODE_SET_CW_W,
+  FT990_NATIVE_MODE_SET_CW_N,
+  FT990_NATIVE_MODE_SET_AM_W,
+  FT990_NATIVE_MODE_SET_AM_N,
+  FT990_NATIVE_MODE_SET_FM,
+  FT990_NATIVE_MODE_SET_RTTY_LSB,
+  FT990_NATIVE_MODE_SET_RTTY_USB,
+  FT990_NATIVE_MODE_SET_PKT_LSB,
+  FT990_NATIVE_MODE_SET_PKT_FM,
+  FT990_NATIVE_PACING,
+  FT990_NATIVE_PTT_OFF,
+  FT990_NATIVE_PTT_ON,
+  FT990_NATIVE_UPDATE_ALL_DATA,
+  FT990_NATIVE_UPDATE_MEM_CHNL,
+  FT990_NATIVE_UPDATE_OP_DATA,
+  FT990_NATIVE_UPDATE_VFO_DATA,
+  FT990_NATIVE_UPDATE_MEM_CHNL_DATA,
+  FT990_NATIVE_TUNER_OFF,
+  FT990_NATIVE_TUNER_ON,
+  FT990_NATIVE_TUNER_START,
+  FT990_NATIVE_RPTR_SHIFT_NONE,
+  FT990_NATIVE_RPTR_SHIFT_MINUS,
+  FT990_NATIVE_RPTR_SHIFT_PLUS,
+  FT990_NATIVE_VFO_TO_VFO,
+  FT990_NATIVE_BANDWIDTH,
+  FT990_NATIVE_OP_FREQ_STEP_UP,
+  FT990_NATIVE_OP_FREQ_STEP_DOWN,
+  FT990_NATIVE_READ_METER,
+  FT990_NATIVE_DIM_LEVEL,
+  FT990_NATIVE_RPTR_OFFSET,
+  FT990_NATIVE_READ_FLAGS,
+  FT990_NATIVE_SIZE
+};
+
+
+/* HAMLIB API implementation */
+static int ft990_init(RIG *rig);
+static int ft990_cleanup(RIG *rig);
+static int ft990_open(RIG *rig);
+static int ft990_close(RIG *rig);
+static int ft990_set_freq(RIG *rig, vfo_t vfo, freq_t freq);
+static int ft990_get_freq(RIG *rig, vfo_t vfo, freq_t *freq);
+static int ft990_set_mode(RIG *rig, vfo_t vfo, rmode_t mode, pbwidth_t width);
+static int ft990_get_mode(RIG *rig, vfo_t vfo, rmode_t *mode, pbwidth_t *width);
+static int ft990_set_vfo(RIG *rig, vfo_t vfo);
+static int ft990_get_vfo(RIG *rig, vfo_t *vfo);
+static int ft990_set_ptt(RIG *rig, vfo_t vfo, ptt_t ptt);
+static int ft990_get_ptt(RIG *rig, vfo_t vfo, ptt_t *ptt);
+static int ft990_set_rptr_shift(RIG *rig, vfo_t vfo, rptr_shift_t rptr_shift);
+static int ft990_get_rptr_shift(RIG *rig, vfo_t vfo, rptr_shift_t *rptr_shift);
+static int ft990_set_rptr_offs(RIG *rig, vfo_t vfo, shortfreq_t offs);
+static int ft990_set_split_vfo(RIG *rig, vfo_t vfo, split_t split, vfo_t tx_vfo);
+static int ft990_get_split_vfo(RIG *rig, vfo_t vfo, split_t *split, vfo_t *tx_vfo);
+static int ft990_set_rit(RIG *rig, vfo_t vfo, shortfreq_t rit);
+static int ft990_get_rit(RIG *rig, vfo_t vfo, shortfreq_t *rit);
+static int ft990_set_func(RIG *rig, vfo_t vfo, setting_t func, int status);
+static int ft990_get_func(RIG *rig, vfo_t vfo, setting_t func, int *status);
+static int ft990_set_parm(RIG *rig, setting_t parm, value_t val);
+static int ft990_set_xit(RIG *rig, vfo_t vfo, shortfreq_t xit);
+static int ft990_get_xit(RIG *rig, vfo_t vfo, shortfreq_t *xit);
+static int ft990_get_level(RIG *rig, vfo_t vfo, setting_t level, value_t *val);
+static int ft990_vfo_op(RIG *rig, vfo_t vfo, vfo_op_t op);
+static int ft990_set_mem(RIG *rig, vfo_t vfo, int ch);
+static int ft990_get_mem(RIG *rig, vfo_t vfo, int *ch);
+static int ft990_set_channel (RIG *rig, vfo_t vfo, const channel_t *chan);
+static int ft990_get_channel (RIG *rig, vfo_t vfo, channel_t *chan, int read_only);
+
+
 
 
 
@@ -125,7 +217,6 @@ struct ft990_priv_data
     unsigned int read_update_delay;           /* depends on pacing value */
     vfo_t current_vfo;                        /* active VFO from last cmd */
     unsigned char p_cmd[YAESU_CMD_LENGTH];    /* private copy of CAT cmd */
-    yaesu_cmd_set_t pcs[FT990_NATIVE_SIZE];   /* private cmd set */
     ft990_update_data_t update_data;          /* returned data */
 };
 
@@ -309,9 +400,6 @@ int ft990_init(RIG *rig)
     }
 
     priv = rig->state.priv;
-
-// Copy native cmd set to private cmd storage area
-    memcpy(priv->pcs, ncmd, sizeof(ncmd));
 
     // Set default pacing value
     priv->pacing = FT990_PACING_DEFAULT_VALUE;
@@ -2285,7 +2373,6 @@ int ft990_get_vfo(RIG *rig, vfo_t *vfo)
 int ft990_get_level(RIG *rig, vfo_t vfo, setting_t level, value_t *value)
 {
     struct ft990_priv_data *priv;
-    struct rig_state *rig_s;
     unsigned char mdata[YAESU_CMD_LENGTH];
     int err;
 
@@ -2328,8 +2415,7 @@ int ft990_get_level(RIG *rig, vfo_t vfo, setting_t level, value_t *value)
         return err;
     }
 
-    rig_s = &rig->state;
-    err = read_block(&rig_s->rigport, (char *) mdata, FT990_READ_METER_LENGTH);
+    err = read_block(&rig->state.rigport, (char *) mdata, FT990_READ_METER_LENGTH);
 
     if (err < 0)
     {
@@ -3128,7 +3214,6 @@ int ft990_get_channel(RIG *rig, vfo_t vfo, channel_t *chan, int read_only)
  */
 int ft990_get_update_data(RIG *rig, unsigned char ci, unsigned short ch)
 {
-    struct rig_state *rig_s;
     struct ft990_priv_data *priv;
     int n;
     int err;
@@ -3146,7 +3231,6 @@ int ft990_get_update_data(RIG *rig, unsigned char ci, unsigned short ch)
     }
 
     priv = (struct ft990_priv_data *)rig->state.priv;
-    rig_s = &rig->state;
 
     if (ci == FT990_NATIVE_UPDATE_MEM_CHNL_DATA)
         // P4 = 0x01 to 0x5a for channel 1 - 90
@@ -3198,7 +3282,7 @@ int ft990_get_update_data(RIG *rig, unsigned char ci, unsigned short ch)
         return -RIG_EINVAL;
     }
 
-    n = read_block(&rig_s->rigport, p, rl);
+    n = read_block(&rig->state.rigport, p, rl);
 
     if (n < 0)
     {
@@ -3221,15 +3305,13 @@ int ft990_get_update_data(RIG *rig, unsigned char ci, unsigned short ch)
  * TODO: place variant of this in yaesu.c
  *
  * Arguments:   *rig    Valid RIG instance
- *              ci      Command index of the pcs struct
+ *              ci      Command index of the ncmd table
  *
  * Returns:     RIG_OK if all called functions are successful,
  *              otherwise returns error from called functiion
  */
 int ft990_send_static_cmd(RIG *rig, unsigned char ci)
 {
-    struct rig_state *rig_s;
-    struct ft990_priv_data *priv;
     int err;
 
     rig_debug(RIG_DEBUG_VERBOSE, "%s called\n", __func__);
@@ -3239,17 +3321,14 @@ int ft990_send_static_cmd(RIG *rig, unsigned char ci)
         return -RIG_EINVAL;
     }
 
-    priv = (struct ft990_priv_data *)rig->state.priv;
-    rig_s = &rig->state;
-
-    if (!priv->pcs[ci].ncomp)
+    if (!ncmd[ci].ncomp)
     {
         rig_debug(RIG_DEBUG_TRACE,
                   "%s: Attempt to send incomplete sequence\n", __func__);
         return -RIG_EINVAL;
     }
 
-    err = write_block(&rig_s->rigport, (char *) priv->pcs[ci].nseq,
+    err = write_block(&rig->state.rigport, (char *) ncmd[ci].nseq,
                       YAESU_CMD_LENGTH);
 
     if (err != RIG_OK)
@@ -3267,7 +3346,7 @@ int ft990_send_static_cmd(RIG *rig, unsigned char ci)
  * TODO: place variant of this in yaesu.c
  *
  * Arguments:   *rig    Valid RIG instance
- *              ci      Command index of the pcs struct
+ *              ci      Command index of the ncmd table
  *              p1-p4   Command parameters
  *
  * Returns:     RIG_OK if all called functions are successful,
@@ -3277,7 +3356,6 @@ int ft990_send_dynamic_cmd(RIG *rig, unsigned char ci,
                            unsigned char p1, unsigned char p2,
                            unsigned char p3, unsigned char p4)
 {
-    struct rig_state *rig_s;
     struct ft990_priv_data *priv;
     int err;
 
@@ -3295,14 +3373,13 @@ int ft990_send_dynamic_cmd(RIG *rig, unsigned char ci,
 
     priv = (struct ft990_priv_data *)rig->state.priv;
 
-    if (priv->pcs[ci].ncomp)
+    if (ncmd[ci].ncomp)
     {
         rig_debug(RIG_DEBUG_TRACE,
                   "%s: Attempt to modify complete sequence\n", __func__);
         return -RIG_EINVAL;
     }
 
-    rig_s = &rig->state;
     memcpy(&priv->p_cmd, &ncmd[ci].nseq, YAESU_CMD_LENGTH);
 
     priv->p_cmd[3] = p1;
@@ -3310,7 +3387,7 @@ int ft990_send_dynamic_cmd(RIG *rig, unsigned char ci,
     priv->p_cmd[1] = p3;
     priv->p_cmd[0] = p4;
 
-    err = write_block(&rig_s->rigport, (char *) &priv->p_cmd,
+    err = write_block(&rig->state.rigport, (char *) &priv->p_cmd,
                       YAESU_CMD_LENGTH);
 
     if (err != RIG_OK)
@@ -3328,7 +3405,7 @@ int ft990_send_dynamic_cmd(RIG *rig, unsigned char ci,
  * TODO: place variant of this in yaesu.c
  *
  * Arguments:   *rig    Valid RIG instance
- *              ci      Command index of the pcs struct
+ *              ci      Command index of the ncmd table
  *              freq    freq_t frequency value
  *
  * Returns:     RIG_OK if all called functions are successful,
@@ -3336,7 +3413,6 @@ int ft990_send_dynamic_cmd(RIG *rig, unsigned char ci,
  */
 int ft990_send_dial_freq(RIG *rig, unsigned char ci, freq_t freq)
 {
-    struct rig_state *rig_s;
     struct ft990_priv_data *priv;
     int err;
     // cppcheck-suppress *
@@ -3354,14 +3430,12 @@ int ft990_send_dial_freq(RIG *rig, unsigned char ci, freq_t freq)
 
     priv = (struct ft990_priv_data *)rig->state.priv;
 
-    if (priv->pcs[ci].ncomp)
+    if (ncmd[ci].ncomp)
     {
         rig_debug(RIG_DEBUG_TRACE,
                   "%s: Attempt to modify complete sequence\n", __func__);
         return -RIG_EINVAL;
     }
-
-    rig_s = &rig->state;
 
     /* Copy native cmd freq_set to private cmd storage area */
     memcpy(&priv->p_cmd, &ncmd[ci].nseq, YAESU_CMD_LENGTH);
@@ -3372,7 +3446,7 @@ int ft990_send_dial_freq(RIG *rig, unsigned char ci, freq_t freq)
     rig_debug(RIG_DEBUG_TRACE, fmt, __func__, (int64_t)from_bcd(priv->p_cmd,
               FT990_BCD_DIAL) * 10);
 
-    err = write_block(&rig_s->rigport, (char *) &priv->p_cmd,
+    err = write_block(&rig->state.rigport, (char *) &priv->p_cmd,
                       YAESU_CMD_LENGTH);
 
     if (err != RIG_OK)
@@ -3388,7 +3462,7 @@ int ft990_send_dial_freq(RIG *rig, unsigned char ci, freq_t freq)
  * change the rit frequency.
  *
  * Arguments:   *rig    Valid RIG instance
- *              ci      Command index of the pcs struct
+ *              ci      Command index of the ncmd table
  *              rit    shortfreq_t frequency value
  *
  * Returns:     RIG_OK if all called functions are successful,
@@ -3397,7 +3471,6 @@ int ft990_send_dial_freq(RIG *rig, unsigned char ci, freq_t freq)
 int ft990_send_rit_freq(RIG *rig, unsigned char ci, shortfreq_t rit)
 {
     struct ft990_priv_data *priv;
-    struct rig_state *rig_s;
     int err;
 
     rig_debug(RIG_DEBUG_VERBOSE, "%s called\n", __func__);
@@ -3411,9 +3484,8 @@ int ft990_send_rit_freq(RIG *rig, unsigned char ci, shortfreq_t rit)
     rig_debug(RIG_DEBUG_TRACE, "%s: passed rit = %li Hz\n", __func__, rit);
 
     priv = (struct ft990_priv_data *) rig->state.priv;
-    rig_s = &rig->state;
 
-    if (priv->pcs[ci].ncomp)
+    if (ncmd[ci].ncomp)
     {
         rig_debug(RIG_DEBUG_TRACE, "%s: Attempt to modify complete sequence\n",
                   __func__);
@@ -3439,7 +3511,7 @@ int ft990_send_rit_freq(RIG *rig, unsigned char ci, shortfreq_t rit)
     // Store bcd format into privat command storage area
     to_bcd(priv->p_cmd, labs(rit) / 10, FT990_BCD_RIT);
 
-    err = write_block(&rig_s->rigport, (char *) &priv->p_cmd,
+    err = write_block(&rig->state.rigport, (char *) &priv->p_cmd,
                       YAESU_CMD_LENGTH);
 
     if (err != RIG_OK)

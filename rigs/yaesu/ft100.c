@@ -41,10 +41,145 @@
 #include "misc.h"
 #include "bandplan.h"
 
-struct ft100_priv_data {
-  /* TODO: make use of cached data */
-  FT100_STATUS_INFO status;
-  FT100_FLAG_INFO flags;
+enum ft100_native_cmd_e {
+
+  FT100_NATIVE_CAT_LOCK_ON = 0,
+  FT100_NATIVE_CAT_LOCK_OFF,
+  FT100_NATIVE_CAT_PTT_ON,
+  FT100_NATIVE_CAT_PTT_OFF,
+  FT100_NATIVE_CAT_SET_FREQ,
+  FT100_NATIVE_CAT_SET_MODE_LSB,
+  FT100_NATIVE_CAT_SET_MODE_USB,
+  FT100_NATIVE_CAT_SET_MODE_CW,
+  FT100_NATIVE_CAT_SET_MODE_CWR,
+  FT100_NATIVE_CAT_SET_MODE_AM,
+  FT100_NATIVE_CAT_SET_MODE_FM,
+  FT100_NATIVE_CAT_SET_MODE_DIG,
+  FT100_NATIVE_CAT_SET_MODE_WFM,
+  FT100_NATIVE_CAT_CLAR_ON,
+  FT100_NATIVE_CAT_CLAR_OFF,
+  FT100_NATIVE_CAT_SET_CLAR_FREQ,
+  FT100_NATIVE_CAT_SET_VFOAB,
+  FT100_NATIVE_CAT_SET_VFOA,
+  FT100_NATIVE_CAT_SET_VFOB,
+  FT100_NATIVE_CAT_SPLIT_ON,
+  FT100_NATIVE_CAT_SPLIT_OFF,
+  FT100_NATIVE_CAT_SET_RPT_SHIFT_MINUS,
+  FT100_NATIVE_CAT_SET_RPT_SHIFT_PLUS,
+  FT100_NATIVE_CAT_SET_RPT_SHIFT_SIMPLEX,
+  FT100_NATIVE_CAT_SET_RPT_OFFSET,
+/* fix me */
+  FT100_NATIVE_CAT_SET_DCS_ON,
+  FT100_NATIVE_CAT_SET_CTCSS_ENC_ON,
+  FT100_NATIVE_CAT_SET_CTCSS_ENC_DEC_ON,
+  FT100_NATIVE_CAT_SET_CTCSS_DCS_OFF,
+/* em xif */
+  FT100_NATIVE_CAT_SET_CTCSS_FREQ,
+  FT100_NATIVE_CAT_SET_DCS_CODE,
+  FT100_NATIVE_CAT_GET_RX_STATUS,
+  FT100_NATIVE_CAT_GET_TX_STATUS,
+  FT100_NATIVE_CAT_GET_FREQ_MODE_STATUS,
+  FT100_NATIVE_CAT_PWR_WAKE,
+  FT100_NATIVE_CAT_PWR_ON,
+  FT100_NATIVE_CAT_PWR_OFF,
+  FT100_NATIVE_CAT_READ_STATUS,
+  FT100_NATIVE_CAT_READ_METERS,
+  FT100_NATIVE_CAT_READ_FLAGS,
+  FT100_NATIVE_SIZE		/* end marker */
+};
+
+/*
+ *  we are able to get way more info
+ *  than we can set
+ *
+ */
+typedef struct
+{
+   unsigned char band_no;
+   unsigned char freq[4];
+   unsigned char mode;
+   unsigned char ctcss;
+   unsigned char dcs;
+   unsigned char flag1;
+   unsigned char flag2;
+   unsigned char clarifier[2];
+   unsigned char not_used;
+   unsigned char step1;
+   unsigned char step2;
+   unsigned char filter;
+
+   unsigned char stuffing[16];
+}
+ FT100_STATUS_INFO;
+
+
+typedef struct
+{
+   unsigned char mic_switch_1;
+   unsigned char tx_fwd_power;
+   unsigned char tx_rev_power;
+   unsigned char s_meter;
+   unsigned char mic_level;
+   unsigned char squelch_level;
+   unsigned char mic_switch_2;
+   unsigned char final_temp;
+   unsigned char alc_level;
+}
+ FT100_METER_INFO;
+
+typedef struct
+{
+   unsigned char byte[8];
+}
+FT100_FLAG_INFO;
+
+
+static int ft100_init(RIG *rig);
+static int ft100_open(RIG *rig);
+static int ft100_cleanup(RIG *rig);
+static int ft100_close(RIG *rig);
+
+static int ft100_set_freq(RIG *rig, vfo_t vfo, freq_t freq);
+static int ft100_get_freq(RIG *rig, vfo_t vfo, freq_t *freq);
+
+static int ft100_set_mode(RIG *rig, vfo_t vfo, rmode_t mode, pbwidth_t width);
+static int ft100_get_mode(RIG *rig, vfo_t vfo, rmode_t *mode, pbwidth_t *width);
+
+static int ft100_set_vfo(RIG *rig, vfo_t vfo);
+static int ft100_get_vfo(RIG *rig, vfo_t *vfo);
+
+static int ft100_set_ptt(RIG *rig, vfo_t vfo, ptt_t ptt);
+static int ft100_get_ptt(RIG *rig, vfo_t vfo, ptt_t *ptt);
+static int ft100_get_level(RIG *rig, vfo_t vfo, setting_t level, value_t *val);
+#if 0
+static int ft100_set_level(RIG *rig, vfo_t vfo, setting_t level, value_t val);
+
+static int ft100_set_func(RIG *rig, vfo_t vfo, setting_t func, int status);
+static int ft100_get_func(RIG *rig, vfo_t vfo, setting_t func, int *status);
+
+static int ft100_set_parm(RIG *rig, setting_t parm, value_t val);
+static int ft100_get_parm(RIG *rig, setting_t parm, value_t *val);
+#endif
+
+static int ft100_set_split_vfo(RIG *rig, vfo_t vfo, split_t split, vfo_t tx_vfo);
+static int ft100_get_split_vfo(RIG *rig, vfo_t vfo, split_t *split, vfo_t *tx_vfo);
+
+static int ft100_set_rptr_shift(RIG *rig, vfo_t vfo, rptr_shift_t shift);
+static int ft100_get_rptr_shift(RIG *rig, vfo_t vfo, rptr_shift_t *shift);
+
+static int ft100_set_dcs_code(RIG *rig, vfo_t vfo, tone_t code);
+static int ft100_get_dcs_code(RIG *rig, vfo_t vfo, tone_t *code);
+
+static int ft100_set_ctcss_tone(RIG *rig, vfo_t vfo, tone_t tone);
+static int ft100_get_ctcss_tone(RIG *rig, vfo_t vfo, tone_t *tone);
+
+//static int ft100_get_info(RIG *rig, FT100_STATUS_INFO *ft100_status, FT100_METER_INFO *ft100_meter, FT100_FLAG_INFO *ft100_flags);
+
+struct ft100_priv_data
+{
+    /* TODO: make use of cached data */
+    FT100_STATUS_INFO status;
+    FT100_FLAG_INFO flags;
 };
 
 
@@ -385,19 +520,12 @@ int ft100_close(RIG *rig)
 
 static int ft100_send_priv_cmd(RIG *rig, unsigned char cmd_index)
 {
-
-    struct rig_state *rig_s;
-    unsigned char *cmd;       /* points to sequence to send */
-
     rig_debug(RIG_DEBUG_VERBOSE, "%s called (%d)\n", __func__, cmd_index);
 
     if (!rig) { return -RIG_EINVAL; }
 
-    rig_s = &rig->state;
-
-    cmd = (unsigned char *) &ncmd[cmd_index].nseq; /* get native sequence */
-
-    return write_block(&rig_s->rigport, (char *) cmd, YAESU_CMD_LENGTH);
+    return write_block(&rig->state.rigport, (char *) &ncmd[cmd_index].nseq,
+            YAESU_CMD_LENGTH);
 }
 
 static int ft100_read_status(RIG *rig)
@@ -462,13 +590,10 @@ static int ft100_read_flags(RIG *rig)
 
 int ft100_set_freq(RIG *rig, vfo_t vfo, freq_t freq)
 {
-    struct rig_state *rig_s;
     unsigned char p_cmd[YAESU_CMD_LENGTH];
     unsigned char cmd_index;  /* index of sequence to send */
 
     if (!rig) { return -RIG_EINVAL; }
-
-    rig_s = &rig->state;
 
     rig_debug(RIG_DEBUG_VERBOSE, "ft100: requested freq = %"PRIfreq" Hz \n", freq);
 
@@ -480,7 +605,7 @@ int ft100_set_freq(RIG *rig, vfo_t vfo, freq_t freq)
     freq = (int)freq / 10;
     to_bcd(p_cmd, freq, 8); /* store bcd format in in p_cmd */
 
-    return write_block(&rig_s->rigport, (char *) p_cmd, YAESU_CMD_LENGTH);
+    return write_block(&rig->state.rigport, (char *) p_cmd, YAESU_CMD_LENGTH);
 }
 
 int ft100_get_freq(RIG *rig, vfo_t vfo, freq_t *freq)
@@ -1044,12 +1169,9 @@ int ft100_get_rptr_shift(RIG *rig, vfo_t vfo, rptr_shift_t *shift)
  */
 int ft100_set_dcs_code(RIG *rig, vfo_t vfo, tone_t code)
 {
-    struct rig_state *rig_s;
     unsigned char p_cmd[YAESU_CMD_LENGTH];
     unsigned char cmd_index;  /* index of sequence to send */
     int pcode;
-
-    rig_s = &rig->state;
 
     for (pcode = 0; pcode < 104 && ft100_dcs_list[pcode] != 0; pcode++)
     {
@@ -1074,7 +1196,7 @@ int ft100_set_dcs_code(RIG *rig, vfo_t vfo, tone_t code)
 
     p_cmd[3] = (char)pcode;
 
-    return write_block(&rig_s->rigport, (char *) p_cmd, YAESU_CMD_LENGTH);
+    return write_block(&rig->state.rigport, (char *) p_cmd, YAESU_CMD_LENGTH);
 }
 
 int ft100_get_dcs_code(RIG *rig, vfo_t vfo, tone_t *code)
@@ -1101,7 +1223,6 @@ int ft100_get_dcs_code(RIG *rig, vfo_t vfo, tone_t *code)
  */
 int ft100_set_ctcss_tone(RIG *rig, vfo_t vfo, tone_t tone)
 {
-    struct rig_state *rig_s;
     unsigned char p_cmd[YAESU_CMD_LENGTH];
     unsigned char cmd_index;  /* index of sequence to send */
     int ptone;
@@ -1120,8 +1241,6 @@ int ft100_set_ctcss_tone(RIG *rig, vfo_t vfo, tone_t tone)
         return -RIG_EINVAL;
     }
 
-    rig_s = &rig->state;
-
     rig_debug(RIG_DEBUG_VERBOSE, "%s = %.1f Hz, n=%d\n", __func__,
               (float)tone / 10, ptone);
 
@@ -1131,7 +1250,7 @@ int ft100_set_ctcss_tone(RIG *rig, vfo_t vfo, tone_t tone)
 
     p_cmd[3] = (char)ptone;
 
-    return write_block(&rig_s->rigport, (char *) p_cmd, YAESU_CMD_LENGTH);
+    return write_block(&rig->state.rigport, (char *) p_cmd, YAESU_CMD_LENGTH);
 }
 
 int ft100_get_ctcss_tone(RIG *rig, vfo_t vfo, tone_t *tone)

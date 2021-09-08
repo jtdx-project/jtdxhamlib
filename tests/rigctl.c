@@ -154,10 +154,7 @@ int main(int argc, char *argv[])
     int ext_resp = 0;
     char resp_sep = '\n';
     int i;
-
-    rig_debug(RIG_DEBUG_VERBOSE, "%s(%d) Startup:", __FILE__, __LINE__);
-    for(i=0;i<argc;++i) rig_debug(RIG_DEBUG_VERBOSE, " %s", argv[i]);
-    rig_debug(RIG_DEBUG_VERBOSE, "%s", "\n");
+    char rigstartup[1024];
 
     while (1)
     {
@@ -181,6 +178,7 @@ int main(int argc, char *argv[])
         case '!':
             cookie_use = 1;
             break;
+
         case 'h':
             usage();
             exit(0);
@@ -443,6 +441,13 @@ int main(int argc, char *argv[])
 
     rig_set_debug(verbose);
 
+    snprintf(rigstartup, sizeof(rigstartup), "%s(%d) Startup:", __FILE__, __LINE__);
+
+    for (i = 0; i < argc; ++i) { strcat(rigstartup, " "); strcat(rigstartup, argv[i]); }
+
+    rig_debug(RIG_DEBUG_VERBOSE, "%s\n", rigstartup);
+
+
     rig_debug(RIG_DEBUG_VERBOSE, "rigctl %s\n", hamlib_version2);
     rig_debug(RIG_DEBUG_VERBOSE, "%s",
               "Report bugs to <hamlib-developer@lists.sourceforge.net>\n\n");
@@ -558,7 +563,8 @@ int main(int argc, char *argv[])
 
     if (retcode != RIG_OK)
     {
-        fprintf(stderr, "rig_open: error = %s %s %s \n", rigerror(retcode), rig_file, strerror(errno));
+        fprintf(stderr, "rig_open: error = %s %s %s \n", rigerror(retcode), rig_file,
+                strerror(errno));
 
         if (!ignore_rig_open_error) { exit(2); }
     }

@@ -89,8 +89,6 @@ struct cmdparams ic756pro_cmdparms[] =
          { 247 ,60 } \
     } }
 
-int ic756_set_func(RIG *rig, vfo_t vfo, setting_t func, int status);
-
 /*
  *  This function deals with the older type radios with only 2 filter widths
  *  (0 - normal, 1 - narrow)
@@ -128,7 +126,7 @@ static const struct icom_priv_caps ic756_priv_caps =
     0,       /* 731 mode */
     0,       /* no XCHG */
     ic756_ts_sc_list,
-    .antack_len = 2,
+    .antack_len = 3,
     .ant_count = 2,
     .r2i_mode = r2i_mode,
     .agc_levels_present = 1,
@@ -145,7 +143,7 @@ const struct rig_caps ic756_caps =
     RIG_MODEL(RIG_MODEL_IC756),
     .model_name = "IC-756",
     .mfg_name =  "Icom",
-    .version =  BACKEND_VER ".0",
+    .version =  BACKEND_VER ".1",
     .copyright =  "LGPL",
     .status =  RIG_STATUS_STABLE,
     .rig_type =  RIG_TYPE_TRANSCEIVER,
@@ -261,7 +259,7 @@ const struct rig_caps ic756_caps =
     .decode_event =  icom_decode_event,
     .set_level =  icom_set_level,
     .get_level =  icom_get_level,
-    .set_func =  ic756_set_func,
+    .set_func =  icom_set_func,
     .get_func =  icom_get_func,
     .set_mem =  icom_set_mem,
     .vfo_op =  icom_vfo_op,
@@ -292,7 +290,7 @@ static const struct icom_priv_caps ic756pro_priv_caps =
     0,        /* 731 mode */
     0,    /* no XCHG */
     ic756pro_ts_sc_list,
-    .antack_len = 2,
+    .antack_len = 3,
     .ant_count = 2,
     .agc_levels_present = 1,
     .agc_levels = {
@@ -308,7 +306,7 @@ const struct rig_caps ic756pro_caps =
     RIG_MODEL(RIG_MODEL_IC756PRO),
     .model_name = "IC-756PRO",
     .mfg_name =  "Icom",
-    .version =  BACKEND_VER ".0",
+    .version =  BACKEND_VER ".1",
     .copyright =  "LGPL",
     .status =  RIG_STATUS_STABLE,
     .rig_type =  RIG_TYPE_TRANSCEIVER,
@@ -423,7 +421,7 @@ const struct rig_caps ic756pro_caps =
     .decode_event =  icom_decode_event,
     .set_level =  icom_set_level,
     .get_level =  icom_get_level,
-    .set_func =  ic756_set_func,
+    .set_func =  icom_set_func,
     .get_func =  icom_get_func,
     .set_mem =  icom_set_mem,
     .vfo_op =  icom_vfo_op,
@@ -462,7 +460,7 @@ static const struct icom_priv_caps ic756pro2_priv_caps =
     0,       /* 731 mode */
     0,       /* no XCHG */
     ic756pro_ts_sc_list,
-    .antack_len = 2,
+    .antack_len = 3,
     .ant_count = 2,
     .agc_levels_present = 1,
     .agc_levels = {
@@ -545,7 +543,7 @@ const struct rig_caps ic756pro2_caps =
     RIG_MODEL(RIG_MODEL_IC756PROII),
     .model_name = "IC-756PROII",
     .mfg_name =  "Icom",
-    .version =  BACKEND_VER ".0",
+    .version =  BACKEND_VER ".1",
     .copyright =  "LGPL",
     .status =  RIG_STATUS_STABLE,
     .rig_type =  RIG_TYPE_TRANSCEIVER,
@@ -663,7 +661,7 @@ const struct rig_caps ic756pro2_caps =
     .get_parm =  icom_get_parm,
     .set_level =  icom_set_level,
     .get_level =  icom_get_level,
-    .set_func =  ic756_set_func,
+    .set_func =  icom_set_func,
     .get_func =  icom_get_func,
     .set_mem =  icom_set_mem,
     .vfo_op =  icom_vfo_op,
@@ -891,7 +889,7 @@ static const struct icom_priv_caps ic756pro3_priv_caps =
     0,       /* 731 mode */
     0,       /* no XCHG */
     ic756pro_ts_sc_list,
-    .antack_len = 2,
+    .antack_len = 3,
     .ant_count = 2,
     .agc_levels_present = 1,
     .agc_levels = {
@@ -977,7 +975,7 @@ const struct rig_caps ic756pro3_caps =
     RIG_MODEL(RIG_MODEL_IC756PROIII),
     .model_name = "IC-756PROIII",
     .mfg_name =  "Icom",
-    .version =  BACKEND_VER ".0",
+    .version =  BACKEND_VER ".1",
     .copyright =  "LGPL",
     .status =  RIG_STATUS_STABLE,
     .rig_type =  RIG_TYPE_TRANSCEIVER,
@@ -1106,7 +1104,7 @@ const struct rig_caps ic756pro3_caps =
     .get_parm =  icom_get_parm,
     .set_level =  icom_set_level,
     .get_level =  icom_get_level,
-    .set_func =  ic756_set_func,
+    .set_func =  icom_set_func,
     .get_func =  icom_get_func,
     .set_mem =  icom_set_mem,
     .vfo_op =  icom_vfo_op,
@@ -1131,37 +1129,3 @@ const struct rig_caps ic756pro3_caps =
     .set_ext_parm =  ic756pro2_set_ext_parm,
     .get_ext_parm =  ic756pro2_get_ext_parm,
 };
-
-int ic756_set_func(RIG *rig, vfo_t vfo, setting_t func, int status)
-{
-    unsigned char fctbuf[MAXFRAMELEN], ackbuf[MAXFRAMELEN];
-    int fct_len = 0, acklen, retval;
-    int fct_cn, fct_sc;        /* Command Number, Subcommand */
-
-    switch (func)
-    {
-    case RIG_FUNC_DUAL_WATCH:
-        fct_cn = C_SET_VFO;
-        fct_sc = status ? S_DUAL_ON : S_DUAL_OFF;
-        break;
-
-    default:
-        return icom_set_func(rig, vfo, func, status);
-    }
-
-    retval = icom_transaction(rig, fct_cn, fct_sc, fctbuf, fct_len, ackbuf,
-                              &acklen);
-
-    if (retval != RIG_OK)
-    {
-        return retval;
-    }
-
-    if (acklen != 1)
-    {
-        rig_debug(RIG_DEBUG_ERR, "%s: wrong frame len=%d\n", __func__, acklen);
-        return -RIG_EPROTO;
-    }
-
-    return RIG_OK;
-}

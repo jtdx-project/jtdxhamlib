@@ -413,7 +413,7 @@ const char *HAMLIB_API rig_strstatus(enum rig_status_e status)
 }
 
 
-static struct
+static const struct
 {
     rmode_t mode;
     const char *str;
@@ -453,6 +453,7 @@ static struct
     { RIG_MODE_PSKR, "PSKR"},
     { RIG_MODE_C4FM, "C4FM"},
     { RIG_MODE_SPEC, "SPEC"},
+    { RIG_MODE_CWN, "CWN"},
     { RIG_MODE_NONE, "" },
 };
 
@@ -553,7 +554,7 @@ int HAMLIB_API rig_strrmodes(rmode_t modes, char *buf, int buflen)
 }
 
 
-static struct
+static const struct
 {
     vfo_t vfo;
     const char *str;
@@ -632,7 +633,7 @@ const char *HAMLIB_API rig_strvfo(vfo_t vfo)
 }
 
 
-static struct
+static const struct
 {
     setting_t func;
     const char *str;
@@ -686,7 +687,7 @@ static struct
 };
 
 
-static struct
+static const struct
 {
     setting_t func;
     const char *str;
@@ -817,7 +818,7 @@ const char *HAMLIB_API rot_strfunc(setting_t func)
 }
 
 
-static struct
+static const struct
 {
     setting_t level;
     const char *str;
@@ -874,7 +875,7 @@ static struct
 };
 
 
-static struct
+static const struct
 {
     setting_t level;
     const char *str;
@@ -885,7 +886,7 @@ static struct
 };
 
 
-static struct
+static const struct
 {
     setting_t level;
     const char *str;
@@ -1074,7 +1075,7 @@ const char *HAMLIB_API amp_strlevel(setting_t level)
 }
 
 
-static struct
+static const struct
 {
     setting_t parm;
     const char *str;
@@ -1092,7 +1093,7 @@ static struct
 };
 
 
-static struct
+static const struct
 {
     setting_t parm;
     const char *str;
@@ -1211,7 +1212,7 @@ const char *HAMLIB_API rot_strparm(setting_t parm)
     return "";
 }
 
-static struct
+static const struct
 {
     enum agc_level_e level;
     const char *str;
@@ -1253,7 +1254,7 @@ const char *HAMLIB_API rig_stragclevel(enum agc_level_e level)
 }
 
 
-static struct
+static const struct
 {
     vfo_op_t vfo_op;
     const char *str;
@@ -1327,7 +1328,7 @@ const char *HAMLIB_API rig_strvfop(vfo_op_t op)
 }
 
 
-static struct
+static const struct
 {
     scan_t rscan;
     const char *str;
@@ -1451,7 +1452,7 @@ rptr_shift_t HAMLIB_API rig_parse_rptr_shift(const char *s)
 }
 
 
-static struct
+static const struct
 {
     chan_type_t mtype;
     const char *str;
@@ -1522,7 +1523,7 @@ const char *HAMLIB_API rig_strmtype(chan_type_t mtype)
     return "";
 }
 
-static struct
+static const struct
 {
     enum rig_spectrum_mode_e mode;
     const char *str;
@@ -1761,6 +1762,7 @@ vfo_t HAMLIB_API vfo_fixup(RIG *rig, vfo_t vfo, split_t split)
         {
             split = rig->state.cache.split;
         }
+
 #endif
 
         int satmode = rig->state.cache.satmode;
@@ -1937,7 +1939,7 @@ int HAMLIB_API rig_flush(hamlib_port_t *port)
 }
 
 
-static struct
+static const struct
 {
     rot_status_t status;
     const char *str;
@@ -2343,6 +2345,27 @@ uint32_t CRC32_function(uint8_t *buf, uint32_t len)
 
     return crc ^ 0xFFFFFFFF;
 }
+
+#if defined(_WIN32)
+// gmtime_r can be defined by mingw
+#ifndef gmtime_r
+static struct tm *gmtime_r(const time_t *t, struct tm *r)
+{
+    // gmtime is threadsafe in windows because it uses TLS
+    struct tm *theTm = gmtime(t);
+
+    if (theTm)
+    {
+        *r = *theTm;
+        return r;
+    }
+    else
+    {
+        return 0;
+    }
+}
+#endif // gmtime_r
+#endif // _WIN32
 
 //! @cond Doxygen_Suppress
 char *date_strget(char *buf, int buflen)

@@ -70,6 +70,250 @@
  *
  */
 
+/*
+ * Native FT890 functions. More to come :-)
+ *
+ */
+
+enum ft890_native_cmd_e {
+  FT890_NATIVE_SPLIT_OFF = 0,
+  FT890_NATIVE_SPLIT_ON,
+  FT890_NATIVE_RECALL_MEM,
+  FT890_NATIVE_VFO_TO_MEM,
+  FT890_NATIVE_VFO_A,
+  FT890_NATIVE_VFO_B,
+  FT890_NATIVE_MEM_TO_VFO,
+  FT890_NATIVE_CLARIFIER_OPS,
+  FT890_NATIVE_FREQ_SET,
+  FT890_NATIVE_MODE_SET,
+  FT890_NATIVE_PACING,
+  FT890_NATIVE_PTT_OFF,
+  FT890_NATIVE_PTT_ON,
+  FT890_NATIVE_MEM_CHNL,
+  FT890_NATIVE_OP_DATA,
+  FT890_NATIVE_VFO_DATA,
+  FT890_NATIVE_MEM_CHNL_DATA,
+  FT890_NATIVE_TUNER_OFF,
+  FT890_NATIVE_TUNER_ON,
+  FT890_NATIVE_TUNER_START,
+  FT890_NATIVE_READ_METER,
+  FT890_NATIVE_READ_FLAGS,
+  FT890_NATIVE_SIZE             /* end marker, value indicates number of */
+				                /* native cmd entries */
+};
+
+typedef enum ft890_native_cmd_e ft890_native_cmd_t;
+
+
+/*
+ * Internal MODES - when setting modes via FT890_NATIVE_MODE_SET
+ *
+ */
+
+#define MODE_SET_LSB    0x00
+#define MODE_SET_USB    0x01
+#define MODE_SET_CW_W   0x02
+#define MODE_SET_CW_N   0x03
+#define MODE_SET_AM_W   0x04
+#define MODE_SET_AM_N   0x05
+#define MODE_SET_FM     0x06
+
+
+/*
+ * Internal Clarifier parms - when setting clarifier via
+ * FT890_NATIVE_CLARIFIER_OPS
+ *
+ * The manual seems to be incorrect with regard to P1 and P2 values
+ * P1 = 0x00    clarifier off
+ * P1 = 0x01    clarifier on
+ * P1 = 0xff    clarifier set
+ * P2 = 0x00    clarifier up
+ * P2 = 0xff    clarifier down
+ */
+
+/* P1 values */
+#define CLAR_RX_OFF     0x00
+#define CLAR_RX_ON      0x01
+#define CLAR_SET_FREQ   0xff
+
+/* P2 values */
+#define CLAR_OFFSET_PLUS    0x00
+#define CLAR_OFFSET_MINUS   0xff
+
+
+/*
+ * Some useful offsets in the status update flags (offset)
+ * SUMO--Status Update Memory Offset?
+ *
+ * SF_ bit tests are now grouped with flag bytes for ease of reference
+ *
+ * FIXME: complete flags and bits
+ *
+ * CAT command 0xFA requests the FT-890 to return its status flags.
+ * These flags consist of 3 bytes (plus 2 filler bytes) and are documented
+ * in the FT-890 manual on page 33.
+ *
+ */
+
+#define FT890_SUMO_DISPLAYED_STATUS_0   0x00    /* Status flag byte 0 */
+#define SF_GC       (1<<1)              /* General Coverage Reception selected */
+#define SF_SPLIT    (1<<2)              /* Split active */
+#define SF_MCK      (1<<3)              /* memory Checking in progress */
+#define SF_MT       (1<<4)              /* Memory Tuning in progress */
+#define SF_MR       (1<<5)              /* Memory Mode selected */
+#define SF_A        (0<<6)              /* bit 6 clear, VFO A */
+#define SF_B        (1<<6)              /* bit 6 set, VFO B */
+#define SF_VFO      (1<<7)              /* bit 7 set, VFO A or B active */
+
+#define SF_VFOA     (SF_VFO|SF_A)       /* bit 7 set, bit 6 clear, VFO A */
+#define SF_VFOB     (SF_VFO|SF_B)       /* bit 7 set, bit 6 set, VFO B */
+#define SF_VFO_MASK (SF_VFOB)           /* bits 6 and 7 */
+#define SF_MEM_MASK (SF_MCK|SF_MT|SF_MR)    /* bits 3, 4 and 5 */
+
+
+#define FT890_SUMO_DISPLAYED_STATUS_1   0x01    /* Status flag byte 1 */
+
+
+#define FT890_SUMO_DISPLAYED_STATUS_2   0x02    /* Status flag byte 1 */
+#define SF_PTT_OFF  (0<<7)              /* bit 7 set, PTT open */
+#define SF_PTT_ON   (1<<7)              /* bit 7 set, PTT closed */
+#define SF_PTT_MASK (SF_PTT_ON)
+
+
+/*
+ * Offsets for VFO record retrieved via 0x10 P1 = 02, 03, 04
+ *
+ * The FT-890 returns frequency and mode data via three separate commands.
+ * CAT command 0x10, P1 = 02 returns the current main and sub displays' data (19 bytes)
+ * CAT command 0x10, P1 = 03 returns VFO A & B data  (18 bytes)
+ * CAT command 0x10, P1 = 04, P4 = 0x01-0x20 returns memory channel data (19 bytes)
+ * In all cases the format is (from the FT-890 manual page 32):
+ *
+ * Offset       Value
+ * 0x00         Band Selection          (BPF selection: 0x00 - 0x30 (bit 7 =1 on a blanked memory))
+ * 0x01         Operating Frequency     (Hex value of display--Not BCD!)
+ * 0x04         Clarifier Offset        (signed value between -999d (0xfc19) and +999d (0x03e7))
+ * 0x06         Mode Data
+ * 0x07         CTCSS tone code         (0x00 - 0x20)
+ * 0x08         Flags                   (Operating flags -- manual page 33)
+ *
+ * Memory Channel data has the same layout and offsets as the operating
+ * data record.
+ * When either of the 19 byte records is read (P1 = 02, 04), the offset is
+ * +1 as the leading byte is the memory channel number.
+ * The VFO data command (P1 = 03) returns 18 bytes and the VFO B data has
+ * the same layout, but the offset starts at 0x09 and continues through 0x12
+ *
+ */
+
+#define FT890_SUMO_MEM_CHANNEL          0x00    /* Memory Channel from 0xfa, P1 = 1 */
+#define FT890_SUMO_DISPLAYED_FREQ       0x02    /* Current main display, can be VFO A, Memory data, Memory tune (3 bytes) */
+#define FT890_SUMO_DISPLAYED_CLAR       0x05    /* RIT offset -- current display */
+#define FT890_SUMO_DISPLAYED_MODE       0x07    /* Current main display mode */
+#define FT890_SUMO_DISPLAYED_FLAG       0x09
+
+#define FT890_SUMO_VFO_A_FREQ           0x01    /* VFO A frequency, not necessarily currently displayed! */
+#define FT890_SUMO_VFO_A_CLAR           0x04    /* RIT offset -- VFO A */
+#define FT890_SUMO_VFO_A_MODE           0x06    /* VFO A mode, not necessarily currently displayed! */
+#define FT890_SUMO_VFO_A_FLAG           0x08
+
+#define FT890_SUMO_VFO_B_FREQ           0x0a    /* Current sub display && VFO B */
+#define FT890_SUMO_VFO_B_CLAR           0x0d    /* RIT offset -- VFO B */
+#define FT890_SUMO_VFO_B_MODE           0x0f    /* Current sub display && VFO B */
+#define FT890_SUMO_VFO_B_FLAG           0x11
+
+
+/*
+ * Read meter offset
+ *
+ * FT-890 returns the level of the S meter when in RX and ALC or PO or SWR
+ * when in TX.  The level is replicated in the first four bytes sent by the
+ * rig with the final byte being a constant 0xf7
+ *
+ * The manual states that the returned value will range between 0x00 and 0xff
+ * while "in practice the highest value returned will be around 0xf0".  The
+ * manual is silent when this value is returned as my rig returns 0x00 for
+ * S0, 0x44 for S9 and 0x9D for S9 +60.
+ *
+ */
+
+#define FT890_SUMO_METER                0x00    /* Meter level */
+
+
+/*
+ * Narrow filter selection flag from offset 0x08 or 0x11
+ * in VFO/Memory Record
+ *
+ * used when READING modes from FT-890
+ *
+ */
+
+#define FLAG_AM_N   (1<<6)
+#define FLAG_CW_N   (1<<7)
+#define FLAG_MASK   (FLAG_AM_N|FLAG_CW_N)
+
+
+/*
+ * Mode Bitmap from offset 0x06 or 0x0f in VFO/Memory Record.
+ *
+ * used when READING modes from FT-890
+ *
+ */
+
+#define MODE_LSB     0x00
+#define MODE_USB     0x01
+#define MODE_CW      0x02
+#define MODE_AM      0x03
+#define MODE_FM      0x04
+
+/* All relevant bits */
+#define MODE_MASK   (MODE_LSB|MODE_USB|MODE_CW|MODE_AM|MODE_FM)
+
+
+/*
+ * Command string parameter offsets
+ */
+
+#define P1  3
+#define P2  2
+#define P3  1
+#define P4  0
+
+
+/*
+ * API local implementation
+ *
+ */
+
+static int ft890_init(RIG *rig);
+static int ft890_cleanup(RIG *rig);
+static int ft890_open(RIG *rig);
+static int ft890_close(RIG *rig);
+
+static int ft890_set_freq(RIG *rig, vfo_t vfo, freq_t freq);
+static int ft890_get_freq(RIG *rig, vfo_t vfo, freq_t *freq);
+
+static int ft890_set_mode(RIG *rig, vfo_t vfo, rmode_t mode, pbwidth_t width);
+static int ft890_get_mode(RIG *rig, vfo_t vfo, rmode_t *mode, pbwidth_t *width);
+
+static int ft890_set_vfo(RIG *rig, vfo_t vfo);
+static int ft890_get_vfo(RIG *rig, vfo_t *vfo);
+
+static int ft890_set_ptt(RIG *rig, vfo_t vfo, ptt_t ptt);
+static int ft890_get_ptt(RIG *rig, vfo_t vfo, ptt_t *ptt);
+
+static int ft890_set_split_vfo(RIG *rig, vfo_t vfo, split_t split, vfo_t tx_vfo);
+static int ft890_get_split_vfo(RIG *rig, vfo_t vfo, split_t *split, vfo_t *tx_vfo);
+
+static int ft890_set_rit(RIG *rig, vfo_t vfo, shortfreq_t rit);
+static int ft890_get_rit(RIG *rig, vfo_t vfo, shortfreq_t *rit);
+
+static int ft890_set_func(RIG *rig, vfo_t vfo, setting_t func, int status);
+
+static int ft890_get_level(RIG *rig, vfo_t vfo, setting_t level, value_t *val);
+
+static int ft890_vfo_op(RIG *rig, vfo_t vfo, vfo_op_t op);
+
 
 /* Private helper function prototypes */
 
@@ -139,7 +383,6 @@ struct ft890_priv_data
     vfo_t current_vfo;                        /* active VFO from last cmd */
     unsigned char
     p_cmd[YAESU_CMD_LENGTH];    /* private copy of 1 constructed CAT cmd */
-    yaesu_cmd_set_t pcs[FT890_NATIVE_SIZE];   /* private cmd set */
     unsigned char
     update_data[FT890_ALL_DATA_LENGTH]; /* returned data--max value, some are less */
     unsigned char current_mem;                   /* private memory channel number */
@@ -301,11 +544,6 @@ static int ft890_init(RIG *rig)
     }
 
     priv = rig->state.priv;
-
-    /*
-     * Copy native cmd set to private cmd storage area
-     */
-    memcpy(priv->pcs, ncmd, sizeof(ncmd));
 
     /* TODO: read pacing from preferences */
     priv->pacing = FT890_PACING_DEFAULT_VALUE; /* set pacing to minimum for now */
@@ -1642,7 +1880,6 @@ static int ft890_vfo_op(RIG *rig, vfo_t vfo, vfo_op_t op)
 
 static int ft890_get_update_data(RIG *rig, unsigned char ci, unsigned char rl)
 {
-    struct rig_state *rig_s;
     struct ft890_priv_data *priv;
     int n, err;                       /* for read_  */
 
@@ -1654,7 +1891,6 @@ static int ft890_get_update_data(RIG *rig, unsigned char ci, unsigned char rl)
     }
 
     priv = (struct ft890_priv_data *)rig->state.priv;
-    rig_s = &rig->state;
 
     err = ft890_send_static_cmd(rig, ci);
 
@@ -1663,7 +1899,7 @@ static int ft890_get_update_data(RIG *rig, unsigned char ci, unsigned char rl)
         return err;
     }
 
-    n = read_block(&rig_s->rigport, (char *) priv->update_data, rl);
+    n = read_block(&rig->state.rigport, (char *) priv->update_data, rl);
 
     if (n < 0)
     {
@@ -1682,7 +1918,7 @@ static int ft890_get_update_data(RIG *rig, unsigned char ci, unsigned char rl)
  * TODO: place variant of this in yaesu.c
  *
  * Arguments:   *rig    Valid RIG instance
- *              ci      Command index of the pcs struct
+ *              ci      Command index of the ncmd table
  *
  * Returns:     RIG_OK if all called functions are successful,
  *              otherwise returns error from called functiion
@@ -1690,8 +1926,6 @@ static int ft890_get_update_data(RIG *rig, unsigned char ci, unsigned char rl)
 
 static int ft890_send_static_cmd(RIG *rig, unsigned char ci)
 {
-    struct rig_state *rig_s;
-    struct ft890_priv_data *priv;
     int err;
 
     rig_debug(RIG_DEBUG_VERBOSE, "%s called\n", __func__);
@@ -1701,17 +1935,14 @@ static int ft890_send_static_cmd(RIG *rig, unsigned char ci)
         return -RIG_EINVAL;
     }
 
-    priv = (struct ft890_priv_data *)rig->state.priv;
-    rig_s = &rig->state;
-
-    if (!priv->pcs[ci].ncomp)
+    if (!ncmd[ci].ncomp)
     {
         rig_debug(RIG_DEBUG_TRACE,
                   "%s: Attempt to send incomplete sequence\n", __func__);
         return -RIG_EINVAL;
     }
 
-    err = write_block(&rig_s->rigport, (char *) priv->pcs[ci].nseq,
+    err = write_block(&rig->state.rigport, (char *) ncmd[ci].nseq,
                       YAESU_CMD_LENGTH);
 
     if (err != RIG_OK)
@@ -1730,7 +1961,7 @@ static int ft890_send_static_cmd(RIG *rig, unsigned char ci)
  * TODO: place variant of this in yaesu.c
  *
  * Arguments:   *rig    Valid RIG instance
- *              ci      Command index of the pcs struct
+ *              ci      Command index of the ncmd table
  *              p1-p4   Command parameters
  *
  * Returns:     RIG_OK if all called functions are successful,
@@ -1741,7 +1972,6 @@ static int ft890_send_dynamic_cmd(RIG *rig, unsigned char ci,
                                   unsigned char p1, unsigned char p2,
                                   unsigned char p3, unsigned char p4)
 {
-    struct rig_state *rig_s;
     struct ft890_priv_data *priv;
     int err;
 
@@ -1759,14 +1989,13 @@ static int ft890_send_dynamic_cmd(RIG *rig, unsigned char ci,
 
     priv = (struct ft890_priv_data *)rig->state.priv;
 
-    if (priv->pcs[ci].ncomp)
+    if (ncmd[ci].ncomp)
     {
         rig_debug(RIG_DEBUG_TRACE,
                   "%s: Attempt to modify complete sequence\n", __func__);
         return -RIG_EINVAL;
     }
 
-    rig_s = &rig->state;
     memcpy(&priv->p_cmd, &ncmd[ci].nseq, YAESU_CMD_LENGTH);
 
     priv->p_cmd[P1] = p1;         /* ick */
@@ -1774,7 +2003,7 @@ static int ft890_send_dynamic_cmd(RIG *rig, unsigned char ci,
     priv->p_cmd[P3] = p3;
     priv->p_cmd[P4] = p4;
 
-    err = write_block(&rig_s->rigport, (char *) &priv->p_cmd,
+    err = write_block(&rig->state.rigport, (char *) &priv->p_cmd,
                       YAESU_CMD_LENGTH);
 
     if (err != RIG_OK)
@@ -1793,7 +2022,7 @@ static int ft890_send_dynamic_cmd(RIG *rig, unsigned char ci,
  * TODO: place variant of this in yaesu.c
  *
  * Arguments:   *rig    Valid RIG instance
- *              ci      Command index of the pcs struct
+ *              ci      Command index of the ncmd table
  *              freq    freq_t frequency value
  *
  * Returns:     RIG_OK if all called functions are successful,
@@ -1802,7 +2031,6 @@ static int ft890_send_dynamic_cmd(RIG *rig, unsigned char ci,
 
 static int ft890_send_dial_freq(RIG *rig, unsigned char ci, freq_t freq)
 {
-    struct rig_state *rig_s;
     struct ft890_priv_data *priv;
     int err;
     // cppcheck-suppress *
@@ -1820,14 +2048,12 @@ static int ft890_send_dial_freq(RIG *rig, unsigned char ci, freq_t freq)
 
     priv = (struct ft890_priv_data *)rig->state.priv;
 
-    if (priv->pcs[ci].ncomp)
+    if (ncmd[ci].ncomp)
     {
         rig_debug(RIG_DEBUG_TRACE,
                   "%s: Attempt to modify complete sequence\n", __func__);
         return -RIG_EINVAL;
     }
-
-    rig_s = &rig->state;
 
     /* Copy native cmd freq_set to private cmd storage area */
     memcpy(&priv->p_cmd, &ncmd[ci].nseq, YAESU_CMD_LENGTH);
@@ -1838,7 +2064,7 @@ static int ft890_send_dial_freq(RIG *rig, unsigned char ci, freq_t freq)
     rig_debug(RIG_DEBUG_TRACE, fmt, __func__, (int64_t)from_bcd(priv->p_cmd,
               FT890_BCD_DIAL) * 10);
 
-    err = write_block(&rig_s->rigport, (char *) &priv->p_cmd,
+    err = write_block(&rig->state.rigport, (char *) &priv->p_cmd,
                       YAESU_CMD_LENGTH);
 
     if (err != RIG_OK)
@@ -1857,7 +2083,7 @@ static int ft890_send_dial_freq(RIG *rig, unsigned char ci, freq_t freq)
  * TODO: place variant of this in yaesu.c
  *
  * Arguments:   *rig    Valid RIG instance
- *              ci      Command index of the pcs struct
+ *              ci      Command index of the ncmd table
  *              rit     shortfreq_t frequency value
  *              p1      P1 value -- CLAR_SET_FREQ
  *              p2      P2 value -- CLAR_OFFSET_PLUS || CLAR_OFFSET_MINUS
@@ -1870,7 +2096,6 @@ static int ft890_send_dial_freq(RIG *rig, unsigned char ci, freq_t freq)
 
 static int ft890_send_rit_freq(RIG *rig, unsigned char ci, shortfreq_t rit)
 {
-    struct rig_state *rig_s;
     struct ft890_priv_data *priv;
     unsigned char p1;
     unsigned char p2;
@@ -1888,14 +2113,12 @@ static int ft890_send_rit_freq(RIG *rig, unsigned char ci, shortfreq_t rit)
 
     priv = (struct ft890_priv_data *)rig->state.priv;
 
-    if (priv->pcs[ci].ncomp)
+    if (ncmd[ci].ncomp)
     {
         rig_debug(RIG_DEBUG_TRACE,
                   "%s: Attempt to modify complete sequence\n", __func__);
         return -RIG_EINVAL;
     }
-
-    rig_s = &rig->state;
 
     p1 = CLAR_SET_FREQ;
 
@@ -1922,7 +2145,7 @@ static int ft890_send_rit_freq(RIG *rig, unsigned char ci, shortfreq_t rit)
     priv->p_cmd[P1] = p1;         /* ick */
     priv->p_cmd[P2] = p2;
 
-    err = write_block(&rig_s->rigport, (char *) &priv->p_cmd,
+    err = write_block(&rig->state.rigport, (char *) &priv->p_cmd,
                       YAESU_CMD_LENGTH);
 
     if (err != RIG_OK)

@@ -75,24 +75,69 @@
 #include "serial.h"
 #include "yaesu.h"
 #include "ft897.h"
+#include "ft817.h" /* We use functions from the 817 code */
+#include "ft857.h" //Needed for ft857_set_vfo, ft857_get_vfo
 #include "misc.h"
 #include "tones.h"
 #include "bandplan.h"
 
-struct ft897_priv_data {
-  yaesu_cmd_set_t pcs[FT897_NATIVE_SIZE];  /* TODO:  why? */
+enum ft897_native_cmd_e {
+  FT897_NATIVE_CAT_LOCK_ON = 0,
+  FT897_NATIVE_CAT_LOCK_OFF,
+  FT897_NATIVE_CAT_PTT_ON,
+  FT897_NATIVE_CAT_PTT_OFF,
+  FT897_NATIVE_CAT_SET_FREQ,
+  FT897_NATIVE_CAT_SET_MODE_LSB,
+  FT897_NATIVE_CAT_SET_MODE_USB,
+  FT897_NATIVE_CAT_SET_MODE_CW,
+  FT897_NATIVE_CAT_SET_MODE_CWR,
+  FT897_NATIVE_CAT_SET_MODE_AM,
+  FT897_NATIVE_CAT_SET_MODE_FM,
+  FT897_NATIVE_CAT_SET_MODE_FM_N,
+  FT897_NATIVE_CAT_SET_MODE_DIG,
+  FT897_NATIVE_CAT_SET_MODE_PKT,
+  FT897_NATIVE_CAT_CLAR_ON,
+  FT897_NATIVE_CAT_CLAR_OFF,
+  FT897_NATIVE_CAT_SET_CLAR_FREQ,
+  FT897_NATIVE_CAT_SET_VFOAB,
+  FT897_NATIVE_CAT_SPLIT_ON,
+  FT897_NATIVE_CAT_SPLIT_OFF,
+  FT897_NATIVE_CAT_SET_RPT_SHIFT_MINUS,
+  FT897_NATIVE_CAT_SET_RPT_SHIFT_PLUS,
+  FT897_NATIVE_CAT_SET_RPT_SHIFT_SIMPLEX,
+  FT897_NATIVE_CAT_SET_RPT_OFFSET,
+  FT897_NATIVE_CAT_SET_DCS_ON,
+  FT897_NATIVE_CAT_SET_DCS_DEC_ON,
+  FT897_NATIVE_CAT_SET_DCS_ENC_ON,
+  FT897_NATIVE_CAT_SET_CTCSS_ON,
+  FT897_NATIVE_CAT_SET_CTCSS_DEC_ON,
+  FT897_NATIVE_CAT_SET_CTCSS_ENC_ON,
+  FT897_NATIVE_CAT_SET_CTCSS_DCS_OFF,
+  FT897_NATIVE_CAT_SET_CTCSS_FREQ,
+  FT897_NATIVE_CAT_SET_DCS_CODE,
+  FT897_NATIVE_CAT_GET_RX_STATUS,
+  FT897_NATIVE_CAT_GET_TX_STATUS,
+  FT897_NATIVE_CAT_GET_FREQ_MODE_STATUS,
+  FT897_NATIVE_CAT_PWR_WAKE,
+  FT897_NATIVE_CAT_PWR_ON,
+  FT897_NATIVE_CAT_PWR_OFF,
+  FT897_NATIVE_CAT_EEPROM_READ,
+  FT897_NATIVE_SIZE		/* end marker */
+};
 
-  /* rx status */
-  struct timeval rx_status_tv;
-  unsigned char rx_status;
+struct ft897_priv_data
+{
+    /* rx status */
+    struct timeval rx_status_tv;
+    unsigned char rx_status;
 
-  /* tx status */
-  struct timeval tx_status_tv;
-  unsigned char tx_status;
+    /* tx status */
+    struct timeval tx_status_tv;
+    unsigned char tx_status;
 
-  /* freq & mode status */
-  struct timeval fm_status_tv;
-  unsigned char fm_status[YAESU_CMD_LENGTH+1];
+    /* freq & mode status */
+    struct timeval fm_status_tv;
+    unsigned char fm_status[YAESU_CMD_LENGTH + 1];
 };
 
 
@@ -105,8 +150,6 @@ static int ft897_set_freq(RIG *rig, vfo_t vfo, freq_t freq);
 static int ft897_get_freq(RIG *rig, vfo_t vfo, freq_t *freq);
 static int ft897_set_mode(RIG *rig, vfo_t vfo, rmode_t mode, pbwidth_t width);
 static int ft897_get_mode(RIG *rig, vfo_t vfo, rmode_t *mode, pbwidth_t *width);
-extern int ft857_set_vfo(RIG *rig, vfo_t vfo);
-extern int ft857_get_vfo(RIG *rig, vfo_t *vfo);
 static int ft897_set_split_vfo(RIG *rig, vfo_t vfo, split_t split,
                                vfo_t tx_vfo);
 static int ft897_get_split_vfo(RIG *rig, vfo_t vfo, split_t *split,
@@ -128,8 +171,6 @@ static int ft897_set_rptr_shift(RIG *rig, vfo_t vfo, rptr_shift_t rptr_shift);
 static int ft897_set_rptr_offs(RIG *rig, vfo_t vfo, shortfreq_t offs);
 static int ft897_set_rit(RIG *rig, vfo_t vfo, shortfreq_t rit);
 static int ft897_get_dcd(RIG *rig, vfo_t vfo, dcd_t *dcd);
-extern int ft817_read_ack(RIG *rig);
-extern int ft817_set_powerstat(RIG *rig, powerstat_t status);
 
 /* Native ft897 cmd set prototypes. These are READ ONLY as each */
 /* rig instance will copy from these and modify if required . */
@@ -491,19 +532,12 @@ const struct rig_caps ft897d_caps =
 
 int ft897_init(RIG *rig)
 {
-    struct ft897_priv_data *priv;
-
     rig_debug(RIG_DEBUG_VERBOSE, "%s: called\n", __func__);
 
     if ((rig->state.priv = calloc(1, sizeof(struct ft897_priv_data))) == NULL)
     {
         return -RIG_ENOMEM;
     }
-
-    priv = rig->state.priv;
-
-    /* Copy complete native cmd set to private cmd storage area */
-    memcpy(priv->pcs, ncmd, sizeof(ncmd));
 
     return RIG_OK;
 }
@@ -575,12 +609,11 @@ static int check_cache_timeout(struct timeval *tv)
 
 static int ft897_read_eeprom(RIG *rig, unsigned short addr, unsigned char *out)
 {
-    struct ft897_priv_data *p = (struct ft897_priv_data *) rig->state.priv;
     unsigned char data[YAESU_CMD_LENGTH];
     int n;
 
     rig_debug(RIG_DEBUG_VERBOSE, "%s: called\n", __func__);
-    memcpy(data, (char *)p->pcs[FT897_NATIVE_CAT_EEPROM_READ].nseq,
+    memcpy(data, (char *)ncmd[FT897_NATIVE_CAT_EEPROM_READ].nseq,
            YAESU_CMD_LENGTH);
 
     data[0] = addr >> 8;
@@ -640,7 +673,7 @@ static int ft897_get_status(RIG *rig, int status)
 
     rig_flush(&rig->state.rigport);
 
-    write_block(&rig->state.rigport, (char *) p->pcs[status].nseq,
+    write_block(&rig->state.rigport, (char *) ncmd[status].nseq,
                 YAESU_CMD_LENGTH);
 
     if ((n = read_block(&rig->state.rigport, (char *) data, len)) < 0)
@@ -955,17 +988,15 @@ int ft897_get_dcd(RIG *rig, vfo_t vfo, dcd_t *dcd)
  */
 static int ft897_send_cmd(RIG *rig, int index)
 {
-    struct ft897_priv_data *p = (struct ft897_priv_data *) rig->state.priv;
-
     rig_debug(RIG_DEBUG_VERBOSE, "%s: called\n", __func__);
 
-    if (p->pcs[index].ncomp == 0)
+    if (ncmd[index].ncomp == 0)
     {
         rig_debug(RIG_DEBUG_VERBOSE, "%s: incomplete sequence\n", __func__);
         return -RIG_EINTERNAL;
     }
 
-    write_block(&rig->state.rigport, (char *) p->pcs[index].nseq, YAESU_CMD_LENGTH);
+    write_block(&rig->state.rigport, (char *) ncmd[index].nseq, YAESU_CMD_LENGTH);
     return ft817_read_ack(rig);
 }
 
@@ -974,18 +1005,17 @@ static int ft897_send_cmd(RIG *rig, int index)
  */
 static int ft897_send_icmd(RIG *rig, int index, unsigned char *data)
 {
-    struct ft897_priv_data *p = (struct ft897_priv_data *) rig->state.priv;
     unsigned char cmd[YAESU_CMD_LENGTH];
 
     rig_debug(RIG_DEBUG_VERBOSE, "%s: called\n", __func__);
 
-    if (p->pcs[index].ncomp == 1)
+    if (ncmd[index].ncomp == 1)
     {
         rig_debug(RIG_DEBUG_VERBOSE, "%s: Complete sequence\n", __func__);
         return -RIG_EINTERNAL;
     }
 
-    cmd[YAESU_CMD_LENGTH - 1] = p->pcs[index].nseq[YAESU_CMD_LENGTH - 1];
+    cmd[YAESU_CMD_LENGTH - 1] = ncmd[index].nseq[YAESU_CMD_LENGTH - 1];
     memcpy(cmd, data, YAESU_CMD_LENGTH - 1);
 
     write_block(&rig->state.rigport, (char *) cmd, YAESU_CMD_LENGTH);

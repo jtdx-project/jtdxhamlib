@@ -36,6 +36,9 @@
 #include <ctype.h>
 #include <errno.h>
 
+// If true adds some debug statements to see flow of rigctl parsing
+int debugflow = 0;
+
 #ifdef HAVE_LIBREADLINE
 #  if defined(HAVE_READLINE_READLINE_H)
 #    include <readline/readline.h>
@@ -671,7 +674,7 @@ int rigctl_parse(RIG *my_rig, FILE *fin, FILE *fout, char *argv[], int argc,
                     RETURNFUNC(RIGCTL_PARSE_ERROR);
                 }
 
-                if (cmd != 0xa && cmd !=0xd)
+                if (cmd != 0xa && cmd != 0xd)
                 {
                     rig_debug(RIG_DEBUG_TRACE, "%s: cmd=%c(%02x)\n", __func__,
                               isprint(cmd) ? cmd : ' ', cmd);
@@ -878,18 +881,19 @@ int rigctl_parse(RIG *my_rig, FILE *fin, FILE *fout, char *argv[], int argc,
             }
         }
 
-        //rig_debug(RIG_DEBUG_TRACE, "%s: debug1\n", __func__);
+        if (debugflow) { rig_debug(RIG_DEBUG_TRACE, "%s: debug1\n", __func__); }
 
         if ((cmd_entry->flags & ARG_IN_LINE)
                 && (cmd_entry->flags & ARG_IN1)
                 && cmd_entry->arg1)
         {
-            //rig_debug(RIG_DEBUG_TRACE, "%s: debug2\n", __func__);
+            if (debugflow) { rig_debug(RIG_DEBUG_TRACE, "%s: debug2\n", __func__); }
 
             if (interactive)
             {
                 char *nl;
-                //rig_debug(RIG_DEBUG_TRACE, "%s: debug2a\n", __func__);
+
+                if (debugflow) { rig_debug(RIG_DEBUG_TRACE, "%s: debug2a\n", __func__); }
 
 
                 if (fgets(arg1, MAXARGSZ, fin) == NULL)
@@ -899,7 +903,7 @@ int rigctl_parse(RIG *my_rig, FILE *fin, FILE *fout, char *argv[], int argc,
 
                 if (arg1[0] == 0xa)
                 {
-                    //rig_debug(RIG_DEBUG_TRACE, "%s: debug2b\n", __func__);
+                    if (debugflow) { rig_debug(RIG_DEBUG_TRACE, "%s: debug2b\n", __func__); }
 
                     if (prompt)
                     {
@@ -948,13 +952,14 @@ int rigctl_parse(RIG *my_rig, FILE *fin, FILE *fout, char *argv[], int argc,
         }
         else if ((cmd_entry->flags & ARG_IN1) && cmd_entry->arg1)
         {
-            //rig_debug(RIG_DEBUG_TRACE, "%s: debug3\n", __func__);
+            if (debugflow) { rig_debug(RIG_DEBUG_TRACE, "%s: debug3\n", __func__); }
 
             if (interactive)
             {
                 arg1[0] = fgetc(fin);
                 arg1[1] = 0;
-                //rig_debug(RIG_DEBUG_TRACE, "%s: debug4 arg1=%c\n", __func__, arg1[0]);
+
+                if (debugflow) { rig_debug(RIG_DEBUG_TRACE, "%s: debug4 arg1=%c\n", __func__, arg1[0]); }
 
                 if (prompt && arg1[0] == 0x0a)
                 {
@@ -988,22 +993,26 @@ int rigctl_parse(RIG *my_rig, FILE *fin, FILE *fout, char *argv[], int argc,
             }
         }
 
-        //rig_debug(RIG_DEBUG_TRACE, "%s: debug5\n", __func__);
+        if (debugflow) { rig_debug(RIG_DEBUG_TRACE, "%s: debug5\n", __func__); }
 
         if (p1
                 && p1[0] != '?'
                 && (cmd_entry->flags & ARG_IN2)
                 && cmd_entry->arg2)
         {
-            //rig_debug(RIG_DEBUG_TRACE, "%s: debug6\n", __func__);
+            if (debugflow) { rig_debug(RIG_DEBUG_TRACE, "%s: debug6\n", __func__); }
 
             if (interactive)
             {
-                //rig_debug(RIG_DEBUG_TRACE, "%s: debug7\n", __func__);
+                if (debugflow) { rig_debug(RIG_DEBUG_TRACE, "%s: debug7\n", __func__); }
 
-                if (prompt)
+                arg2[0] = fgetc(fin);
+                arg2[1] = 0;
+
+                if (prompt && arg2[0]  == 0x0a)
                 {
-                    //rig_debug(RIG_DEBUG_TRACE, "%s: debug8\n", __func__);
+                    if (debugflow) { rig_debug(RIG_DEBUG_TRACE, "%s: debug8\n", __func__); }
+
                     fprintf_flush(fout, "%s: ", cmd_entry->arg2);
                 }
 
@@ -1017,7 +1026,8 @@ int rigctl_parse(RIG *my_rig, FILE *fin, FILE *fout, char *argv[], int argc,
             }
             else
             {
-                //rig_debug(RIG_DEBUG_TRACE, "%s: debug9\n", __func__);
+                if (debugflow) { rig_debug(RIG_DEBUG_TRACE, "%s: debug9\n", __func__); }
+
                 retcode = next_word(arg2, argc, argv, 0);
 
                 if (EOF == retcode)
@@ -1035,22 +1045,23 @@ int rigctl_parse(RIG *my_rig, FILE *fin, FILE *fout, char *argv[], int argc,
             }
         }
 
-        //rig_debug(RIG_DEBUG_TRACE, "%s: debug10\n", __func__);
+        if (debugflow) { rig_debug(RIG_DEBUG_TRACE, "%s: debug10\n", __func__); }
 
         if (p1
                 && p1[0] != '?'
                 && (cmd_entry->flags & ARG_IN3)
                 && cmd_entry->arg3)
         {
-            //rig_debug(RIG_DEBUG_TRACE, "%s: debug11\n", __func__);
+            if (debugflow) { rig_debug(RIG_DEBUG_TRACE, "%s: debug11\n", __func__); }
 
             if (interactive)
             {
-                //rig_debug(RIG_DEBUG_TRACE, "%s: debug12\n", __func__);
+                if (debugflow) { rig_debug(RIG_DEBUG_TRACE, "%s: debug12\n", __func__); }
 
                 if (prompt)
                 {
-                    //rig_debug(RIG_DEBUG_TRACE, "%s: debug13\n", __func__);
+                    if (debugflow) { rig_debug(RIG_DEBUG_TRACE, "%s: debug13\n", __func__); }
+
                     fprintf_flush(fout, "%s: ", cmd_entry->arg3);
                 }
 
@@ -1064,7 +1075,8 @@ int rigctl_parse(RIG *my_rig, FILE *fin, FILE *fout, char *argv[], int argc,
             }
             else
             {
-                //rig_debug(RIG_DEBUG_TRACE, "%s: debug14\n", __func__);
+                if (debugflow) { rig_debug(RIG_DEBUG_TRACE, "%s: debug14\n", __func__); }
+
                 retcode = next_word(arg3, argc, argv, 0);
 
                 if (EOF == retcode)
@@ -1143,6 +1155,7 @@ int rigctl_parse(RIG *my_rig, FILE *fin, FILE *fout, char *argv[], int argc,
          */
         result = strtok(input_line, " ");
 readline_repeat:
+
         /* parsed_input stores pointers into input_line where the token strings
          * start.
          */
@@ -1735,7 +1748,9 @@ readline_repeat:
     fflush(fout);
 
 #ifdef HAVE_LIBREADLINE
-    if (input_line != NULL && (result = strtok(NULL, " "))) goto readline_repeat;
+
+    if (input_line != NULL && (result = strtok(NULL, " "))) { goto readline_repeat; }
+
 #endif
 
     if (sync_cb) { sync_cb(0); }    /* unlock if necessary */
@@ -4058,7 +4073,8 @@ static int mydcd_event(RIG *rig, vfo_t vfo, dcd_t dcd, rig_ptr_t arg)
 }
 
 
-static int print_spectrum_line(char *str, size_t length, struct rig_spectrum_line *line)
+static int print_spectrum_line(char *str, size_t length,
+                               struct rig_spectrum_line *line)
 {
     int data_level_max = line->data_level_max / 2;
     int aggregate_count = line->spectrum_data_length / 120;
@@ -4081,7 +4097,9 @@ static int print_spectrum_line(char *str, size_t length, struct rig_spectrum_lin
             }
 
             int level = aggregate_value * 10 / data_level_max;
-            if (level >= 8) {
+
+            if (level >= 8)
+            {
                 strcpy(str + c, "█");
                 c += charlen;
             }
@@ -4114,7 +4132,8 @@ static int print_spectrum_line(char *str, size_t length, struct rig_spectrum_lin
 }
 
 
-static int myspectrum_event(RIG *rig, struct rig_spectrum_line *line, rig_ptr_t arg)
+static int myspectrum_event(RIG *rig, struct rig_spectrum_line *line,
+                            rig_ptr_t arg)
 {
     ENTERFUNC;
 
@@ -4122,7 +4141,8 @@ static int myspectrum_event(RIG *rig, struct rig_spectrum_line *line, rig_ptr_t 
     {
         char spectrum_debug[line->spectrum_data_length * 4];
         print_spectrum_line(spectrum_debug, sizeof(spectrum_debug), line);
-        rig_debug(RIG_DEBUG_TRACE, "%s: ASCII Spectrum Scope: %s\n", __func__, spectrum_debug);
+        rig_debug(RIG_DEBUG_TRACE, "%s: ASCII Spectrum Scope: %s\n", __func__,
+                  spectrum_debug);
     }
 
     // TODO: Push out spectrum data via multicast server once it is implemented
@@ -4501,7 +4521,8 @@ declare_proto_rig(dump_state)
     if (chk_vfo_executed) // for 3.3 compatiblility
     {
         fprintf(fout, "vfo_ops=0x%x\n", rig->caps->vfo_ops);
-        fprintf(fout, "ptt_type=0x%x\n", rig->state.pttport.type.ptt==RIG_PTT_NONE?RIG_PTT_NONE:RIG_PTT_RIG);
+        fprintf(fout, "ptt_type=0x%x\n",
+                rig->state.pttport.type.ptt == RIG_PTT_NONE ? RIG_PTT_NONE : RIG_PTT_RIG);
         fprintf(fout, "targetable_vfo=0x%x\n", rig->caps->targetable_vfo);
         fprintf(fout, "has_set_vfo=%d\n", rig->caps->set_vfo != NULL);
         fprintf(fout, "has_get_vfo=%d\n", rig->caps->get_vfo != NULL);

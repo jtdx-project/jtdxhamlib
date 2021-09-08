@@ -257,6 +257,7 @@ int main(int argc, char *argv[])
     int uplink = 0;
     char host[NI_MAXHOST];
     char serv[NI_MAXSERV];
+    char rigstartup[1024];
 #if HAVE_SIGACTION
     struct sigaction act;
 #endif
@@ -268,10 +269,6 @@ int main(int argc, char *argv[])
     struct handle_data *arg;
     int vfo_mode = 0; /* vfo_mode=0 means target VFO is current VFO */
     int i;
-
-    rig_debug(RIG_DEBUG_VERBOSE, "%s(%d) Startup:", __FILE__, __LINE__);
-    for(i=0;i<argc;++i) rig_debug(RIG_DEBUG_VERBOSE, " %s", argv[i]);
-    rig_debug(RIG_DEBUG_VERBOSE, "%s", "\n");
 
     while (1)
     {
@@ -580,6 +577,12 @@ int main(int argc, char *argv[])
 #endif
 
     rig_set_debug(verbose);
+
+    snprintf(rigstartup, sizeof(rigstartup), "%s(%d) Startup:", __FILE__, __LINE__);
+
+    for (i = 0; i < argc; ++i) { strcat(rigstartup, " "); strcat(rigstartup, argv[i]); }
+
+    rig_debug(RIG_DEBUG_VERBOSE, "%s\n", rigstartup);
 
     rig_debug(RIG_DEBUG_VERBOSE, "rigctld %s\n", hamlib_version2);
     rig_debug(RIG_DEBUG_VERBOSE, "%s",
@@ -1221,8 +1224,10 @@ handle_exit:
     if (retcode != 0) { rig_debug(RIG_DEBUG_ERR, "%s: fclose(fsockin) %s\n", __func__, strerror(retcode)); }
 
 #endif
-    if (fsockin) fclose(fsockin);
-    if (fsockout) fclose(fsockout);
+
+    if (fsockin) { fclose(fsockin); }
+
+    if (fsockout) { fclose(fsockout); }
 
 // for everybody else we close the handle after fclose
 #ifndef __MINGW32__

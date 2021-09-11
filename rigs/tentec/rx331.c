@@ -99,7 +99,7 @@ const struct rig_caps rx331_caps =
     RIG_MODEL(RIG_MODEL_RX331),
     .model_name = "RX-331",
     .mfg_name =  "Ten-Tec",
-    .version =  "20200323.0",
+    .version =  "20200911.0",
     .copyright =  "LGPL",
     .status =  RIG_STATUS_BETA,
     .rig_type =  RIG_TYPE_RECEIVER,
@@ -646,6 +646,7 @@ int rx331_set_level(RIG *rig, vfo_t vfo, setting_t level, value_t val)
 int rx331_get_level(RIG *rig, vfo_t vfo, setting_t level, value_t *val)
 {
     int retval, lvl_len;
+    double f;
     char lvlbuf[BUFSZ];
 
     switch (level)
@@ -779,8 +780,8 @@ int rx331_get_level(RIG *rig, vfo_t vfo, setting_t level, value_t *val)
         {
             return -RIG_EPROTO;
         }
-
-        val->f = 1.0 - (float)(val->i / 120.0);
+        f = val->i / 120.0;
+        val->f = 1.0 - f;
 
         break;
 
@@ -805,7 +806,8 @@ int rx331_get_level(RIG *rig, vfo_t vfo, setting_t level, value_t *val)
             return -RIG_EPROTO;
         }
 
-        val->i = (int)(val->f * 1000.0);
+        f = val->f * 1000.0;
+        val->i = (int)f;
 
         break;
 
@@ -830,7 +832,8 @@ int rx331_get_level(RIG *rig, vfo_t vfo, setting_t level, value_t *val)
             return -RIG_EPROTO;
         }
 
-        val->f = 1.0 - (val->i / 120.0);
+        f = val->i / 120.0;
+        val->f = 1.0 - f;
 
         break;
 
@@ -855,7 +858,8 @@ int rx331_get_level(RIG *rig, vfo_t vfo, setting_t level, value_t *val)
             return -RIG_EPROTO;
         }
 
-        val->i = (val->f *  1000.0);
+        f = val->f * 1000.0;
+        val->i = f;
 
         break;
 
@@ -880,7 +884,8 @@ int rx331_get_level(RIG *rig, vfo_t vfo, setting_t level, value_t *val)
             return -RIG_EPROTO;
         }
 
-        val->i = (val->f *  1000.0);
+        f = val->f * 1000.0;
+        val->i = f;
 
         break;
 

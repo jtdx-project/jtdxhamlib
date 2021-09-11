@@ -856,7 +856,7 @@ icom_rig_open(RIG *rig)
 int
 icom_rig_close(RIG *rig)
 {
-    int retval = RIG_OK;
+    int retval;
     // Nothing to do yet
     struct rig_state *rs = &rig->state;
     struct icom_priv_data *priv = (struct icom_priv_data *) rs->priv;
@@ -1820,6 +1820,7 @@ int icom_set_mode_with_data(RIG *rig, vfo_t vfo, rmode_t mode,
         rig_debug(RIG_DEBUG_TRACE, "%s: mode/width not changing\n", __func__);
         RETURNFUNC(RIG_OK);
     }
+
     // looks like we need to change it
 
     switch (mode)
@@ -6944,6 +6945,7 @@ int icom_set_parm(RIG *rig, setting_t parm, value_t val)
                   rig_strparm(parm));
         RETURNFUNC(-RIG_EINVAL);
     }
+    RETURNFUNC(-RIG_EINVAL);
 }
 
 /*
@@ -8256,7 +8258,7 @@ static int icom_parse_spectrum_frame(RIG *rig, int length,
     // The first byte indicates spectrum scope ID/VFO: 0 = Main, 1 = Sub
     int spectrum_id = frame_data[0];
 
-    if (spectrum_id < 0 || spectrum_id >= priv->spectrum_scope_count)
+    if (spectrum_id >= priv->spectrum_scope_count)
     {
         rig_debug(RIG_DEBUG_ERR, "%s: invalid spectrum scope ID from CI-V frame: %d\n",
                   __func__, spectrum_id);
@@ -8504,6 +8506,13 @@ int icom_decode_event(RIG *rig)
     }
 
     frm_len = retval;
+
+    if (frm_len < 1)
+    {
+        rig_debug(RIG_DEBUG_ERR, "Unexpected frame len=%d\n", frm_len);
+        RETURNFUNC(-RIG_EPROTO);
+    }
+
 
     switch (buf[frm_len - 1])
     {

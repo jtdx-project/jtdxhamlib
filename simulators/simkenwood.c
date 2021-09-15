@@ -97,7 +97,6 @@ int main(int argc, char *argv[])
     int n;
     int fd = openPort(argv[1]);
     int freqa = 14074000, freqb = 140735000;
-    int modea = 0, modeb = 0;
 
     while (1)
     {
@@ -143,7 +142,6 @@ int main(int argc, char *argv[])
             usleep(50 * 1000);
             int id = 24;
             snprintf(buf, sizeof(buf), "ID%03d;", id);
-            n = snprintf(buf, sizeof(buf), "ID%03d;", id);
             n = write(fd, buf, strlen(buf));
             printf("n=%d\n", n);
 

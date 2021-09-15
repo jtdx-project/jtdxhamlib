@@ -2117,8 +2117,6 @@ int HAMLIB_API rig_get_freq(RIG *rig, vfo_t vfo, freq_t *freq)
         // so we'll just reuse the cache for that condition
         if (*freq == 0)
         {
-            rmode_t mode;
-            pbwidth_t width;
             int freq_ms, mode_ms, width_ms;
             rig_get_cache(rig, vfo, freq, &freq_ms, &mode, &mode_ms, &width, &width_ms);
         }
@@ -3133,7 +3131,7 @@ int HAMLIB_API rig_get_ptt(RIG *rig, vfo_t vfo, ptt_t *ptt)
     const struct rig_caps *caps;
     struct rig_state *rs = &rig->state;
     int retcode = RIG_OK;
-    int rc2, status;
+    int status;
     vfo_t curr_vfo;
     int cache_ms;
     int targetable_ptt = 0;
@@ -3228,7 +3226,7 @@ int HAMLIB_API rig_get_ptt(RIG *rig, vfo_t vfo, ptt_t *ptt)
         /* try and revert even if we had an error above */
         if (!targetable_ptt)
         {
-            rc2 = caps->set_vfo(rig, curr_vfo);
+            int rc2 = caps->set_vfo(rig, curr_vfo);
 
             if (RIG_OK == retcode)
             {
@@ -6487,13 +6485,12 @@ const char *HAMLIB_API rig_get_info(RIG *rig)
 static void make_crc_table(unsigned long crcTable[])
 {
     unsigned long POLYNOMIAL = 0xEDB88320;
-    unsigned long remainder;
     unsigned char b = 0;
 
     do
     {
         // Start with the data byte
-        remainder = b;
+        unsigned long remainder = b;
 
         unsigned long bit;
 

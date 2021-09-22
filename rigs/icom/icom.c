@@ -2190,8 +2190,10 @@ int icom_get_mode(RIG *rig, vfo_t vfo, rmode_t *mode, pbwidth_t *width)
             && rig->caps->rig_model != RIG_MODEL_IC7800)
     {
         int vfosel = 0x00;
+        vfo_t vfoask = vfo_fixup(rig, vfo, 0);
+        vfo_t vfocurr = vfo_fixup(rig, rig->state.current_vfo, 0);
 
-        if (vfo & (RIG_VFO_B | RIG_VFO_SUB | RIG_VFO_SUB_B | RIG_VFO_MAIN_B)) { vfosel = 0x01; }
+        if (vfo != RIG_VFO_CURR && vfoask != vfocurr) { vfosel = 0x01; }
 
         // use cache for the non-selected VFO -- can't get it by VFO
         // this avoids vfo swapping but accurate answers for these rigs
@@ -6945,6 +6947,7 @@ int icom_set_parm(RIG *rig, setting_t parm, value_t val)
                   rig_strparm(parm));
         RETURNFUNC(-RIG_EINVAL);
     }
+
     RETURNFUNC(-RIG_EINVAL);
 }
 

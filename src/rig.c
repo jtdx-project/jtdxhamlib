@@ -160,6 +160,8 @@ const char hamlib_copyright[231] = /* hamlib 1.2 ABI specifies 231 bytes */
 #define ELAPSED1 clock_t __begin = clock()
 #define ELAPSED2 rig_debug(RIG_DEBUG_TRACE, "%s: elapsed=%.0lfms\n", __func__, ((double)clock() - __begin) / CLOCKS_PER_SEC * 1000)
 
+#define LOCK \
+
 /*
  * Data structure to track the opened rig (by rig_open)
  */
@@ -1864,8 +1866,7 @@ int HAMLIB_API rig_set_freq(RIG *rig, vfo_t vfo, freq_t freq)
                 RIG_OK); // would be better as error but other software won't handle errors
         }
 
-        rig_debug(RIG_DEBUG_TRACE, "%s: TARGETABLE_FREQ vfo=%s\n", __func__,
-                  rig_strvfo(vfo));
+        rig_debug(RIG_DEBUG_TRACE, "%s: TARGETABLE_FREQ vfo=%s\n", __func__, rig_strvfo(vfo));
         int retry = 3;
         freq_t tfreq = 0;
 
@@ -1914,13 +1915,21 @@ int HAMLIB_API rig_set_freq(RIG *rig, vfo_t vfo, freq_t freq)
     }
     else
     {
-        rig_debug(RIG_DEBUG_TRACE, "%s: not a TARGETABLE_FREQ vfo=%s\n", __func__,
-                  rig_strvfo(vfo));
+        rig_debug(RIG_DEBUG_TRACE, "%s: not a TARGETABLE_FREQ vfo=%s\n", __func__, rig_strvfo(vfo));
 
         if (!caps->set_vfo)
         {
             RETURNFUNC(-RIG_ENAVAIL);
         }
+
+        retcode = rig_set_vfo(rig, vfo);
+
+        if (retcode != RIG_OK)
+        {
+            rig_debug(RIG_DEBUG_ERR, "%s: set_vfo failed: %s\n", __func__,
+                      rigerror(retcode));
+        }
+
 
         if (twiddling(rig))
         {
@@ -2266,6 +2275,7 @@ int HAMLIB_API rig_set_mode(RIG *rig, vfo_t vfo, rmode_t mode, pbwidth_t width)
     {
         RETURNFUNC(-RIG_EINVAL);
     }
+
     ELAPSED1;
 
     // do not mess with mode while PTT is on
@@ -6788,6 +6798,24 @@ const char *HAMLIB_API rig_copyright()
     return hamlib_copyright2;
 }
 
+#ifdef PTHREAD
+#define MUTEX(var) static pthread_mutex_t var = PTHREAD_MUTEX_INITIALIZER
+#else
+#define MUTEX(var)
+#endif
+
+#ifdef PTHREAD
+#define MUTEX_LOCK(var) pthread_mutex_lock(var)
+#else
+#define MUTEX_LOCK(var)
+#endif
+
+#ifdef PTHREAD
+#define MUTEX_UNLOCK(var)  pthread_mutex_unlock(var)
+#else
+#define MUTEX_UNLOCK(var)
+#endif
+
 /**
  * \brief get a cookie to grab rig control
  * \param rig   Not used
@@ -6823,9 +6851,7 @@ int HAMLIB_API rig_cookie(RIG *rig, enum cookie_e cookie_cmd, char *cookie,
     static double time_last_used;
     struct timespec tp;
     int ret;
-#ifdef HAVE_PTHREAD
-    static pthread_mutex_t cookie_lock = PTHREAD_MUTEX_INITIALIZER;
-#endif
+    MUTEX(mutex_rig_cookie);
 
     /* This is not needed for RIG_COOKIE_RELEASE but keep it simple. */
     if (cookie_len < HAMLIB_COOKIE_SIZE)
@@ -6844,9 +6870,7 @@ int HAMLIB_API rig_cookie(RIG *rig, enum cookie_e cookie_cmd, char *cookie,
 
     /* Accesing cookie_save and time_last_used must be done with lock held.
      * So keep code simple and lock it during the whole operation. */
-#ifdef HAVE_PTHREAD
-    pthread_mutex_lock(&cookie_lock);
-#endif
+    MUTEX_LOCK(mutex_rig_cookie);
 
     switch (cookie_cmd)
     {
@@ -6937,11 +6961,8 @@ int HAMLIB_API rig_cookie(RIG *rig, enum cookie_e cookie_cmd, char *cookie,
         break;
     }
 
-#ifdef HAVE_PTHREAD
-    pthread_mutex_unlock(&cookie_lock);
-#endif
+    MUTEX_UNLOCK(mutex_rig_cookie);
     return ret;
-
 }
 
 HAMLIB_EXPORT(void) sync_callback(int lock)

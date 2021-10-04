@@ -873,6 +873,15 @@ static vfo_t icom_current_vfo(RIG *rig)
 
     if (fCurr == f2)
     {
+        if (priv->vfo_flag != 0)
+        {
+            // we can't change freqs unless rig is idle and we don't know that
+            // so we only check vfo once when freqs are equal
+            rig_debug(RIG_DEBUG_TRACE,"%s: vfo already determined...returning current_vfo", __func__);
+            return rig->state.current_vfo;
+        }
+        priv->vfo_flag = 1;
+
         fOffset = 100;
         rig_set_freq(rig, RIG_VFO_CURR, fCurr + fOffset);
     }
@@ -955,10 +964,6 @@ icom_rig_open(RIG *rig)
             rig_debug(RIG_DEBUG_ERR, "%s: Unable to determine USB echo status\n", __func__);
             RETURNFUNC(retval);
         }
-
-        // Determine active vfo again since it would have failed the 1st time
-        rig->state.current_vfo = icom_current_vfo(rig);
-        icom_current_vfo(rig);
     }
 
     rig->state.current_vfo = icom_current_vfo(rig);
@@ -1724,7 +1729,13 @@ int icom_set_xit_new(RIG *rig, vfo_t vfo, shortfreq_t ts)
 
     Has been tested for IC-746pro,  Should work on the all dsp rigs ie pro models.
     The 746 documentation says it has the get_if_filter, but doesn't give any decoding information ? Please test.
+
+   DSP filter setting ($1A$03), but not supported by every rig,
+   and some models like IC910/Omni VI Plus have a different meaning for
+   this subcommand
 */
+   
+int filtericom[] = { 50,100,150,200,250,300,350,400,450,500,600,700,800,900,1000,1100,1200,1300,1400,1500,1600,1700,1800,1900,2000,2100,2200,2300,2400,2500,2600,2700,2800,2900,3000,3100,3200,3300,3400,3500,3600 };
 
 pbwidth_t icom_get_dsp_flt(RIG *rig, rmode_t mode)
 {
@@ -1774,14 +1785,14 @@ pbwidth_t icom_get_dsp_flt(RIG *rig, rmode_t mode)
     if (-RIG_ERJCTED == retval)
     {
         priv->no_1a_03_cmd = -1;  /* do not keep asking */
-        return (0);
+        return (RIG_OK);
     }
 
     if (retval != RIG_OK)
     {
         rig_debug(RIG_DEBUG_ERR, "%s: protocol error (%#.2x), "
                   "len=%d\n", __func__, resbuf[0], res_len);
-        return (0);        /* use default */
+        return (RIG_OK);        /* use default */
     }
 
     if (res_len == 3 && resbuf[0] == C_CTL_MEM)
@@ -1793,18 +1804,22 @@ pbwidth_t icom_get_dsp_flt(RIG *rig, rmode_t mode)
 
         if (mode & RIG_MODE_AM)
         {
-            return ((i + 1) * 200); /* Ic_7800 */
+            if (i > 49) {
+                rig_debug(RIG_DEBUG_ERR, "%s: Expected max 49, got %d for filter\n", __func__, i);
+                RETURNFUNC(-RIG_EPROTO);
+            }
+            return ((i + 1) * 200); /* All Icoms that we know of */
         }
         else if (mode &
                  (RIG_MODE_CW | RIG_MODE_USB | RIG_MODE_LSB | RIG_MODE_RTTY |
                   RIG_MODE_RTTYR | RIG_MODE_PKTUSB | RIG_MODE_PKTLSB))
         {
-            rig_debug(RIG_DEBUG_TRACE, "%s: using width=%d\n", __func__, i);
-            RETURNFUNC(i < 10 ? (i + 1) * 50 : (i - 4) * 100);
+            rig_debug(RIG_DEBUG_TRACE, "%s: using filtericom width=%d\n", __func__, i);
+            RETURNFUNC(filtericom[i]);
         }
     }
 
-    RETURNFUNC(0);
+    RETURNFUNC(RIG_OK);
 }
 
 int icom_set_dsp_flt(RIG *rig, rmode_t mode, pbwidth_t width)
@@ -1814,11 +1829,13 @@ int icom_set_dsp_flt(RIG *rig, rmode_t mode, pbwidth_t width)
     unsigned char flt_ext;
     value_t rfwidth;
     int ack_len = sizeof(ackbuf), flt_idx;
+    struct icom_priv_data *priv = (struct icom_priv_data *) rig->state.priv;
     unsigned char fw_sub_cmd = RIG_MODEL_IC7200 == rig->caps->rig_model ? 0x02 :
                                S_MEM_FILT_WDTH;
 
     ENTERFUNC;
 
+    
     if (RIG_PASSBAND_NOCHANGE == width)
     {
         RETURNFUNC(RIG_OK);
@@ -1850,47 +1867,26 @@ int icom_set_dsp_flt(RIG *rig, rmode_t mode, pbwidth_t width)
             RETURNFUNC(-RIG_EINVAL);
         }
     }
+    if (priv->no_1a_03_cmd) RETURNFUNC(RIG_OK); // don't bother to try since it doesn't work
 
-    switch (rig->caps->rig_model)
+    if (mode & RIG_MODE_AM)
     {
-    case RIG_MODEL_IC7000:
-    case RIG_MODEL_IC7800:
-        if (mode & RIG_MODE_AM)
+        flt_idx = (width / 200) - 1;  /* TBC: IC_7800? */
+    }
+    else if (mode & (RIG_MODE_CW | RIG_MODE_USB | RIG_MODE_LSB | RIG_MODE_RTTY |
+                     RIG_MODE_RTTYR))
+    {
+        if (width == 0)
         {
-            flt_idx = (width / 200) - 1;  /* TBC: IC_7800? */
-        }
-        else if (mode & (RIG_MODE_CW | RIG_MODE_USB | RIG_MODE_LSB | RIG_MODE_RTTY |
-                         RIG_MODE_RTTYR))
-        {
-            if (width == 0)
-            {
-                width = 1;
-            }
-
-            flt_idx =
-                width <= 500 ? ((width + 49) / 50) - 1 : ((width + 99) / 100) + 4;
-        }
-        else
-        {
-            RETURNFUNC(RIG_OK);
+            width = 1;
         }
 
-        break;
-
-    case RIG_MODEL_IC7300:
-        if (mode & RIG_MODE_AM)
-        {
-            flt_idx = (width / 200) - 1;  /* TBC: IC_7800? */
-        }
-        else
-        {
-            flt_idx =
-                width <= 500 ? ((width + 49) / 50) - 1 : ((width + 99) / 100) + 4;
-        }
-
-        break;
-
-    default:
+        flt_idx =
+            width <= 500 ? ((width + 49) / 50) - 1 : ((width + 99) / 100) + 4;
+    }
+    else
+    {
+        rig_debug(RIG_DEBUG_VERBOSE, "%s: unknown mode=%s\n", __func__, rig_strrmode(mode));
         RETURNFUNC(RIG_OK);
     }
 
@@ -1898,6 +1894,12 @@ int icom_set_dsp_flt(RIG *rig, rmode_t mode, pbwidth_t width)
 
     retval = icom_transaction(rig, C_CTL_MEM, fw_sub_cmd, &flt_ext, 1,
                               ackbuf, &ack_len);
+
+    if (-RIG_ERJCTED == retval)
+    {
+        priv->no_1a_03_cmd = -1;  /* do not keep asking */
+        return (RIG_OK);
+    }
 
     if (retval != RIG_OK)
     {
@@ -2003,7 +2005,7 @@ int icom_set_mode_with_data(RIG *rig, vfo_t vfo, rmode_t mode,
         RETURNFUNC(retval);
     }
 
-    if (tmode == mode && width == RIG_PASSBAND_NOCHANGE)
+    if (tmode == mode && ((width == RIG_PASSBAND_NOCHANGE) || (width == twidth)))
     {
         rig_debug(RIG_DEBUG_TRACE, "%s: mode/width not changing\n", __func__);
         RETURNFUNC(RIG_OK);
@@ -2117,6 +2119,7 @@ int icom_set_mode_with_data(RIG *rig, vfo_t vfo, rmode_t mode,
             }
         }
     }
+    icom_set_dsp_flt(rig, mode, width);
 
     RETURNFUNC(retval);
 }
@@ -2226,14 +2229,7 @@ int icom_set_mode(RIG *rig, vfo_t vfo, rmode_t mode, pbwidth_t width)
         RETURNFUNC(-RIG_ERJCTED);
     }
 
-    /* DSP filter setting ($1A$03), but not supported by every rig,
-     * and some models like IC910/Omni VI Plus have a different meaning for
-     * this subcommand
-     */
-    if (rig->caps->rig_model == RIG_MODEL_IC7000)
-    {
-        icom_set_dsp_flt(rig, mode, width);
-    }
+    icom_set_dsp_flt(rig, mode, width);
 
     RETURNFUNC(RIG_OK);
 }
@@ -2540,6 +2536,9 @@ int icom_get_mode(RIG *rig, vfo_t vfo, rmode_t *mode, pbwidth_t *width)
     RETURNFUNC(RIG_OK);
 }
 
+#if 0
+// this seems to work but not for cqrlog and user twiddling VFO knob.
+// may be able to use twiddle but will disable for now
 /*
  * icom_get_vfo
  * Assumes rig!=NULL, rig->state.priv!=NULL
@@ -2552,6 +2551,7 @@ int icom_get_vfo(RIG *rig, vfo_t *vfo)
 
     RETURNFUNC(RIG_OK);
 }
+#endif
 
 /*
  * icom_set_vfo
@@ -7648,7 +7648,7 @@ int icom_set_powerstat(RIG *rig, powerstat_t status)
     }
 
     i = 0;
-    retry = 1;
+    retry = 3;
 
     if (status == RIG_POWER_ON)   // wait for wakeup only
     {

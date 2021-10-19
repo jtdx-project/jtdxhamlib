@@ -420,17 +420,23 @@ static const struct
 } mode_str[] =
 {
     { RIG_MODE_AM, "AM" },
+    { RIG_MODE_PKTAM, "AM-D" },
     { RIG_MODE_CW, "CW" },
     { RIG_MODE_USB, "USB" },
     { RIG_MODE_LSB, "LSB" },
     { RIG_MODE_RTTY, "RTTY" },
     { RIG_MODE_FM, "FM" },
+    { RIG_MODE_PKTFM, "FM-D" },
     { RIG_MODE_WFM, "WFM" },
     { RIG_MODE_CWR, "CWR" },
+    { RIG_MODE_CWR, "CW-R" },
     { RIG_MODE_RTTYR, "RTTYR" },
+    { RIG_MODE_RTTYR, "RTTY-R" },
     { RIG_MODE_AMS, "AMS" },
     { RIG_MODE_PKTLSB, "PKTLSB" },
     { RIG_MODE_PKTUSB, "PKTUSB" },
+    { RIG_MODE_PKTLSB, "LSB-D" },
+    { RIG_MODE_PKTUSB, "USB-D" },
     { RIG_MODE_PKTFM, "PKTFM" },
     { RIG_MODE_PKTFMN, "PKTFMN" },
     { RIG_MODE_ECSSUSB, "ECSSUSB" },
@@ -454,6 +460,7 @@ static const struct
     { RIG_MODE_C4FM, "C4FM"},
     { RIG_MODE_SPEC, "SPEC"},
     { RIG_MODE_CWN, "CWN"},
+    { RIG_MODE_IQ, "IQ"},
     { RIG_MODE_NONE, "" },
 };
 
@@ -479,6 +486,7 @@ rmode_t HAMLIB_API rig_parse_mode(const char *s)
         }
     }
 
+    rig_debug(RIG_DEBUG_WARN, "%s: mode '%s' not found\n", __func__, s);
     return RIG_MODE_NONE;
 }
 

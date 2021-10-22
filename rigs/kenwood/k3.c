@@ -183,7 +183,7 @@ const struct rig_caps k3_caps =
     RIG_MODEL(RIG_MODEL_K3),
     .model_name =       "K3",
     .mfg_name =     "Elecraft",
-    .version =      BACKEND_VER ".17",
+    .version =      BACKEND_VER ".18",
     .copyright =        "LGPL",
     .status =       RIG_STATUS_STABLE,
     .rig_type =     RIG_TYPE_TRANSCEIVER,
@@ -484,7 +484,7 @@ const struct rig_caps k4_caps =
     RIG_MODEL(RIG_MODEL_K4),
     .model_name =       "K4",
     .mfg_name =     "Elecraft",
-    .version =      BACKEND_VER ".16",
+    .version =      BACKEND_VER ".17",
     .copyright =        "LGPL",
     .status =       RIG_STATUS_STABLE,
     .rig_type =     RIG_TYPE_TRANSCEIVER,
@@ -945,14 +945,15 @@ int k3_get_mode(RIG *rig, vfo_t vfo, rmode_t *mode, pbwidth_t *width)
     pbwidth_t temp_w;
     char *cmd_mode = "DT";
     char *cmd_bw = "BW";
-    struct kenwood_priv_data *priv = rig->state.priv;
+    int cmd_bw_len = 6;
 
     rig_debug(RIG_DEBUG_VERBOSE, "%s called vfo=%s\n", __func__, rig_strvfo(vfo));
 
-    if (vfo == RIG_VFO_B && (priv->is_k4 || priv->is_k4d || priv->is_k4hd))
+    if (vfo == RIG_VFO_B && rig->caps->rig_model == RIG_MODEL_K4)
     {
         cmd_mode = "DT$";
         cmd_bw = "BW$";
+        cmd_bw_len = 7;
 
     }
     if (!mode || !width)
@@ -1035,7 +1036,7 @@ int k3_get_mode(RIG *rig, vfo_t vfo, rmode_t *mode, pbwidth_t *width)
     /* The K3 is not limited to specific filter widths so we can query
      * the actual bandwidth using the BW command
      */
-    err = kenwood_safe_transaction(rig, cmd_bw, buf, KENWOOD_MAX_BUF_LEN, 6);
+    err = kenwood_safe_transaction(rig, cmd_bw, buf, KENWOOD_MAX_BUF_LEN, cmd_bw_len);
 
     if (err != RIG_OK)
     {
@@ -1043,14 +1044,7 @@ int k3_get_mode(RIG *rig, vfo_t vfo, rmode_t *mode, pbwidth_t *width)
         return err;
     }
 
-    if (vfo == RIG_VFO_B)
-    {
-        *width = atoi(&buf[3]) * 10;
-    }
-    else
-    {
-        *width = atoi(&buf[2]) * 10;
-    }
+    *width = atoi(&buf[cmd_bw_len-4]) * 10;
 
     return RIG_OK;
 }
@@ -1089,7 +1083,7 @@ int k3_get_mode(RIG *rig, vfo_t vfo, rmode_t *mode, pbwidth_t *width)
 
 int k3_set_mode(RIG *rig, vfo_t vfo, rmode_t mode, pbwidth_t width)
 {
-    int err;
+    int err,err2;
     char cmd_m[5];
     char buf[KENWOOD_MAX_BUF_LEN];
     char *dtcmd;
@@ -1103,11 +1097,14 @@ int k3_set_mode(RIG *rig, vfo_t vfo, rmode_t mode, pbwidth_t width)
         vfo = rig->state.current_vfo;
     }
 
-    rmode_t tmode;
+    rmode_t tmodeA,tmodeB;
     pbwidth_t twidth;
-    err = k3_get_mode(rig, vfo, &tmode, &twidth);
+    err = k3_get_mode(rig, RIG_VFO_A, &tmodeA, &twidth);
+    err2 = k3_get_mode(rig, RIG_VFO_B, &tmodeB, &twidth);
 
-    if (err == RIG_OK && tmode == mode && width == RIG_PASSBAND_NOCHANGE)
+    // we keep both vfos in the same mode -- any reason they should ever be differnet?  If so, fix this
+    // if we change mode on one VFO we'll also change the other
+    if (err == RIG_OK && err2 == RIG_OK && tmodeA == mode && tmodeB == mode && width == RIG_PASSBAND_NOCHANGE)
     {
         rig_debug(RIG_DEBUG_TRACE, "%s(%d): mode/width no change, skipping\n", __FILE__,
                   __LINE__);
@@ -1116,8 +1113,8 @@ int k3_set_mode(RIG *rig, vfo_t vfo, rmode_t mode, pbwidth_t width)
     else
     {
         rig_debug(RIG_DEBUG_TRACE,
-                  "%s(%d): changing oldmode=%s, to mode=%s, oldwidth=%ld, to width=%ld\n", __FILE__,
-                  __LINE__, rig_strrmode(tmode), rig_strrmode(mode), twidth, width);
+                  "%s(%d): changing oldmode=A=%s B=%s, to mode=%s, oldwidth=%ld, to width=%ld\n", __FILE__,
+                  __LINE__, rig_strrmode(tmodeA), rig_strrmode(tmodeB), rig_strrmode(mode), twidth, width);
     }
 
     dtcmd = "DT";
@@ -1191,6 +1188,12 @@ int k3_set_mode(RIG *rig, vfo_t vfo, rmode_t mode, pbwidth_t width)
     else
     {
         snprintf(buf, sizeof(buf), "MD%c", c);
+    }
+
+    if (priv->split)
+    {
+        // then we keep both VFOS in the same mode
+        snprintf(buf, sizeof(buf), "MD%c;MD$%c", c, c);
     }
 
     err = kenwood_transaction(rig, buf, NULL, 0);

@@ -64,7 +64,7 @@ Here is a summary of the supported options:
 .
 .TP
 .BR \-m ", " \-\-model = \fIid\fP
-Select radio model number.
+Select radio model number. Defaults to dummy rig.
 .IP
 See model list (use \(lqrigctl -l\(rq).
 .IP
@@ -183,7 +183,7 @@ below.
 .BR \-L ", " \-\-show\-conf
 List all config parameters for the radio defined with
 .B \-m
-above.
+above. Note the dummy device has no serial parameters.
 .
 .TP
 .BR \-C ", " \-\-set\-conf = \fIparm=val\fP [ \fI,parm=val\fP ]

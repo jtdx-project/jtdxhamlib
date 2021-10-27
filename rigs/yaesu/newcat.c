@@ -837,7 +837,7 @@ int newcat_set_freq(RIG *rig, vfo_t vfo, freq_t freq)
            and select the correct VFO before setting the frequency
         */
         // Plus we can't do the VFO swap if transmitting
-        if (target_vfo == 'B' && rig->state.cache.ptt == RIG_PTT_ON) { RETURNFUNC(-RIG_ENTARGET); }
+        if (target_vfo == '1' && rig->state.cache.ptt == RIG_PTT_ON) { RETURNFUNC(-RIG_ENTARGET); }
 
         snprintf(priv->cmd_str, sizeof(priv->cmd_str), "VS%c", cat_term);
 
@@ -849,6 +849,7 @@ int newcat_set_freq(RIG *rig, vfo_t vfo, freq_t freq)
 
         if (priv->ret_data[2] != target_vfo)
         {
+            TRACE;
             snprintf(priv->cmd_str, sizeof(priv->cmd_str), "VS%c%c", target_vfo, cat_term);
             rig_debug(RIG_DEBUG_TRACE, "%s: cmd_str = %s\n", __func__, priv->cmd_str);
 
@@ -918,6 +919,7 @@ int newcat_set_freq(RIG *rig, vfo_t vfo, freq_t freq)
             && rig->caps->get_vfo != NULL
             && rig->caps->set_vfo != NULL) // gotta' have get_vfo too
     {
+        TRACE;
         if (rig->state.current_vfo != vfo)
         {
             int vfo1 = 1, vfo2 = 0;
@@ -3651,8 +3653,17 @@ int newcat_set_level(RIG *rig, vfo_t vfo, setting_t level, value_t val)
         {
             RETURNFUNC(-RIG_ENAVAIL);
         }
+        // Firmware bug in TS570D has to adjust keyer speed
+        // At this point not sure which value is correct so we'll assume the requested rate is correct
+        if (rig->caps->rig_model == RIG_MODEL_TS570D || rig->caps->rig_model == RIG_MODEL_TS570S)
+        {
+            snprintf(priv->cmd_str, sizeof(priv->cmd_str), "KS%03d%c", (val.i-10)*2, cat_term);
+        }
+        else
+        {
+            snprintf(priv->cmd_str, sizeof(priv->cmd_str), "KS%03d%c", val.i, cat_term);
+        }
 
-        snprintf(priv->cmd_str, sizeof(priv->cmd_str), "KS%03d%c", val.i, cat_term);
         break;
 
     case RIG_LEVEL_MICGAIN:
@@ -5030,7 +5041,14 @@ int newcat_get_level(RIG *rig, vfo_t vfo, setting_t level, value_t *val)
 
     case RIG_LEVEL_RAWSTR:
     case RIG_LEVEL_KEYSPD:
-        val->i = atoi(retlvl);
+        if (rig->caps->rig_model == RIG_MODEL_TS570D || rig->caps->rig_model == RIG_MODEL_TS570S)
+        { // TS570 uses 010-~060 scale according to manual
+            val->i = atoi(retlvl)/2 + 10;
+        }
+        else
+        {
+            val->i = atoi(retlvl);
+        }
         break;
 
     case RIG_LEVEL_IF:

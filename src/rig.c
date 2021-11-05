@@ -1631,6 +1631,9 @@ int rig_get_cache(RIG *rig, vfo_t vfo, freq_t *freq, int *cache_ms_freq,
     {
         switch (vfo)
         {
+            case RIG_VFO_OTHER:
+                vfo = RIG_VFO_OTHER;
+                break;
             case RIG_VFO_A:
                 vfo = RIG_VFO_B;
                 break;
@@ -1665,6 +1668,28 @@ int rig_get_cache(RIG *rig, vfo_t vfo, freq_t *freq, int *cache_ms_freq,
 
     switch (vfo)
     {
+    case RIG_VFO_CURR:
+        *freq = rig->state.cache.freqCurr;
+        *mode = rig->state.cache.modeCurr;
+        *width = rig->state.cache.widthCurr;
+        *cache_ms_freq = elapsed_ms(&rig->state.cache.time_freqCurr,
+                                    HAMLIB_ELAPSED_GET);
+        *cache_ms_mode = elapsed_ms(&rig->state.cache.time_modeCurr,
+                                    HAMLIB_ELAPSED_GET);
+        *cache_ms_width = elapsed_ms(&rig->state.cache.time_widthCurr,
+                                     HAMLIB_ELAPSED_GET);
+        break;
+    case RIG_VFO_OTHER:
+        *freq = rig->state.cache.freqOther;
+        *mode = rig->state.cache.modeOther;
+        *width = rig->state.cache.widthOther;
+        *cache_ms_freq = elapsed_ms(&rig->state.cache.time_freqOther,
+                                    HAMLIB_ELAPSED_GET);
+        *cache_ms_mode = elapsed_ms(&rig->state.cache.time_modeOther,
+                                    HAMLIB_ELAPSED_GET);
+        *cache_ms_width = elapsed_ms(&rig->state.cache.time_widthOther,
+                                     HAMLIB_ELAPSED_GET);
+        break;
     case RIG_VFO_A:
     case RIG_VFO_MAIN:
     case RIG_VFO_MAIN_A:
@@ -4226,6 +4251,7 @@ int HAMLIB_API rig_set_split_mode(RIG *rig,
         RETURNFUNC(retcode);
     }
 
+    rig_set_split_vfo(rig,RIG_VFO_CURR, RIG_SPLIT_OFF, RIG_VFO_CURR);
     /* Assisted mode */
     curr_vfo = rig->state.current_vfo;
 
@@ -4247,14 +4273,15 @@ int HAMLIB_API rig_set_split_mode(RIG *rig,
     }
 
 
-    if (caps->set_vfo)
+    // prefer the vfo swap method to reduce rig display flashing
+    if (rig_has_vfo_op(rig, RIG_OP_TOGGLE) && caps->vfo_op)
+    {
+        retcode = caps->vfo_op(rig, vfo, RIG_OP_TOGGLE);
+    }
+    else if (caps->set_vfo)
     {
         TRACE;
         retcode = caps->set_vfo(rig, tx_vfo);
-    }
-    else if (rig_has_vfo_op(rig, RIG_OP_TOGGLE) && caps->vfo_op)
-    {
-        retcode = caps->vfo_op(rig, vfo, RIG_OP_TOGGLE);
     }
     else
     {
@@ -4297,6 +4324,7 @@ int HAMLIB_API rig_set_split_mode(RIG *rig,
         /* return the first error code */
         retcode = rc2;
     }
+    rig_set_split_vfo(rig,RIG_VFO_CURR, RIG_SPLIT_ON, RIG_VFO_CURR);
 
     RETURNFUNC(retcode);
 }
@@ -4669,6 +4697,15 @@ int HAMLIB_API rig_set_split_vfo(RIG *rig,
     {
         rx_vfo = vfo_fixup(rig, rx_vfo, split);
         tx_vfo = vfo_fixup(rig, tx_vfo, split);
+        if (rx_vfo == RIG_VFO_CURR)
+        {
+            rx_vfo = rig->state.current_vfo;
+        }
+        if (tx_vfo == RIG_VFO_CURR)
+        {
+            tx_vfo = rig->state.tx_vfo;
+        }
+        rig_debug(RIG_DEBUG_VERBOSE, "%s: final rxvfo=%s, txvfo=%s\n", __func__, rig_strvfo(rx_vfo), rig_strvfo(tx_vfo));
     }
 
     // set rig to the the requested RX VFO

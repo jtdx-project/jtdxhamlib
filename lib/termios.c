@@ -1585,7 +1585,7 @@ int win32_serial_read(int fd, void *vb, int size)
     /* unsigned long waiting = 0; */
     int err;
     struct termios_list *index;
-    char message[80];
+//    char message[80];
     COMSTAT stat;
     clock_t c;
     unsigned char *dest = vb;
@@ -1719,7 +1719,9 @@ int win32_serial_read(int fd, void *vb, int size)
 
                 size -= nBytes;
                 total += nBytes;
+                return (total);
 
+#if 0
                 if (size > 0)
                 {
                     now = GetTickCount();
@@ -1745,6 +1747,7 @@ int win32_serial_read(int fd, void *vb, int size)
                 */
                 report("ERROR_IO_PENDING\n");
                 break;
+#endif
 
             default:
                 /*
@@ -1918,7 +1921,8 @@ int win32_serial_read(int fd, void *vb, int size)
 
                 size -= nBytes;
                 total += nBytes;
-
+                return (total);
+#if 0
                 if (size > 0)
                 {
                     now = GetTickCount();
@@ -1945,6 +1949,7 @@ int win32_serial_read(int fd, void *vb, int size)
                 */
                 report("ERROR_IO_PENDING\n");
                 break;
+#endif
 
             default:
                 /*
@@ -3794,9 +3799,9 @@ int  win32_serial_select(int  n,  fd_set  *readfds,  fd_set  *writefds,
                 goto end;
             }
 
-            hl_usleep(10000);
+            hl_usleep(1000);
             /* FIXME: not very accurate wrt process time */
-            timeout_usec -= 10000;
+            timeout_usec -= 1000;
 
             report("sleep...\n");
 

@@ -671,7 +671,8 @@ int HAMLIB_API read_string(hamlib_port_t *p,
                            char *rxbuffer,
                            size_t rxmax,
                            const char *stopset,
-                           int stopset_len)
+                           int stopset_len,
+                           int flush_flag)
 {
     fd_set rfds, efds;
     struct timeval tv, tv_timeout, start_time, end_time, elapsed_time;
@@ -702,9 +703,9 @@ int HAMLIB_API read_string(hamlib_port_t *p,
     /* Store the time of the read loop start */
     gettimeofday(&start_time, NULL);
 
-    rxbuffer[0] = 0; /* ensure string is terminated */
+    memset(rxbuffer, 0, rxmax);
 
-    while (total_count < rxmax - 1)
+    while (total_count < rxmax - 1) // allow 1 byte for end-of-string
     {
         int rd_count;
         int retval;
@@ -725,12 +726,14 @@ int HAMLIB_API read_string(hamlib_port_t *p,
                 timersub(&end_time, &start_time, &elapsed_time);
 
                 dump_hex((unsigned char *) rxbuffer, total_count);
+                if (!flush_flag) {
                 rig_debug(RIG_DEBUG_WARN,
                           "%s(): Timed out %d.%03d seconds after %d chars\n",
                           __func__,
                           (int)elapsed_time.tv_sec,
                           (int)elapsed_time.tv_usec / 1000,
                           total_count);
+                }
 
                 return -RIG_ETIMEOUT;
             }
@@ -790,7 +793,7 @@ int HAMLIB_API read_string(hamlib_port_t *p,
         // check to see if our string startis with \...if so we need more chars
         if (total_count == 0 && rxbuffer[total_count] == '\\') { rxmax = (rxmax - 1) * 5; }
 
-        ++total_count;
+        total_count += rd_count;
 
         if (stopset && memchr(stopset, rxbuffer[total_count - 1], stopset_len))
         {

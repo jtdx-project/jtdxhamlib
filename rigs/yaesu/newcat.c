@@ -1228,6 +1228,14 @@ int newcat_set_mode(RIG *rig, vfo_t vfo, rmode_t mode, pbwidth_t width)
 
     snprintf(priv->cmd_str, sizeof(priv->cmd_str), "MD0x%c", cat_term);
 
+    priv->cmd_str[3] = newcat_modechar(mode);
+
+    if (priv->cmd_str[3] == '0')
+    {
+        RETURNFUNC(-RIG_EINVAL);
+    }
+
+
     /* FT9000 RIG_TARGETABLE_MODE (mode and width) */
     /* FT2000 mode only */
     if (rig->caps->targetable_vfo & RIG_TARGETABLE_MODE)
@@ -1237,14 +1245,6 @@ int newcat_set_mode(RIG *rig, vfo_t vfo, rmode_t mode, pbwidth_t width)
 
     rig_debug(RIG_DEBUG_VERBOSE, "%s: generic mode = %s \n",
               __func__, rig_strrmode(mode));
-
-
-    priv->cmd_str[3] = newcat_modechar(mode);
-
-    if (priv->cmd_str[3] == '0')
-    {
-        RETURNFUNC(-RIG_EINVAL);
-    }
 
     err = newcat_set_cmd(rig);
 
@@ -2288,7 +2288,8 @@ int newcat_set_split_vfo(RIG *rig, vfo_t vfo, split_t split, vfo_t tx_vfo)
     int err;
     vfo_t rx_vfo = RIG_VFO_NONE;
 
-    ENTERFUNC;
+    //ENTERFUNC;
+    rig_debug(RIG_DEBUG_TRACE, "%s: entered, rxvfo=%s, txvfo=%s, split=%d\n", __func__, rig_strvfo(vfo), rig_strvfo(tx_vfo), split);
 
     err = newcat_set_vfo_from_alias(rig, &vfo);
 
@@ -6877,6 +6878,7 @@ int newcat_set_tx_vfo(RIG *rig, vfo_t tx_vfo)
             newcat_is_rig(rig, RIG_MODEL_FTDX10) ||
             newcat_is_rig(rig, RIG_MODEL_FTDX3000))
     {
+        TRACE;
         p1 = p1 + 2;    /* use non-Toggle commands */
     }
 
@@ -9630,7 +9632,7 @@ int newcat_get_cmd(RIG *rig)
 
         /* read the reply */
         if ((rc = read_string(&state->rigport, priv->ret_data, sizeof(priv->ret_data),
-                              &cat_term, sizeof(cat_term))) <= 0)
+                              &cat_term, sizeof(cat_term), 0)) <= 0)
         {
             continue;             /* usually a timeout - retry */
         }
@@ -9818,7 +9820,7 @@ int newcat_set_cmd_validate(RIG *rig)
         if (strlen(valcmd) == 0) { RETURNFUNC(RIG_OK); }
 
         bytes = read_string(&state->rigport, priv->ret_data, sizeof(priv->ret_data),
-                            &cat_term, sizeof(cat_term));
+                            &cat_term, sizeof(cat_term), 0);
 
         // FA and FB success is now verified in rig.c with a followup query
         // so no validation is needed
@@ -9946,7 +9948,7 @@ int newcat_set_cmd(RIG *rig)
 
         /* read the reply */
         if ((rc = read_string(&state->rigport, priv->ret_data, sizeof(priv->ret_data),
-                              &cat_term, sizeof(cat_term))) <= 0)
+                              &cat_term, sizeof(cat_term), 0)) <= 0)
         {
             continue;             /* usually a timeout - retry */
         }
@@ -10016,7 +10018,7 @@ int newcat_set_cmd(RIG *rig)
 
                 /* read/flush the verify command reply which should still be there */
                 if ((rc = read_string(&state->rigport, priv->ret_data, sizeof(priv->ret_data),
-                                      &cat_term, sizeof(cat_term))) > 0)
+                                      &cat_term, sizeof(cat_term), 0)) > 0)
                 {
                     rig_debug(RIG_DEBUG_TRACE, "%s: read count = %d, ret_data = %s\n",
                               __func__, rc, priv->ret_data);

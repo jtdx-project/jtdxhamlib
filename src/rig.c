@@ -157,8 +157,8 @@ const char hamlib_copyright[231] = /* hamlib 1.2 ABI specifies 231 bytes */
 
 #define CHECK_RIG_ARG(r) (!(r) || !(r)->caps || !(r)->state.comm_state)
 
-#define ELAPSED1 clock_t __begin = clock()
-#define ELAPSED2 rig_debug(RIG_DEBUG_TRACE, "%s: elapsed=%.0lfms\n", __func__, ((double)clock() - __begin) / CLOCKS_PER_SEC * 1000)
+#define ELAPSED1 struct timespec __begin; elapsed_ms(&__begin, HAMLIB_ELAPSED_SET);
+#define ELAPSED2 rig_debug(RIG_DEBUG_TRACE, "%s: elapsed=%.0lfms\n", __func__, elapsed_ms(&__begin, HAMLIB_ELAPSED_GET));
 
 #define LOCK \
 
@@ -1041,11 +1041,13 @@ int HAMLIB_API rig_open(RIG *rig)
     {
         rs->tx_vfo = rs->current_vfo;
     }
-    else // vfo fails so set some sensible defaults
+    else // no get_vfo so set some sensible defaults
     {
         //int backend_num = RIG_BACKEND_NUM(rig->caps->rig_model);
         rs->tx_vfo = RIG_VFO_TX;
-        rs->current_vfo = RIG_VFO_CURR;
+        // If we haven't gotten the vfo by now we will default to VFO_CURR
+        if (rs->current_vfo == RIG_VFO_NONE) rs->current_vfo = RIG_VFO_CURR;
+        rig_debug(RIG_DEBUG_TRACE, "%s: vfo_curr=%s, tx_vfo=%s\n", __func__, rig_strvfo(rs->current_vfo), rig_strvfo(rs->tx_vfo));
 
 #if 0 // done in the back end
 
@@ -4273,15 +4275,14 @@ int HAMLIB_API rig_set_split_mode(RIG *rig,
     }
 
 
-    // prefer the vfo swap method to reduce rig display flashing
-    if (rig_has_vfo_op(rig, RIG_OP_TOGGLE) && caps->vfo_op)
-    {
-        retcode = caps->vfo_op(rig, vfo, RIG_OP_TOGGLE);
-    }
-    else if (caps->set_vfo)
+    if (caps->set_vfo)
     {
         TRACE;
         retcode = caps->set_vfo(rig, tx_vfo);
+    }
+    else if (rig_has_vfo_op(rig, RIG_OP_TOGGLE) && caps->vfo_op)
+    {
+        retcode = caps->vfo_op(rig, vfo, RIG_OP_TOGGLE);
     }
     else
     {

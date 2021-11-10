@@ -1239,7 +1239,7 @@ int kenwood_set_split_vfo(RIG *rig, vfo_t vfo, split_t split, vfo_t txvfo)
     char cmdbuf[12];
     int retval;
     unsigned char vfo_function;
-    split_t tsplit;
+    split_t tsplit=0;
 
     rig_debug(RIG_DEBUG_VERBOSE, "%s called %s,%d,%s\n", __func__, rig_strvfo(vfo), split, rig_strvfo(txvfo));
 
@@ -1272,6 +1272,14 @@ int kenwood_set_split_vfo(RIG *rig, vfo_t vfo, split_t split, vfo_t txvfo)
             RETURNFUNC(-RIG_EINVAL);
         }
 
+        rig_get_split(rig, vfo, &tsplit);
+
+        if (tsplit == split)
+        {
+            rig_debug(RIG_DEBUG_TRACE, "%s: split already set\n", __func__);
+            RETURNFUNC(RIG_OK);
+        }
+
         /* set RX VFO */
         snprintf(cmdbuf, sizeof(cmdbuf), "FR%c", vfo_function);
 
@@ -1297,6 +1305,9 @@ int kenwood_set_split_vfo(RIG *rig, vfo_t vfo, split_t split, vfo_t txvfo)
         {
             RETURNFUNC(retval);
         }
+        rig->state.cache.split = split;
+        rig->state.cache.split_vfo = txvfo;
+        elapsed_ms(&rig->state.cache.time_split, HAMLIB_ELAPSED_SET);
 
     /* Split off means Rx and Tx are the same */
     if (split == RIG_SPLIT_OFF)
@@ -1585,6 +1596,7 @@ int kenwood_set_freq(RIG *rig, vfo_t vfo, freq_t freq)
     char freqbuf[16];
     unsigned char vfo_letter = '\0';
     vfo_t tvfo;
+    freq_t tfreq = 0;
     int err;
     struct kenwood_priv_data *priv = rig->state.priv;
 
@@ -1602,6 +1614,13 @@ int kenwood_set_freq(RIG *rig, vfo_t vfo, freq_t freq)
         err = rig_get_vfo(rig, &tvfo);
 
         if (RIG_OK != err) { RETURNFUNC(err); }
+    }
+
+    rig_get_freq(rig, tvfo, &tfreq);
+    if (tfreq == freq)
+    {
+        rig_debug(RIG_DEBUG_TRACE, "%s: no freq change needed\n", __func__);
+        RETURNFUNC(RIG_OK);
     }
 
     switch (tvfo)

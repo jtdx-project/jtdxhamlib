@@ -268,7 +268,7 @@ int kenwood_transaction(RIG *rig, const char *cmdstr, char *data,
 
         if (cache_age_ms < 500) // 500ms cache time
         {
-            rig_debug(RIG_DEBUG_TRACE, "%s: cache hit, age=%dms\n", __func__, cache_age_ms);
+            rig_debug(RIG_DEBUG_TRACE, "%s(%d): cache hit, age=%dms\n", __func__, __LINE__, cache_age_ms);
 
             if (data) { strncpy(data, priv->last_if_response, datasize); }
 
@@ -1057,7 +1057,7 @@ int kenwood_set_vfo(RIG *rig, vfo_t vfo)
     char vfo_function;
     struct kenwood_priv_data *priv = rig->state.priv;
 
-    rig_debug(RIG_DEBUG_VERBOSE, "%s called\n", __func__);
+    rig_debug(RIG_DEBUG_VERBOSE, "%s called vfo=%s\n", __func__, rig_strvfo(vfo));
 
 
     /* Emulations do not need to set VFO since VFOB is a copy of VFOA
@@ -1065,7 +1065,10 @@ int kenwood_set_vfo(RIG *rig, vfo_t vfo)
      * This prevents a 1.8 second delay in PowerSDR when switching VFOs
      * We'll do this once if curr_mode has not been set yet
      */
-    if (priv->is_emulation && priv->curr_mode > 0) { RETURNFUNC(RIG_OK); }
+    if (priv->is_emulation && priv->curr_mode > 0) { 
+        TRACE;
+        RETURNFUNC(RIG_OK); 
+    } 
 
     if (rig->state.current_vfo == vfo)
     {
@@ -1088,6 +1091,8 @@ int kenwood_set_vfo(RIG *rig, vfo_t vfo)
         break;
 
     case RIG_VFO_CURR:
+        TRACE;
+        rig->state.current_vfo = RIG_VFO_CURR;
         RETURNFUNC(RIG_OK);
 
     default:
@@ -1121,6 +1126,7 @@ int kenwood_set_vfo(RIG *rig, vfo_t vfo)
         }
     }
 
+    TRACE;
     snprintf(cmdbuf, sizeof(cmdbuf), "FR%c", vfo_function);
 
     // as we change VFO we will change split to the other VFO
@@ -1149,6 +1155,8 @@ int kenwood_set_vfo(RIG *rig, vfo_t vfo)
     {
         RETURNFUNC(retval);
     }
+    TRACE;
+    rig->state.current_vfo = vfo;
 
     /* if FN command then there's no FT or FR */
     /* If split mode on, the don't change TxVFO */
@@ -1157,15 +1165,46 @@ int kenwood_set_vfo(RIG *rig, vfo_t vfo)
         RETURNFUNC(RIG_OK);
     }
 
+    TRACE;
     // some rigs need split turned on after VFOA is set
-    if (vfo == RIG_VFO_A && priv->split == RIG_SPLIT_ON)
-    {
-        rig_set_split_vfo(rig, RIG_VFO_CURR, 1, priv->tx_vfo);
+    if (priv->split == RIG_SPLIT_ON)
+    { // so let's figure out who the rx_vfo is based on the tx_vfo
+        TRACE;
+        vfo_t rx_vfo = RIG_VFO_A;
+        switch(priv->tx_vfo)
+        {
+            case RIG_VFO_A:
+                rx_vfo = RIG_VFO_B;
+                break;
+            case RIG_VFO_MAIN:
+                rx_vfo = RIG_VFO_SUB;
+                break;
+            case RIG_VFO_MAIN_A:
+                rx_vfo = RIG_VFO_MAIN_B;
+                break;
+            case RIG_VFO_B:
+                rx_vfo = RIG_VFO_A;
+                break;
+            case RIG_VFO_SUB:
+                rx_vfo = RIG_VFO_MAIN;
+                break;
+            case RIG_VFO_SUB_B:
+                rx_vfo = RIG_VFO_MAIN_A;
+                break;
+            default:
+                rig_debug(RIG_DEBUG_ERR, "%s: unhandled VFO=%s, deafaulting to VFOA\n", __func__, rig_strvfo(priv->tx_vfo));
+            
+        }
+        retval = rig_set_split_vfo(rig, rx_vfo , 1, priv->tx_vfo);
     }
 
+#if 0
     /* set TX VFO */
     cmdbuf[1] = 'T';
     RETURNFUNC(kenwood_transaction(rig, cmdbuf, NULL, 0));
+#else
+    RETURNFUNC(retval);
+#endif
 }
 
 
@@ -1285,18 +1324,23 @@ int kenwood_set_split_vfo(RIG *rig, vfo_t vfo, split_t split, vfo_t txvfo)
 
         // FR can turn off split on some Kenwood rigs
         // So we'll turn it back on just in case
-        if (split && vfo_function == '0') { strcat(cmdbuf, ";FT1"); }
-
-        if (priv->split)
+TRACE;
+        if (split)
         {
             if (vfo_function == '0')
             {
+TRACE;
                 strcat(cmdbuf, ";FT1");
             }
             else
             {
+TRACE;
                 strcat(cmdbuf, ";FT0");
             }
+        }
+        else
+        {
+            strcat(cmdbuf, ";FT0");
         }
 
         retval = kenwood_transaction(rig, cmdbuf, NULL, 0);
@@ -1372,13 +1416,7 @@ int kenwood_set_split_vfo(RIG *rig, vfo_t vfo, split_t split, vfo_t txvfo)
       ||rig->caps->rig_model == RIG_MODEL_KX3)
     {
         rig_set_freq(rig, RIG_VFO_B, rig->state.cache.freqMainA);
-        snprintf(cmdbuf, sizeof(cmdbuf), "FT%c", vfo_function);
     }
-    else
-    {
-        snprintf(cmdbuf, sizeof(cmdbuf), "FT%c", vfo_function);
-    }
-    retval = kenwood_transaction(rig, cmdbuf, NULL, 0);
 
     if (retval != RIG_OK)
     {
@@ -2060,9 +2098,21 @@ int kenwood_set_mode(RIG *rig, vfo_t vfo, rmode_t mode, pbwidth_t width)
     struct kenwood_priv_data *priv = rig->state.priv;
     struct kenwood_priv_caps *caps = kenwood_caps(rig);
 
+    rig_debug(RIG_DEBUG_VERBOSE, "%s called, vfo=%s, mode=%s, width=%d, curr_vfo=%s\n", __func__,
+              rig_strvfo(vfo), rig_strrmode(mode), (int)width, rig_strvfo(rig->state.current_vfo));
 
-    rig_debug(RIG_DEBUG_VERBOSE, "%s called, vfo=%s, mode=%s, width=%d\n", __func__,
-              rig_strvfo(vfo), rig_strrmode(mode), (int)width);
+    // we wont' set opposite VFO if the mode is the same as requested
+    // setting VFOB mode requires split modifications which cause VFO flashing
+    // this should generally work unless the user changes mode on VFOB
+    // in which case VFOB won't get mode changed until restart
+    if (priv->split && (priv->tx_vfo  & (RIG_VFO_B|RIG_VFO_SUB|RIG_VFO_SUB_A)))
+    {
+        if (priv->modeB == mode) 
+        {
+            rig_debug(RIG_DEBUG_TRACE, "%s: VFOB mode already %s so ignoring request\n", __func__, rig_strrmode(mode));
+            return(RIG_OK);
+        }
+    }
 
     if (RIG_IS_TS590S || RIG_IS_TS590SG || RIG_IS_TS950S || RIG_IS_TS950SDX)
     {
@@ -2337,7 +2387,7 @@ int kenwood_get_mode(RIG *rig, vfo_t vfo, rmode_t *mode, pbwidth_t *width)
     struct kenwood_priv_data *priv = rig->state.priv;
     struct kenwood_priv_caps *caps = kenwood_caps(rig);
 
-    rig_debug(RIG_DEBUG_VERBOSE, "%s called\n", __func__);
+    rig_debug(RIG_DEBUG_VERBOSE, "%s called, curr_vfo=%s\n", __func__, rig_strvfo(rig->state.current_vfo));
 
     if (!mode || !width)
     {
@@ -2349,7 +2399,8 @@ int kenwood_get_mode(RIG *rig, vfo_t vfo, rmode_t *mode, pbwidth_t *width)
     /* only need to get it if it has to be initialized */
     if (priv->curr_mode > 0 && priv->is_emulation && vfo == RIG_VFO_B)
     {
-        RETURNFUNC(priv->curr_mode);
+        rig->state.current_vfo = RIG_VFO_A;
+        RETURNFUNC(RIG_OK);
     }
 
     if (RIG_IS_TS990S)

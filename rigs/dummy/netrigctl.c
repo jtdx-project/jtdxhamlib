@@ -79,7 +79,7 @@ static int netrigctl_transaction(RIG *rig, char *cmd, int len, char *buf)
         return ret;
     }
 
-    ret = read_string(&rig->state.rigport, buf, BUF_MAX, "\n", 1, 0);
+    ret = read_string(&rig->state.rigport, buf, BUF_MAX, "\n", 1, 0, 1);
 
     if (ret < 0)
     {
@@ -274,6 +274,7 @@ static int netrigctl_open(RIG *rig)
 
     if (sscanf(buf, "CHKVFO %d", &priv->rigctld_vfo_mode) == 1)
     {
+        rig->state.vfo_opt = 1;
         rig_debug(RIG_DEBUG_TRACE, "%s: chkvfo=%d\n", __func__, priv->rigctld_vfo_mode);
     }
     else if (ret == 2)
@@ -311,14 +312,14 @@ static int netrigctl_open(RIG *rig)
         return -RIG_EPROTO;
     }
 
-    ret = read_string(&rig->state.rigport, buf, BUF_MAX, "\n", 1, 0);
+    ret = read_string(&rig->state.rigport, buf, BUF_MAX, "\n", 1, 0, 1);
 
     if (ret <= 0)
     {
         return (ret < 0) ? ret : -RIG_EPROTO;
     }
 
-    ret = read_string(&rig->state.rigport, buf, BUF_MAX, "\n", 1, 0);
+    ret = read_string(&rig->state.rigport, buf, BUF_MAX, "\n", 1, 0, 1);
 
     if (ret <= 0)
     {
@@ -329,7 +330,7 @@ static int netrigctl_open(RIG *rig)
 
     for (i = 0; i < HAMLIB_FRQRANGESIZ; i++)
     {
-        ret = read_string(&rig->state.rigport, buf, BUF_MAX, "\n", 1, 0);
+        ret = read_string(&rig->state.rigport, buf, BUF_MAX, "\n", 1, 0, 1);
 
         if (ret <= 0)
         {
@@ -359,7 +360,7 @@ static int netrigctl_open(RIG *rig)
 
     for (i = 0; i < HAMLIB_FRQRANGESIZ; i++)
     {
-        ret = read_string(&rig->state.rigport, buf, BUF_MAX, "\n", 1, 0);
+        ret = read_string(&rig->state.rigport, buf, BUF_MAX, "\n", 1, 0, 1);
 
         if (ret <= 0)
         {
@@ -401,7 +402,7 @@ static int netrigctl_open(RIG *rig)
 
     for (i = 0; i < HAMLIB_TSLSTSIZ; i++)
     {
-        ret = read_string(&rig->state.rigport, buf, BUF_MAX, "\n", 1, 0);
+        ret = read_string(&rig->state.rigport, buf, BUF_MAX, "\n", 1, 0, 1);
 
         if (ret <= 0)
         {
@@ -425,7 +426,7 @@ static int netrigctl_open(RIG *rig)
 
     for (i = 0; i < HAMLIB_FLTLSTSIZ; i++)
     {
-        ret = read_string(&rig->state.rigport, buf, BUF_MAX, "\n", 1, 0);
+        ret = read_string(&rig->state.rigport, buf, BUF_MAX, "\n", 1, 0, 1);
 
         if (ret <= 0)
         {
@@ -452,7 +453,7 @@ static int netrigctl_open(RIG *rig)
     chan_t chan_list[HAMLIB_CHANLSTSIZ]; /*!< Channel list, zero ended */
 #endif
 
-    ret = read_string(&rig->state.rigport, buf, BUF_MAX, "\n", 1, 0);
+    ret = read_string(&rig->state.rigport, buf, BUF_MAX, "\n", 1, 0, 1);
 
     if (ret <= 0)
     {
@@ -461,7 +462,7 @@ static int netrigctl_open(RIG *rig)
 
     rig->caps->max_rit = rs->max_rit = atol(buf);
 
-    ret = read_string(&rig->state.rigport, buf, BUF_MAX, "\n", 1, 0);
+    ret = read_string(&rig->state.rigport, buf, BUF_MAX, "\n", 1, 0, 1);
 
     if (ret <= 0)
     {
@@ -470,7 +471,7 @@ static int netrigctl_open(RIG *rig)
 
     rig->caps->max_xit = rs->max_xit = atol(buf);
 
-    ret = read_string(&rig->state.rigport, buf, BUF_MAX, "\n", 1, 0);
+    ret = read_string(&rig->state.rigport, buf, BUF_MAX, "\n", 1, 0, 1);
 
     if (ret <= 0)
     {
@@ -479,7 +480,7 @@ static int netrigctl_open(RIG *rig)
 
     rig->caps->max_ifshift = rs->max_ifshift = atol(buf);
 
-    ret = read_string(&rig->state.rigport, buf, BUF_MAX, "\n", 1, 0);
+    ret = read_string(&rig->state.rigport, buf, BUF_MAX, "\n", 1, 0, 1);
 
     if (ret <= 0)
     {
@@ -488,7 +489,7 @@ static int netrigctl_open(RIG *rig)
 
     rs->announces = atoi(buf);
 
-    ret = read_string(&rig->state.rigport, buf, BUF_MAX, "\n", 1, 0);
+    ret = read_string(&rig->state.rigport, buf, BUF_MAX, "\n", 1, 0, 1);
 
     if (ret <= 0)
     {
@@ -515,7 +516,7 @@ static int netrigctl_open(RIG *rig)
 
     rig->caps->preamp[ret] = rs->preamp[ret] = RIG_DBLST_END;
 
-    ret = read_string(&rig->state.rigport, buf, BUF_MAX, "\n", 1, 0);
+    ret = read_string(&rig->state.rigport, buf, BUF_MAX, "\n", 1, 0, 1);
 
     if (ret <= 0)
     {
@@ -542,7 +543,7 @@ static int netrigctl_open(RIG *rig)
 
     rig->caps->attenuator[ret] = rs->attenuator[ret] = RIG_DBLST_END;
 
-    ret = read_string(&rig->state.rigport, buf, BUF_MAX, "\n", 1, 0);
+    ret = read_string(&rig->state.rigport, buf, BUF_MAX, "\n", 1, 0, 1);
 
     if (ret <= 0)
     {
@@ -551,7 +552,7 @@ static int netrigctl_open(RIG *rig)
 
     rig->caps->has_get_func = rs->has_get_func = strtoll(buf, NULL, 0);
 
-    ret = read_string(&rig->state.rigport, buf, BUF_MAX, "\n", 1, 0);
+    ret = read_string(&rig->state.rigport, buf, BUF_MAX, "\n", 1, 0, 1);
 
     if (ret <= 0)
     {
@@ -560,7 +561,7 @@ static int netrigctl_open(RIG *rig)
 
     rig->caps->has_set_func = rs->has_set_func = strtoll(buf, NULL, 0);
 
-    ret = read_string(&rig->state.rigport, buf, BUF_MAX, "\n", 1, 0);
+    ret = read_string(&rig->state.rigport, buf, BUF_MAX, "\n", 1, 0, 1);
 
     if (ret <= 0)
     {
@@ -582,7 +583,7 @@ static int netrigctl_open(RIG *rig)
 
 #endif
 
-    ret = read_string(&rig->state.rigport, buf, BUF_MAX, "\n", 1, 0);
+    ret = read_string(&rig->state.rigport, buf, BUF_MAX, "\n", 1, 0, 1);
 
     if (ret <= 0)
     {
@@ -591,7 +592,7 @@ static int netrigctl_open(RIG *rig)
 
     rig->caps->has_set_level = rs->has_set_level = strtoll(buf, NULL, 0);
 
-    ret = read_string(&rig->state.rigport, buf, BUF_MAX, "\n", 1, 0);
+    ret = read_string(&rig->state.rigport, buf, BUF_MAX, "\n", 1, 0, 1);
 
     if (ret <= 0)
     {
@@ -600,7 +601,7 @@ static int netrigctl_open(RIG *rig)
 
     rs->has_get_parm = strtoll(buf, NULL, 0);
 
-    ret = read_string(&rig->state.rigport, buf, BUF_MAX, "\n", 1, 0);
+    ret = read_string(&rig->state.rigport, buf, BUF_MAX, "\n", 1, 0, 1);
 
     if (ret <= 0)
     {
@@ -640,7 +641,7 @@ static int netrigctl_open(RIG *rig)
     do
     {
         char setting[32], value[1024];
-        ret = read_string(&rig->state.rigport, buf, BUF_MAX, "\n", 1, 0);
+        ret = read_string(&rig->state.rigport, buf, BUF_MAX, "\n", 1, 0, 1);
         strtok(buf, "\r\n"); // chop the EOL
 
         if (ret <= 0)
@@ -891,7 +892,7 @@ static int netrigctl_get_freq(RIG *rig, vfo_t vfo, freq_t *freq)
     CHKSCN1ARG(num_sscanf(buf, "%"SCNfreq, freq));
 
 #if 0 // implement set_freq VFO later if it can be detected
-    ret = read_string(&rig->state.rigport, buf, BUF_MAX, "\n", 1, 0);
+    ret = read_string(&rig->state.rigport, buf, BUF_MAX, "\n", 1, 0, 1);
 
     if (ret <= 0)
     {
@@ -962,7 +963,7 @@ static int netrigctl_get_mode(RIG *rig, vfo_t vfo, rmode_t *mode,
 
     *mode = rig_parse_mode(buf);
 
-    ret = read_string(&rig->state.rigport, buf, BUF_MAX, "\n", 1, 0);
+    ret = read_string(&rig->state.rigport, buf, BUF_MAX, "\n", 1, 0, 1);
 
     if (ret <= 0)
     {
@@ -1575,7 +1576,7 @@ static int netrigctl_get_split_mode(RIG *rig, vfo_t vfo, rmode_t *tx_mode,
 
     *tx_mode = rig_parse_mode(buf);
 
-    ret = read_string(&rig->state.rigport, buf, BUF_MAX, "\n", 1, 0);
+    ret = read_string(&rig->state.rigport, buf, BUF_MAX, "\n", 1, 0, 1);
 
     if (ret <= 0)
     {
@@ -1595,7 +1596,7 @@ static int netrigctl_set_split_vfo(RIG *rig, vfo_t vfo, split_t split,
     char buf[BUF_MAX];
     char vfostr[16] = "";
 
-    rig_debug(RIG_DEBUG_VERBOSE, "%s called\n", __func__);
+    rig_debug(RIG_DEBUG_VERBOSE, "%s called vfo=%s, vfotx=%s, split=%d\n", __func__, rig_strvfo(vfo), rig_strvfo(tx_vfo), split);
 
     ret = netrigctl_vfostr(rig, vfostr, sizeof(vfostr), RIG_VFO_A);
 
@@ -1641,7 +1642,7 @@ static int netrigctl_get_split_vfo(RIG *rig, vfo_t vfo, split_t *split,
 
     *split = atoi(buf);
 
-    ret = read_string(&rig->state.rigport, buf, BUF_MAX, "\n", 1, 0);
+    ret = read_string(&rig->state.rigport, buf, BUF_MAX, "\n", 1, 0, 1);
 
     if (ret <= 0)
     {
@@ -2163,7 +2164,7 @@ static int netrigctl_get_ant(RIG *rig, vfo_t vfo, ant_t ant, value_t *option,
                   ret);
     }
 
-    ret = read_string(&rig->state.rigport, buf, BUF_MAX, "\n", 1, 0);
+    ret = read_string(&rig->state.rigport, buf, BUF_MAX, "\n", 1, 0, 1);
 
     if (ret <= 0)
     {
@@ -2584,7 +2585,7 @@ struct rig_caps netrigctl_caps =
     RIG_MODEL(RIG_MODEL_NETRIGCTL),
     .model_name =     "NET rigctl",
     .mfg_name =       "Hamlib",
-    .version =        "20211120.0",
+    .version =        "20211123.0",
     .copyright =      "LGPL",
     .status =         RIG_STATUS_STABLE,
     .rig_type =       RIG_TYPE_OTHER,

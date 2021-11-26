@@ -11,7 +11,6 @@
 
 float freqA = 14074000;
 float freqB = 14074500;
-int filternum = 7;
 
 // ID 0310 == 310, Must drop leading zero
 typedef enum nc_rigid_e
@@ -97,14 +96,13 @@ int main(int argc, char *argv[])
     char *pbuf;
     int n;
     int fd = openPort(argv[1]);
-    int freqa = 14074000, freqb = 140735000;
-    int modeA = 0; // , modeB = 0;
 
     while (1)
     {
-        buf[0] = 0;
-
-        if (getmyline(fd, buf) > 0) { printf("Cmd:%s\n", buf); }
+        if (getmyline(fd, buf))
+        {
+            printf("Cmd:%s\n", buf);
+        }
         else { return 0; }
 
         if (strcmp(buf, "RM5;") == 0)
@@ -118,7 +116,7 @@ int main(int argc, char *argv[])
             if (n <= 0) { perror("RM5"); }
         }
 
-        else if (strcmp(buf, "AN0;") == 0)
+        if (strcmp(buf, "AN0;") == 0)
         {
             printf("%s\n", buf);
             usleep(50 * 1000);
@@ -132,7 +130,7 @@ int main(int argc, char *argv[])
         {
             printf("%s\n", buf);
             usleep(50 * 1000);
-            pbuf = "IF000503130001000+0000000000030000000;";
+            pbuf = "IF059014200000+000000700000;";
             n = write(fd, pbuf, strlen(pbuf));
             printf("n=%d\n", n);
 
@@ -142,8 +140,18 @@ int main(int argc, char *argv[])
         {
             printf("%s\n", buf);
             usleep(50 * 1000);
-            int id = 24;
+            int id = NC_RIGID_FTDX3000;
             snprintf(buf, sizeof(buf), "ID%03d;", id);
+            n = write(fd, buf, strlen(buf));
+            printf("n=%d\n", n);
+
+            if (n <= 0) { perror("ID"); }
+        }
+        else if (strcmp(buf, "AI;") == 0)
+        {
+            printf("%s\n", buf);
+            usleep(50 * 1000);
+            snprintf(buf, sizeof(buf), "AI0;");
             n = write(fd, buf, strlen(buf));
             printf("n=%d\n", n);
 
@@ -187,60 +195,11 @@ int main(int argc, char *argv[])
 
             if (n < 0) { perror("EX032"); }
         }
-        else if (strcmp(buf, "FA;") == 0)
-        {
-            sprintf(buf, "FA%011d;", freqa);
-            write(fd, buf, strlen(buf));
-        }
-        else if (strcmp(buf, "FB;") == 0)
-        {
-            sprintf(buf, "FA%011d;", freqa);
-            write(fd, buf, strlen(buf));
-        }
-        else if (strncmp(buf, "FA", 2) == 0)
-        {
-            sscanf(buf, "FA%d", &freqa);
-        }
-        else if (strncmp(buf, "FB", 2) == 0)
-        {
-            sscanf(buf, "FB%d", &freqb);
-        }
-        else if (strncmp(buf, "AI;", 3) == 0)
-        {
-            sprintf(buf, "AI0;");
-            write(fd, buf, strlen(buf));
-        }
-        else if (strncmp(buf, "SA;", 3) == 0)
-        {
-            sprintf(buf, "SA0;");
-            write(fd, buf, strlen(buf));
-        }
-        else if (strncmp(buf, "MD;", 3) == 0)
-        {
-            sprintf(buf, "MD%d;", modeA); // not worried about modeB yet for simulator
-            write(fd, buf, strlen(buf));
-        }
-        else if (strncmp(buf, "MD", 2) == 0)
-        {
-            sscanf(buf, "MD%d", &modeA); // not worried about modeB yet for simulator
-        }
-        else if (strncmp(buf,"FL;",3) == 0)
-        {
-            sprintf(buf, "FL%03d;", filternum);
-            write(fd, buf, strlen(buf));
-        }
-        else if (strncmp(buf,"FL",2) == 0)
-        {
-            sscanf(buf, "FL%d", &filternum);
-        }
-
-
 
         else if (strlen(buf) > 0)
         {
             fprintf(stderr, "Unknown command: %s\n", buf);
         }
-
 
     }
 

@@ -369,7 +369,7 @@ transaction_read:
     /* allow room for most any response */
     len = min(datasize ? datasize + 1 : strlen(priv->verify_cmd) + 48,
               KENWOOD_MAX_BUF_LEN);
-    retval = read_string(&rs->rigport, buffer, len, cmdtrm_str, strlen(cmdtrm_str), 0);
+    retval = read_string(&rs->rigport, buffer, len, cmdtrm_str, strlen(cmdtrm_str), 0, 1);
     rig_debug(RIG_DEBUG_TRACE, "%s: read_string(len=%d)='%s'\n", __func__,
               (int)strlen(buffer), buffer);
 
@@ -1312,7 +1312,7 @@ int kenwood_set_split_vfo(RIG *rig, vfo_t vfo, split_t split, vfo_t txvfo)
         }
 
         rig_get_split(rig, vfo, &tsplit);
-
+        rig_debug(RIG_DEBUG_VERBOSE, "%s(%d): tsplit=%d, split=%d\n", __func__, __LINE__, tsplit, split);
         if (tsplit == split)
         {
             rig_debug(RIG_DEBUG_TRACE, "%s: split already set\n", __func__);
@@ -1537,11 +1537,40 @@ int kenwood_get_split_vfo_if(RIG *rig, vfo_t rxvfo, split_t *split,
     switch (priv->info[30])
     {
     case '0':
-        *txvfo = priv->tx_vfo = (*split && !transmitting) ? RIG_VFO_B : RIG_VFO_A;
+        if (rig->state.rx_vfo == RIG_VFO_A)
+        {
+            TRACE;
+            *txvfo = priv->tx_vfo = (*split && !transmitting) ? RIG_VFO_B : RIG_VFO_A;
+        }
+        else if (rig->state.rx_vfo == RIG_VFO_B)
+        {
+            TRACE;
+            *txvfo = priv->tx_vfo = (*split && !transmitting) ? RIG_VFO_B : RIG_VFO_A;
+        }
+        else
+        {
+            rig_debug(RIG_DEBUG_WARN, "%s(%d): unknown rxVFO=%s\n", __func__, __LINE__, rig_strvfo(rig->state.rx_vfo));
+            *txvfo = RIG_VFO_A; // pick a default
+        }
+
         break;
 
     case '1':
-        *txvfo = priv->tx_vfo = (*split && !transmitting) ? RIG_VFO_A : RIG_VFO_B;
+        if (rig->state.rx_vfo == RIG_VFO_A)
+        {
+            TRACE;
+            *txvfo = priv->tx_vfo = (*split && !transmitting) ? RIG_VFO_A : RIG_VFO_B;
+        }
+        else if (rig->state.rx_vfo == RIG_VFO_B)
+        {
+            TRACE;
+            *txvfo = priv->tx_vfo = (*split && !transmitting) ? RIG_VFO_B : RIG_VFO_A;
+        }
+        else
+        {
+            rig_debug(RIG_DEBUG_WARN, "%s(%d): unknown rxVFO=%s\n", __func__, __LINE__, rig_strvfo(rig->state.rx_vfo));
+            *txvfo = RIG_VFO_A; // pick a default
+        }
         break;
 
     case '2':
@@ -2223,17 +2252,24 @@ int kenwood_set_mode(RIG *rig, vfo_t vfo, rmode_t mode, pbwidth_t width)
             datamode = 1;
         }
     }
-    rig_debug(RIG_DEBUG_VERBOSE, "%s: curr_mode=%s, new_mode=%s\n", __func__, rig_strrmode(priv->curr_mode), rig_strrmode(mode));
+    rig_debug(RIG_DEBUG_VERBOSE, "%s: vfo=%s, curr_mode=%s, new_mode=%s\n", __func__, rig_strvfo(vfo), rig_strrmode(priv->curr_mode), rig_strrmode(mode));
     // only change mode if needed
     if (priv->curr_mode != mode)
     {
         snprintf(buf, sizeof(buf), "MD%c", c);
         err = kenwood_transaction(rig, buf, NULL, 0);
     }
+    // determine if we need to set datamode on A or B
     needdata = 0;
-    if ((vfo == RIG_VFO_A) && ((priv->datamodeA ==  0 && datamode) || (priv->datamodeA == 1 && !datamode)))
+    
+    if (vfo == RIG_VFO_CURR) 
+    {
+        TRACE;
+        vfo = rig->state.current_vfo;
+    }
+    if ((vfo & (RIG_VFO_A|RIG_VFO_MAIN)) && ((priv->datamodeA ==  0 && datamode) || (priv->datamodeA == 1 && !datamode)))
         needdata = 1;
-    if ((vfo == RIG_VFO_B) && ((priv->datamodeB ==  0 && datamode) || (priv->datamodeB == 1 && !datamode)))
+    if ((vfo & (RIG_VFO_B|RIG_VFO_SUB)) && ((priv->datamodeB ==  0 && datamode) || (priv->datamodeB == 1 && !datamode)))
         needdata = 1;
 
     if (needdata)
@@ -2243,6 +2279,10 @@ int kenwood_set_mode(RIG *rig, vfo_t vfo, rmode_t mode, pbwidth_t width)
         err = kenwood_transaction(rig, buf, NULL, 0);
 
         if (err != RIG_OK) { RETURNFUNC(err); }
+    }
+    else if (datamode)
+    {
+        rig_debug(RIG_DEBUG_VERBOSE, "%s(%d): datamode set on %s not needed\n", __func__, __LINE__, rig_strvfo(vfo));
     }
 
     if (RIG_PASSBAND_NOCHANGE == width) { RETURNFUNC(RIG_OK); }
@@ -2590,7 +2630,7 @@ static int kenwood_get_micgain_minmax(RIG *rig, int *micgain_now,
 
     if (retval != RIG_OK) { RETURNFUNC(retval); }
 
-    retval = read_string(&rs->rigport, levelbuf, sizeof(levelbuf), NULL, 0, 0);
+    retval = read_string(&rs->rigport, levelbuf, sizeof(levelbuf), NULL, 0, 0, 1);
 
     rig_debug(RIG_DEBUG_TRACE, "%s: retval=%d\n", __func__, retval);
 
@@ -2689,7 +2729,7 @@ static int kenwood_get_power_minmax(RIG *rig, int *power_now, int *power_min,
 
     if (retval != RIG_OK) { RETURNFUNC(retval); }
 
-    retval = read_string(&rs->rigport, levelbuf, sizeof(levelbuf), NULL, 0, 0);
+    retval = read_string(&rs->rigport, levelbuf, sizeof(levelbuf), NULL, 0, 0, 1);
 
     rig_debug(RIG_DEBUG_TRACE, "%s: retval=%d\n", __func__, retval);
 
@@ -5418,7 +5458,7 @@ DECLARE_PROBERIG_BACKEND(kenwood)
         }
 
         retval = write_block(port, "ID;", 3);
-        id_len = read_string(port, idbuf, IDBUFSZ, ";\r", 2, 0);
+        id_len = read_string(port, idbuf, IDBUFSZ, ";\r", 2, 0, 1);
         close(port->fd);
 
         if (retval != RIG_OK || id_len < 0)
@@ -5485,7 +5525,7 @@ DECLARE_PROBERIG_BACKEND(kenwood)
         }
 
         retval = write_block(port, "K2;", 3);
-        id_len = read_string(port, idbuf, IDBUFSZ, ";\r", 2, 0);
+        id_len = read_string(port, idbuf, IDBUFSZ, ";\r", 2, 0, 1);
         close(port->fd);
 
         if (retval != RIG_OK)

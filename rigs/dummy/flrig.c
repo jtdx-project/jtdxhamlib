@@ -144,7 +144,7 @@ const struct rig_caps flrig_caps =
     RIG_MODEL(RIG_MODEL_FLRIG),
     .model_name = "FLRig",
     .mfg_name = "FLRig",
-    .version = "202101014.0",
+    .version = "20211206.0",
     .copyright = "LGPL",
     .status = RIG_STATUS_STABLE,
     .rig_type = RIG_TYPE_TRANSCEIVER,
@@ -555,9 +555,10 @@ static int flrig_transaction(RIG *rig, char *cmd, char *cmd_arg, char *value,
                              int value_len)
 {
     char xml[MAXXMLLEN];
-    int retry = 5;
+    int retry = 3;
 
     ENTERFUNC;
+    ELAPSED1;
 
     if (value)
     {
@@ -569,7 +570,7 @@ static int flrig_transaction(RIG *rig, char *cmd, char *cmd_arg, char *value,
         char *pxml;
         int retval;
 
-        if (retry < 2)
+        if (retry != 3)
         {
             rig_debug(RIG_DEBUG_VERBOSE, "%s: cmd=%s, retry=%d\n", __func__, cmd, retry);
         }
@@ -601,8 +602,13 @@ static int flrig_transaction(RIG *rig, char *cmd, char *cmd_arg, char *value,
     while (((value && strlen(value) == 0) || (strlen(xml) == 0))
             && retry--); // we'll do retries if needed
 
-    if (value && strlen(value) == 0) { RETURNFUNC(RIG_EPROTO); }
+    if (value && strlen(value) == 0)
+    {
+        rig_debug(RIG_DEBUG_ERR, "%s: no value returned\n", __func__);
+        RETURNFUNC(RIG_EPROTO);
+    }
 
+    ELAPSED2;
     RETURNFUNC(RIG_OK);
 }
 
@@ -673,7 +679,8 @@ static const char *modeMapGetFLRig(rmode_t modeHamlib)
 
     for (i = 0; modeMap[i].mode_hamlib != 0; ++i)
     {
-        if (modeMap[i].mode_flrig == NULL) continue;
+        if (modeMap[i].mode_flrig == NULL) { continue; }
+
         rig_debug(RIG_DEBUG_TRACE,
                   "%s: checking modeMap[%d]=%.0f to modeHamlib=%.0f, mode_flrig='%s'\n", __func__,
                   i, (double)modeMap[i].mode_hamlib, (double)modeHamlib, modeMap[i].mode_flrig);
@@ -797,12 +804,13 @@ static int flrig_open(RIG *rig)
 
     if (retval != RIG_OK)
     {
-        rig_debug(RIG_DEBUG_ERR, "%s: get_version failed: %s\nAssuming version < 1.3.54", __func__,
+        rig_debug(RIG_DEBUG_ERR,
+                  "%s: get_version failed: %s\nAssuming version < 1.3.54", __func__,
                   rigerror(retval));
         // we fall through and assume old version
     }
 
-    int v1=0, v2=0, v3=0, v4=0;
+    int v1 = 0, v2 = 0, v3 = 0, v4 = 0;
     sscanf(value, "%d.%d.%d.%d", &v1, &v2, &v3, &v4);
 
     if (v1 >= 1 && v2 >= 3 && v3 >= 54)

@@ -749,14 +749,17 @@ int icom_get_usb_echo_off(RIG *rig)
     retval = icom_transaction(rig, C_RD_FREQ, -1, NULL, 0, ackbuf, &ack_len);
 
     // if rig is not powered on we get no data and TIMEOUT
-    if (ack_len == 0 && retval == -RIG_ETIMEOUT) {RETURNFUNC(retval); }
+    if (ack_len == 0 && retval == -RIG_ETIMEOUT) { RETURNFUNC(retval); }
 
     rig_debug(RIG_DEBUG_VERBOSE, "%s: ack_len=%d\n", __func__, ack_len);
 
     if (ack_len > 0) // then we got an echo of the cmd
     {
-        priv->serial_USB_echo_off = 0;
+        unsigned char buf[16];
         rig_debug(RIG_DEBUG_VERBOSE, "%s: USB echo on detected\n", __func__);
+        // we should have a freq response so we'll read it and don't really care
+        // flushing doesn't always work as it depends on timing
+        read_icom_frame(&rs->rigport, buf, sizeof(buf));
     }
     else
     {
@@ -957,7 +960,7 @@ retry_open:
     else
     {
         rig_debug(RIG_DEBUG_TRACE, "%s: echo status unknown\n", __func__);
-        retval = -RIG_EPROTO;
+//        retval = -RIG_EPROTO;
     }
 
     if (retval != RIG_OK && priv->poweron == 0 && rs->auto_power_on)

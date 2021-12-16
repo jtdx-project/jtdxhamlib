@@ -4575,7 +4575,14 @@ int newcat_get_level(RIG *rig, vfo_t vfo, setting_t level, value_t *val)
             RETURNFUNC(-RIG_ENAVAIL);
         }
 
-        snprintf(priv->cmd_str, sizeof(priv->cmd_str), "RM6%c", cat_term);
+        if (is_ftdx9000)
+        {
+            snprintf(priv->cmd_str, sizeof(priv->cmd_str), "RM09%c", cat_term);
+        }
+        else
+        {
+            snprintf(priv->cmd_str, sizeof(priv->cmd_str), "RM6%c", cat_term);
+        }
         break;
 
     case RIG_LEVEL_ALC:
@@ -4584,7 +4591,14 @@ int newcat_get_level(RIG *rig, vfo_t vfo, setting_t level, value_t *val)
             RETURNFUNC(-RIG_ENAVAIL);
         }
 
-        snprintf(priv->cmd_str, sizeof(priv->cmd_str), "RM4%c", cat_term);
+        if (is_ftdx9000)
+        {
+            snprintf(priv->cmd_str, sizeof(priv->cmd_str), "RM07%c", cat_term);
+        }
+        else
+        {
+            snprintf(priv->cmd_str, sizeof(priv->cmd_str), "RM4%c", cat_term);
+        }
         break;
 
     case RIG_LEVEL_RFPOWER_METER:
@@ -4597,6 +4611,10 @@ int newcat_get_level(RIG *rig, vfo_t vfo, setting_t level, value_t *val)
         if (is_ftdx9000)
         {
             snprintf(priv->cmd_str, sizeof(priv->cmd_str), "RM08%c", cat_term);
+        }
+        else if (is_ftdx3000 || is_ftdx5000)
+        {
+            snprintf(priv->cmd_str, sizeof(priv->cmd_str), "RM6%c", cat_term);
         }
         else
         {
@@ -9854,8 +9872,7 @@ int newcat_get_cmd(RIG *rig)
         || strcmp(priv->cmd_str, "RF1;") == 0
         || strcmp(priv->cmd_str, "RL0;") == 0
         || strcmp(priv->cmd_str, "RL1;") == 0
-        || strcmp(priv->cmd_str, "RM0;") == 0
-        || strcmp(priv->cmd_str, "RM1;") == 0
+        || strncmp(priv->cmd_str, "RM", 2) == 0
         || strcmp(priv->cmd_str, "SM0;") == 0
         || strcmp(priv->cmd_str, "SM1;") == 0
         || strcmp(priv->cmd_str, "SQ0;") == 0

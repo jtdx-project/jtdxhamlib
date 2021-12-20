@@ -951,7 +951,7 @@ static int ft847_send_priv_cmd(RIG *rig, int cmd_index)
         return -RIG_EINVAL;
     }
 
-    return write_block(&rig->state.rigport, (char *) ncmd[cmd_index].nseq,
+    return write_block(&rig->state.rigport, ncmd[cmd_index].nseq,
                        YAESU_CMD_LENGTH);
 }
 
@@ -1045,7 +1045,7 @@ static int ft847_set_freq(RIG *rig, vfo_t vfo, freq_t freq)
         }
     }
 
-    return write_block(&rig->state.rigport, (char *)p_cmd, YAESU_CMD_LENGTH);
+    return write_block(&rig->state.rigport, p_cmd, YAESU_CMD_LENGTH);
 }
 
 #define MD_LSB  0x00
@@ -1102,14 +1102,14 @@ static int get_freq_and_mode(RIG *rig, vfo_t vfo, freq_t *freq, rmode_t *mode,
         return n;
     }
 
-    n = write_block(&rs->rigport, (char *) p_cmd, YAESU_CMD_LENGTH);
+    n = write_block(&rs->rigport, p_cmd, YAESU_CMD_LENGTH);
 
     if (n < 0)
     {
         return n;
     }
 
-    n = read_block(&rs->rigport, (char *) data, YAESU_CMD_LENGTH);
+    n = read_block(&rs->rigport, data, YAESU_CMD_LENGTH);
 
     if (n != YAESU_CMD_LENGTH)
     {
@@ -1299,7 +1299,7 @@ static int ft847_set_mode(RIG *rig, vfo_t vfo, rmode_t mode, pbwidth_t width)
         return ret;
     }
 
-    return write_block(&rs->rigport, (char *)p_cmd, YAESU_CMD_LENGTH);
+    return write_block(&rs->rigport, p_cmd, YAESU_CMD_LENGTH);
 }
 
 static int ft847_get_mode(RIG *rig, vfo_t vfo, rmode_t *mode, pbwidth_t *width)
@@ -1455,7 +1455,7 @@ static int ft847_get_status(RIG *rig, int status_ci)
 
     rig_flush(&rig->state.rigport);
 
-    n = write_block(&rig->state.rigport, (char *) ncmd[status_ci].nseq,
+    n = write_block(&rig->state.rigport, ncmd[status_ci].nseq,
                     YAESU_CMD_LENGTH);
 
     if (n < 0)
@@ -1463,7 +1463,7 @@ static int ft847_get_status(RIG *rig, int status_ci)
         return n;
     }
 
-    n = read_block(&rig->state.rigport, (char *) data, len);
+    n = read_block(&rig->state.rigport, data, len);
 
     if (n < 0)
     {
@@ -1706,7 +1706,7 @@ static int ft847_set_func(RIG *rig, vfo_t vfo, setting_t func, int status)
         return ret;
     }
 
-    return write_block(&rig->state.rigport, (char *)p_cmd, YAESU_CMD_LENGTH);
+    return write_block(&rig->state.rigport, p_cmd, YAESU_CMD_LENGTH);
 }
 
 
@@ -1751,7 +1751,7 @@ static int ft847_set_ctcss_tone(RIG *rig, vfo_t vfo, tone_t tone)
     /* get associated CAT code */
     p_cmd[0] = ft847_ctcss_cat[i];
 
-    return write_block(&rig->state.rigport, (char *)p_cmd, YAESU_CMD_LENGTH);
+    return write_block(&rig->state.rigport, p_cmd, YAESU_CMD_LENGTH);
 }
 
 static int ft847_set_ctcss_sql(RIG *rig, vfo_t vfo, tone_t tone)
@@ -1777,7 +1777,7 @@ static int ft847_set_dcs_sql(RIG *rig, vfo_t vfo, tone_t code)
     /* DCS Code # (i.e. 07, 54=DCS Code 754) */
     to_bcd_be(p_cmd, code, 4); /* store bcd format in in p_cmd */
 
-    return write_block(&rig->state.rigport, (char *)p_cmd, YAESU_CMD_LENGTH);
+    return write_block(&rig->state.rigport, p_cmd, YAESU_CMD_LENGTH);
 
 }
 
@@ -1820,7 +1820,7 @@ static int ft847_set_rptr_offs(RIG *rig, vfo_t vfo, shortfreq_t rptr_offs)
 
     to_bcd_be(p_cmd, rptr_offs / 10, 8); /* store bcd format in in p_cmd */
 
-    return write_block(&rig->state.rigport, (char *)p_cmd, YAESU_CMD_LENGTH);
+    return write_block(&rig->state.rigport, p_cmd, YAESU_CMD_LENGTH);
 }
 
 int ft847_power2mW       (RIG *rig, unsigned int *mwpower, float power,

@@ -8644,11 +8644,11 @@ static int icom_parse_spectrum_frame(RIG *rig, size_t length,
         cache->spectrum_metadata_valid = 1;
 
         rig_debug(RIG_DEBUG_TRACE,
-                  "%s: Spectrum line start: id=%d division=%d max_division=%d mode=%d center=%.0f span=%.0f low_edge=%.0f high_edge=%.0f oor=%d data_length=%ld\n",
+                  "%s: Spectrum line start: id=%d division=%d max_division=%d mode=%d center=%.0f span=%.0f low_edge=%.0f high_edge=%.0f oor=%d data_length=%d\n",
                   __func__, spectrum_id, division, max_division, spectrum_scope_mode,
                   cache->spectrum_center_freq, cache->spectrum_span_freq,
                   cache->spectrum_low_edge_freq, cache->spectrum_high_edge_freq, out_of_range,
-                  spectrum_data_length_in_frame);
+                  (int)spectrum_data_length_in_frame);
     }
     else
     {
@@ -8666,8 +8666,8 @@ static int icom_parse_spectrum_frame(RIG *rig, size_t length,
                 priv_caps->spectrum_scope_caps.spectrum_line_length)
         {
             rig_debug(RIG_DEBUG_ERR,
-                      "%s: too much spectrum scope data received: %ld bytes > %d bytes expected\n",
-                      __func__, offset + spectrum_data_length_in_frame,
+                      "%s: too much spectrum scope data received: %d bytes > %d bytes expected\n",
+                      __func__, (int)(offset + spectrum_data_length_in_frame),
                       priv_caps->spectrum_scope_caps.spectrum_line_length);
             RETURNFUNC(-RIG_EPROTO);
         }

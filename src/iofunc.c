@@ -99,7 +99,18 @@ int HAMLIB_API port_open(hamlib_port_t *p)
 
     if (p->async)
     {
-        status = pipe2(sync_pipe_fds, O_NONBLOCK);
+#ifdef HAVE_WINDOWS_H
+        // this needs to be done with overlapping I/O to achieve non-blocking
+        status = _pipe(sync_pipe_fds, 256, O_BINARY);
+#else
+        status = pipe(sync_pipe_fds);
+        int flags = fcntl(sync_pipe_fds[0], F_GETFD);
+        flags |= O_NONBLOCK;
+        if (fcntl(sync_pipe_fds[0], F_SETFD, flags))
+        {
+            rig_debug(RIG_DEBUG_ERR, "%s: error setting O_NONBLOCK on pipe=%s\n", __func__, strerror(errno));
+        }
+#endif
         if (status != 0)
         {
             rig_debug(RIG_DEBUG_ERR, "%s: synchronous data pipe open status=%d, err=%s\n", __func__,
@@ -111,7 +122,18 @@ int HAMLIB_API port_open(hamlib_port_t *p)
         p->fd_sync_read = sync_pipe_fds[0];
         p->fd_sync_write = sync_pipe_fds[1];
 
-        status = pipe2(sync_pipe_fds, O_NONBLOCK);
+#ifdef HAVE_WINDOWS_H
+        // this needs to be done with overlapping I/O to achieve non-blocking
+        status = _pipe(sync_pipe_fds, 256, O_BINARY);
+#else
+        status = pipe(sync_pipe_fds);
+        flags = fcntl(sync_pipe_fds[0], F_GETFD);
+        flags |= O_NONBLOCK;
+        if (fcntl(sync_pipe_fds[0], F_SETFD, flags))
+        {
+            rig_debug(RIG_DEBUG_ERR, "%s: error setting O_NONBLOCK on pipe#2=%s\n", __func__, strerror(errno));
+        }
+#endif
         if (status != 0)
         {
             rig_debug(RIG_DEBUG_ERR, "%s: synchronous data error code pipe open status=%d, err=%s\n", __func__,
@@ -815,7 +837,7 @@ static int read_string_generic(hamlib_port_t *p,
     struct timeval tv, tv_timeout, start_time, end_time, elapsed_time;
     int total_count = 0;
     int i = 0;
-    static ssize_t minlen = 1; // dynamic minimum length of rig response data
+    static int minlen = 1; // dynamic minimum length of rig response data
 
     if (!p->async && !direct)
     {
@@ -980,7 +1002,7 @@ static int read_string_generic(hamlib_port_t *p,
             if (minlen < total_count)
             {
                 minlen = total_count;
-                rig_debug(RIG_DEBUG_VERBOSE, "%s: minlen now %ld\n", __func__, minlen);
+                rig_debug(RIG_DEBUG_VERBOSE, "%s: minlen now %d\n", __func__, minlen);
             }
 
             break;

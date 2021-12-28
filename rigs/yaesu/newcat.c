@@ -834,7 +834,7 @@ int newcat_set_freq(RIG *rig, vfo_t vfo, freq_t freq)
         }
         while (err == RIG_OK && ptt == RIG_PTT_ON && retry-- > 0);
 
-        if (ptt) { return RIG_ENTARGET; }
+        if (ptt) { return -RIG_ENTARGET; }
     }
 
     if (RIG_MODEL_FT450 == caps->rig_model)
@@ -10064,11 +10064,11 @@ int newcat_set_cmd_validate(RIG *rig)
     // a verifcation of frequency and retries if it doesn't match
     if ((strncmp(priv->cmd_str, "FA", 2) == 0) && (strlen(priv->cmd_str) > 3))
     {
-        strcpy(valcmd, ""); // No validation done -- rig.c now does followup query
+        strcpy(valcmd, "FA;"); 
     }
     else if ((strncmp(priv->cmd_str, "FB", 2) == 0) && (strlen(priv->cmd_str) > 3))
     {
-        strcpy(valcmd, ""); // No validation done -- rig.c now does followup query
+        strcpy(valcmd, "FB;"); 
     }
     else if ((strncmp(priv->cmd_str, "MD", 2) == 0) && (strlen(priv->cmd_str) > 3))
     {

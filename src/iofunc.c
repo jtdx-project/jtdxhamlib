@@ -191,7 +191,6 @@ int HAMLIB_API port_open(hamlib_port_t *p)
 
         if (status != 0)
         {
-            rig_debug(RIG_DEBUG_ERR, "%s: set_rts status=%d\n", __func__, status);
 #ifdef ASYNC_BUG
             close_sync_data_pipe(p);
 #endif
@@ -376,7 +375,7 @@ static ssize_t port_read_generic(hamlib_port_t *p, void *buf, size_t count, int 
 #if ASYNC_BUG
     int fd = direct ? p->fd : p->fd_sync_read;
 #else
-    int fd = direct;
+    int fd = p->fd;
 #endif
     int i;
     ssize_t ret;
@@ -936,6 +935,7 @@ static int read_string_generic(hamlib_port_t *p,
     /*
      * Wait up to timeout ms.
      */
+
     tv_timeout.tv_sec = p->timeout / 1000;
     tv_timeout.tv_usec = (p->timeout % 1000) * 1000;
 

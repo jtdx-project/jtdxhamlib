@@ -326,6 +326,7 @@ const struct rig_caps ts2000_caps =
     .power2mW = kenwood_power2mW,
     .reset =  kenwood_reset,
 
+    .hamlib_check_rig_caps = "HAMLIB_CHECK_RIG_CAPS"
 };
 
 /*

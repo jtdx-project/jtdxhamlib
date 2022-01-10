@@ -3585,7 +3585,7 @@ int newcat_set_level(RIG *rig, vfo_t vfo, setting_t level, value_t val)
             RETURNFUNC(-RIG_ENAVAIL);
         }
 
-        if (is_ft991 || is_ftdx5000 || is_ftdx101d || is_ftdx101mp)
+        if (is_ft991 || is_ftdx3000 || is_ftdx5000 || is_ftdx101d || is_ftdx101mp)
         {
             newcat_get_mode(rig, vfo, &mode, &width);
         }
@@ -3627,7 +3627,7 @@ int newcat_set_level(RIG *rig, vfo_t vfo, setting_t level, value_t val)
         }
 
         // Some Yaesu rigs reject this command in AM/FM modes
-        if (is_ft991 || is_ftdx5000 || is_ftdx101d || is_ftdx101mp)
+        if (is_ft991 || is_ftdx3000 || is_ftdx5000 || is_ftdx101d || is_ftdx101mp)
         {
             if (mode & RIG_MODE_AM || mode & RIG_MODE_FM || mode & RIG_MODE_AMN
                     || mode & RIG_MODE_FMN)
@@ -3695,7 +3695,7 @@ int newcat_set_level(RIG *rig, vfo_t vfo, setting_t level, value_t val)
             RETURNFUNC(-RIG_ENAVAIL);
         }
 
-        if (is_ft991 || is_ftdx5000 || is_ftdx101d || is_ftdx101mp)
+        if (is_ft991 || is_ftdx3000 || is_ftdx5000 || is_ftdx101d || is_ftdx101mp)
         {
             newcat_get_mode(rig, vfo, &mode, &width);
         }
@@ -3716,7 +3716,7 @@ int newcat_set_level(RIG *rig, vfo_t vfo, setting_t level, value_t val)
         snprintf(priv->cmd_str, sizeof(priv->cmd_str), "MG%03d%c", fpf, cat_term);
 
         // Some Yaesu rigs reject this command in RTTY modes
-        if (is_ft991 || is_ftdx5000 || is_ftdx101d || is_ftdx101mp)
+        if (is_ft991 || is_ftdx3000 || is_ftdx5000 || is_ftdx101d || is_ftdx101mp)
         {
             if (mode & RIG_MODE_RTTY || mode & RIG_MODE_RTTYR)
             {
@@ -4368,7 +4368,7 @@ int newcat_get_level(RIG *rig, vfo_t vfo, setting_t level, value_t *val)
             RETURNFUNC(-RIG_ENAVAIL);
         }
 
-        if (is_ft991 || is_ftdx5000 || is_ftdx101d || is_ftdx101mp)
+        if (is_ft991 || is_ftdx3000 || is_ftdx5000 || is_ftdx101d || is_ftdx101mp)
         {
             newcat_get_mode(rig, vfo, &mode, &width);
         }
@@ -4382,7 +4382,7 @@ int newcat_get_level(RIG *rig, vfo_t vfo, setting_t level, value_t *val)
         }
 
         // Some Yaesu rigs reject this command in AM/FM modes
-        if (is_ft991 || is_ftdx5000 || is_ftdx101d || is_ftdx101mp)
+        if (is_ft991 || is_ftdx3000 || is_ftdx5000 || is_ftdx101d || is_ftdx101mp)
         {
             if (mode & RIG_MODE_AM || mode & RIG_MODE_FM || mode & RIG_MODE_AMN
                     || mode & RIG_MODE_FMN)
@@ -4422,7 +4422,7 @@ int newcat_get_level(RIG *rig, vfo_t vfo, setting_t level, value_t *val)
             RETURNFUNC(-RIG_ENAVAIL);
         }
 
-        if (is_ft991 || is_ftdx5000 || is_ftdx101d || is_ftdx101mp)
+        if (is_ft991 || is_ftdx3000 || is_ftdx5000 || is_ftdx101d || is_ftdx101mp)
         {
             newcat_get_mode(rig, vfo, &mode, &width);
         }
@@ -4430,7 +4430,7 @@ int newcat_get_level(RIG *rig, vfo_t vfo, setting_t level, value_t *val)
         snprintf(priv->cmd_str, sizeof(priv->cmd_str), "MG%c", cat_term);
 
         // Some Yaesu rigs reject this command in RTTY modes
-        if (is_ft991 || is_ftdx5000 || is_ftdx101d || is_ftdx101mp)
+        if (is_ft991 || is_ftdx3000 || is_ftdx5000 || is_ftdx101d || is_ftdx101mp)
         {
             if (mode & RIG_MODE_RTTY || mode & RIG_MODE_RTTYR)
             {
@@ -5358,7 +5358,7 @@ int newcat_set_func(RIG *rig, vfo_t vfo, setting_t func, int status)
             RETURNFUNC(-RIG_ENAVAIL);
         }
 
-        if (is_ft991 || is_ftdx5000 || is_ftdx101d || is_ftdx101mp)
+        if (is_ft991 || is_ftdx3000 || is_ftdx5000 || is_ftdx101d || is_ftdx101mp)
         {
             err = newcat_get_mode(rig, vfo, &mode, &width);
         }
@@ -5372,7 +5372,7 @@ int newcat_set_func(RIG *rig, vfo_t vfo, setting_t func, int status)
         }
 
         // Some Yaesu rigs reject this command in FM mode
-        if (is_ft991 || is_ftdx5000 || is_ftdx101d || is_ftdx101mp)
+        if (is_ft991 || is_ftdx3000 || is_ftdx5000 || is_ftdx101d || is_ftdx101mp)
         {
             if (mode & RIG_MODE_FM || mode & RIG_MODE_FMN)
             {
@@ -5393,7 +5393,7 @@ int newcat_set_func(RIG *rig, vfo_t vfo, setting_t func, int status)
             RETURNFUNC(-RIG_ENAVAIL);
         }
 
-        if (is_ft991 || is_ftdx5000 || is_ftdx101d || is_ftdx101mp)
+        if (is_ft991 || is_ftdx3000 || is_ftdx5000 || is_ftdx101d || is_ftdx101mp)
         {
             newcat_get_mode(rig, vfo, &mode, &width);
         }
@@ -5407,7 +5407,7 @@ int newcat_set_func(RIG *rig, vfo_t vfo, setting_t func, int status)
         }
 
         // Some Yaesu rigs reject this command in FM mode
-        if (is_ft991 || is_ftdx5000 || is_ftdx101d || is_ftdx101mp)
+        if (is_ft991 || is_ftdx3000 || is_ftdx5000 || is_ftdx101d || is_ftdx101mp)
         {
             if (mode & RIG_MODE_FM || mode & RIG_MODE_FMN)
             {
@@ -5516,7 +5516,7 @@ int newcat_set_func(RIG *rig, vfo_t vfo, setting_t func, int status)
             RETURNFUNC(-RIG_ENAVAIL);
         }
 
-        if (is_ft991 || is_ftdx5000 || is_ftdx101d || is_ftdx101mp)
+        if (is_ft991 || is_ftdx3000 || is_ftdx5000 || is_ftdx101d || is_ftdx101mp)
         {
             newcat_get_mode(rig, vfo, &mode, &width);
         }
@@ -5530,7 +5530,7 @@ int newcat_set_func(RIG *rig, vfo_t vfo, setting_t func, int status)
         }
 
         // Some Yaesu rigs reject this command in FM mode
-        if (is_ft991 || is_ftdx5000 || is_ftdx101d || is_ftdx101mp)
+        if (is_ft991 || is_ftdx3000 || is_ftdx5000 || is_ftdx101d || is_ftdx101mp)
         {
             if (mode & RIG_MODE_FM || mode & RIG_MODE_FMN)
             {
@@ -5551,7 +5551,7 @@ int newcat_set_func(RIG *rig, vfo_t vfo, setting_t func, int status)
             RETURNFUNC(-RIG_ENAVAIL);
         }
 
-        if (is_ft991 || is_ftdx5000 || is_ftdx101d || is_ftdx101mp)
+        if (is_ft991 || is_ftdx3000 || is_ftdx5000 || is_ftdx101d || is_ftdx101mp)
         {
             newcat_get_mode(rig, vfo, &mode, &width);
         }
@@ -5570,7 +5570,7 @@ int newcat_set_func(RIG *rig, vfo_t vfo, setting_t func, int status)
         }
 
         // Some Yaesu rigs reject this command in AM/FM/RTTY modes
-        if (is_ft991 || is_ftdx5000 || is_ftdx101d || is_ftdx101mp)
+        if (is_ft991 || is_ftdx3000 || is_ftdx5000 || is_ftdx101d || is_ftdx101mp)
         {
             if (mode & RIG_MODE_AM || mode & RIG_MODE_FM || mode & RIG_MODE_AMN
                     || mode & RIG_MODE_FMN ||
@@ -5699,7 +5699,7 @@ int newcat_get_func(RIG *rig, vfo_t vfo, setting_t func, int *status)
             RETURNFUNC(-RIG_ENAVAIL);
         }
 
-        if (is_ft991 || is_ftdx5000 || is_ftdx101d || is_ftdx101mp)
+        if (is_ft991 || is_ftdx3000 || is_ftdx5000 || is_ftdx101d || is_ftdx101mp)
         {
             err = newcat_get_mode(rig, vfo, &mode, &width);
         }
@@ -5712,7 +5712,7 @@ int newcat_get_func(RIG *rig, vfo_t vfo, setting_t func, int *status)
         }
 
         // Some Yaesu rigs reject this command in FM mode
-        if (is_ft991 || is_ftdx5000 || is_ftdx101d || is_ftdx101mp)
+        if (is_ft991 || is_ftdx3000 || is_ftdx5000 || is_ftdx101d || is_ftdx101mp)
         {
             if (mode & RIG_MODE_FM || mode & RIG_MODE_FMN)
             {
@@ -8510,7 +8510,7 @@ int newcat_get_rx_bandwidth(RIG *rig, vfo_t vfo, rmode_t mode, pbwidth_t *width)
         RETURNFUNC(err);
     }
 
-    if (is_ft950 || is_ftdx5000)
+    if (is_ft950 || is_ftdx5000 || is_ftdx3000)
     {
         // Some Yaesu rigs cannot query SH in modes such as AM/FM
         switch (mode)

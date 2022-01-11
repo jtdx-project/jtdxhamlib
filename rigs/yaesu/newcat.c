@@ -514,6 +514,7 @@ int newcat_open(RIG *rig)
 {
     struct newcat_priv_data *priv = rig->state.priv;
     struct rig_state *rig_s = &rig->state;
+    const char *handshake[3] = {"None","Xon/Xoff", "Hardware"};
 
     ENTERFUNC;
 
@@ -524,6 +525,9 @@ int newcat_open(RIG *rig)
 
     rig_debug(RIG_DEBUG_TRACE, "%s: post_write_delay = %i msec\n",
               __func__, rig_s->rigport.post_write_delay);
+
+    rig_debug(RIG_DEBUG_TRACE, "%s: serial_handshake = %s \n",
+              __func__, handshake[rig->caps->serial_handshake]);
 
     /* Ensure rig is powered on */
     if (priv->poweron == 0 && rig_s->auto_power_on)
@@ -675,7 +679,7 @@ int newcat_set_conf(RIG *rig, token_t token, const char *val)
  * Get Configuration Token for Yaesu Radios
  */
 
-int newcat_get_conf(RIG *rig, token_t token, char *val)
+int newcat_get_conf2(RIG *rig, token_t token, char *val, int val_len)
 {
     int ret = RIG_OK;
     struct newcat_priv_data *priv;
@@ -697,7 +701,7 @@ int newcat_get_conf(RIG *rig, token_t token, char *val)
             RETURNFUNC(-RIG_ENOMEM);
         }
 
-        sprintf(val, "%d", priv->fast_set_commands);
+        SNPRINTF(val, val_len, "%d", priv->fast_set_commands);
         break;
 
     default:

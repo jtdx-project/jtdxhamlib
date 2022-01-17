@@ -93,6 +93,7 @@ int barrett_transaction(RIG *rig, char *cmd, int expected, char **result)
 
         if (retval < 0)
         {
+            rig_debug(RIG_DEBUG_ERR, "%s(%d): error in read_string\n", __func__, __LINE__);
             return retval;
         }
     }
@@ -102,29 +103,28 @@ int barrett_transaction(RIG *rig, char *cmd, int expected, char **result)
 
         if (retval < 0)
         {
+            rig_debug(RIG_DEBUG_ERR, "%s(%d): error in read_block\n", __func__, __LINE__);
             return retval;
         }
     }
 
-    rig_debug(RIG_DEBUG_VERBOSE, "%s: retval=%d\n", __func__, retval);
-    dump_hex((const unsigned char *)priv->ret_data, strlen(priv->ret_data));
     p = priv->ret_data;
     xon = p[0];
     xoff = p[strlen(p) - 1];
 
     if (xon == 0x13 && xoff == 0x11)
     {
-        rig_debug(RIG_DEBUG_ERR, "%s: removing xoff char\n", __func__);
+        //rig_debug(RIG_DEBUG_TRACE, "%s: removing xoff char\n", __func__);
         p[strlen(p) - 1] = 0;
     }
     else
     {
-        rig_debug(RIG_DEBUG_ERR,
+        rig_debug(RIG_DEBUG_WARN,
                   "%s: expected XOFF=0x13 as first and XON=0x11 as last byte, got %02x/%02x\n",
                   __func__, xon, xoff);
     }
 
-    rig_debug(RIG_DEBUG_ERR, "%s: removing xon char\n", __func__);
+    //rig_debug(RIG_DEBUG_ERR, "%s: removing xon char\n", __func__);
     // Remove the XON char if there
     p = memchr(priv->ret_data, 0x11, strlen(priv->ret_data));
 
@@ -165,7 +165,6 @@ int barrett_transaction(RIG *rig, char *cmd, int expected, char **result)
             strtok_r(*result, "\r", &dummy);
         }
 
-        dump_hex((const unsigned char *)*result, strlen(*result));
         rig_debug(RIG_DEBUG_VERBOSE, "%s: returning result=%s\n", __func__,
                   *result);
     }
@@ -260,6 +259,7 @@ int barrett_get_freq(RIG *rig, vfo_t vfo, freq_t *freq)
 }
 
 
+// TC command does not work on 4050 -- not implemented as of 2022-01-12
 /*
  * barrett_set_freq
  * assumes rig!=NULL, rig->state.priv!=NULL
@@ -289,7 +289,7 @@ int barrett_set_freq(RIG *rig, vfo_t vfo, freq_t freq)
     if (vfo != RIG_VFO_B)
     {
         char *response = NULL;
-        sprintf((char *) cmd_buf, "TR%08.0f", freq);
+        SNPRINTF((char *) cmd_buf, sizeof(cmd_buf), "TR%08.0f", freq);
         retval = barrett_transaction(rig, cmd_buf, 0, &response);
 
         if (retval < 0)
@@ -311,7 +311,7 @@ int barrett_set_freq(RIG *rig, vfo_t vfo, freq_t freq)
     {
 
         char *response = NULL;
-        sprintf((char *) cmd_buf, "TC9999T%08.0f", freq);
+        SNPRINTF((char *) cmd_buf, sizeof(cmd_buf), "TC9999T%08.0f", freq);
         retval = barrett_transaction(rig, cmd_buf, 0, &response);
 
         if (retval < 0)
@@ -346,7 +346,7 @@ int barrett_set_ptt(RIG *rig, vfo_t vfo, ptt_t ptt)
     // testing with rigctld worked, but from WSJT-X did not
     // WSJT-X is just a little faster without the network timing
     hl_usleep(100 * 1000);
-    sprintf(cmd_buf, "XP%d", ptt);
+    SNPRINTF(cmd_buf, sizeof(cmd_buf), "XP%d", ptt);
     response = NULL;
     retval = barrett_transaction(rig, cmd_buf, 0, &response);
 
@@ -461,7 +461,7 @@ int barrett_set_mode(RIG *rig, vfo_t vfo, rmode_t mode, pbwidth_t width)
         return -RIG_EINVAL;
     }
 
-    sprintf((char *) cmd_buf, "TB%c" EOM, ttmode);
+    SNPRINTF((char *) cmd_buf, sizeof(cmd_buf), "TB%c" EOM, ttmode);
 
     retval = barrett_transaction(rig, cmd_buf, 0, NULL);
 
@@ -562,7 +562,7 @@ int barrett_set_split_freq(RIG *rig, vfo_t vfo, freq_t tx_freq)
     rig_debug(RIG_DEBUG_VERBOSE, "%s: vfo=%s freq=%g\n", __func__,
               rig_strvfo(vfo), tx_freq);
 
-    sprintf((char *) cmd_buf, "TT%08.0f" EOM, tx_freq);
+    SNPRINTF((char *) cmd_buf, sizeof(cmd_buf), "TT%08.0f" EOM, tx_freq);
 
     retval = barrett_transaction(rig, cmd_buf, 0, NULL);
 

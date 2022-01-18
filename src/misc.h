@@ -81,7 +81,7 @@ extern HAMLIB_EXPORT(double) morse_code_dot_to_millis(int wpm);
 extern HAMLIB_EXPORT(int) dot10ths_to_millis(int dot10ths, int wpm);
 extern HAMLIB_EXPORT(int) millis_to_dot10ths(int millis, int wpm);
 
-extern HAMLIB_EXPORT(int) sprintf_freq(char *str, int len, freq_t);
+extern HAMLIB_EXPORT(int) sprintf_freq(char *str, int str_len, freq_t);
 
 /* flag that determines if AI mode should be restored on exit on
    applicable rigs - See rig_no_restore_ai() */
@@ -115,7 +115,7 @@ extern HAMLIB_EXPORT(vfo_t) vfo_fixup(RIG *rig, vfo_t vfo, split_t split);
 extern HAMLIB_EXPORT(vfo_t) vfo_fixup2a(RIG *rig, vfo_t vfo, split_t split, const char *func, const int line);
 #define vfo_fixup(r,v,s) vfo_fixup2a(r,v,s,__func__,__LINE__)
 
-extern HAMLIB_EXPORT(int) parse_hoststr(char *hoststr, char host[256], char port[6]);
+extern HAMLIB_EXPORT(int) parse_hoststr(char *hoststr, int hoststr_len, char host[256], char port[6]);
 
 extern HAMLIB_EXPORT(uint32_t) CRC32_function(uint8_t *buf, uint32_t len);
 

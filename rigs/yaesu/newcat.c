@@ -3056,7 +3056,6 @@ int newcat_power2mW(RIG *rig, unsigned int *mwpower, float power, freq_t freq,
                     rmode_t mode)
 {
     int rig_id;
-    int maxpower;
 
     ENTERFUNC;
 
@@ -3065,57 +3064,76 @@ int newcat_power2mW(RIG *rig, unsigned int *mwpower, float power, freq_t freq,
     switch (rig_id)
     {
     case NC_RIGID_FT450:
-        maxpower = 100000;
+        /* 100 Watts */
+        *mwpower = power * 100000;
+        rig_debug(RIG_DEBUG_TRACE, "case FT450 - rig_id = %d, *mwpower = %u\n", rig_id,
+                  *mwpower);
         break;
 
     case NC_RIGID_FT950:
-        maxpower = 100000;
+        /* 100 Watts */
+        *mwpower = power * 100000;      /* 0..100 Linear scale */
+        rig_debug(RIG_DEBUG_TRACE,
+                  "case FT950 - rig_id = %d, power = %f, *mwpower = %u\n", rig_id, power,
+                  *mwpower);
         break;
 
     case NC_RIGID_FT2000:
-        maxpower = 100000;
+        /* 100 Watts */
+        *mwpower = power * 100000;
+        rig_debug(RIG_DEBUG_TRACE, "case FT2000 - rig_id = %d, *mwpower = %u\n", rig_id,
+                  *mwpower);
         break;
 
     case NC_RIGID_FT2000D:
-        maxpower = 200000;
+        /* 200 Watts */
+        *mwpower = power * 200000;
+        rig_debug(RIG_DEBUG_TRACE, "case FT2000D - rig_id = %d, *mwpower = %u\n",
+                  rig_id, *mwpower);
         break;
 
     case NC_RIGID_FTDX5000:
-        maxpower = 200000;
+        /* 200 Watts */
+        *mwpower = power * 200000;
+        rig_debug(RIG_DEBUG_TRACE, "case FTDX5000 - rig_id = %d, *mwpower = %u\n",
+                  rig_id, *mwpower);
         break;
 
     case NC_RIGID_FTDX9000D:
-        maxpower = 200000;
+        /* 200 Watts */
+        *mwpower = power * 200000;
+        rig_debug(RIG_DEBUG_TRACE, "case FTDX9000D - rig_id = %d, *mwpower = %u\n",
+                  rig_id, *mwpower);
         break;
 
     case NC_RIGID_FTDX9000Contest:
-        maxpower = 200000;
+        /* 200 Watts */
+        *mwpower = power * 200000;
+        rig_debug(RIG_DEBUG_TRACE,
+                  "case FTDX9000Contest - rig_id = %d, *mwpower = %u\n", rig_id, *mwpower);
         break;
 
     case NC_RIGID_FTDX9000MP:
-        maxpower = 400000;
+        /* 400 Watts */
+        *mwpower = power * 400000;
+        rig_debug(RIG_DEBUG_TRACE, "case FTDX9000MP - rig_id = %d, *mwpower = %u\n",
+                  rig_id, *mwpower);
         break;
 
     case NC_RIGID_FTDX1200:
-        maxpower = 100000;
+        /* 100 Watts */
+        *mwpower = power * 100000;
+        rig_debug(RIG_DEBUG_TRACE, "case FTDX1200 - rig_id = %d, *mwpower = %d\n",
+                  rig_id,
+                  *mwpower);
         break;
 
     default:
-        maxpower = 100000;
+        /* 100 Watts */
+        *mwpower = power * 100000;
+        rig_debug(RIG_DEBUG_TRACE, "default - rig_id = %d, *mwpower = %u\n", rig_id,
+                  *mwpower);
     }
-    switch (rig_id)
-    {
-    default:
-        /* 20W = 84/255  50W = 148/255, 100W = 208/255 measured in ftdx3000 */
-        if (power < 0.3295)
-            *mwpower = power * 0.6071 * maxpower;
-        else if (power < 0.5804)
-            *mwpower = (power - 0.3295) * 1.196 * maxpower + maxpower / 5;
-        else
-            *mwpower = (power - 0.5804) * 2.125 * maxpower + maxpower / 2;
-        break;
-    }
-    rig_debug(RIG_DEBUG_TRACE, "rig_id = %d, *mwpower = %d\n", rig_id,*mwpower);
 
     RETURNFUNC(RIG_OK);
 }

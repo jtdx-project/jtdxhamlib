@@ -974,7 +974,7 @@ int kenwood_open(RIG *rig)
         }
 
         /* driver mismatch */
-        rig_debug(RIG_DEBUG_ERR,
+        rig_debug(RIG_DEBUG_VERBOSE,
                   "%s: not the right driver apparently (found %u, asked for %d, checked %s)\n",
                   __func__, rig->caps->rig_model,
                   kenwood_id_string_list[i].model,
@@ -983,7 +983,7 @@ int kenwood_open(RIG *rig)
         // we continue to search for other matching IDs/models
     }
 
-    rig_debug(RIG_DEBUG_ERR,
+    rig_debug(RIG_DEBUG_VERBOSE,
               "%s: your rig (%s) did not match but we will continue anyways\n",
               __func__, id);
 
@@ -2463,6 +2463,11 @@ static int kenwood_get_filter_width(RIG *rig, rmode_t mode, pbwidth_t *width)
                 RETURNFUNC(RIG_OK);
             }
         }
+    }
+    if (filter_value >=50) // then it's probably a custom filter width
+    {
+        *width = filter_value;
+        return (RIG_OK);
     }
 
     RETURNFUNC(-RIG_EINVAL);

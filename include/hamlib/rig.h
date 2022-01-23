@@ -33,7 +33,9 @@
 #include <inttypes.h>
 #include <time.h>
 #include <sys/time.h>
+#ifdef HAVE_CONFIG_H
 #include "config.h"
+#endif
 #ifdef HAVE_PTHREAD
 #include <pthread.h>
 #endif
@@ -2358,6 +2360,10 @@ struct rig_state {
     /*
      * overridable fields
      */
+    // moving the hamlib_port_t to the end of rig_state and making it a pointer
+    // this should allow changes to hamlib_port_t without breaking shared libraries
+    // these will maintain a copy of the new port_t for backwards compatiblity
+    // to these offsets -- note these must stay until a major version update is done
     hamlib_port_t rigport;  /*!< Rig port (internal use). */
     hamlib_port_t pttport;  /*!< PTT port (internal use). */
     hamlib_port_t dcdport;  /*!< DCD port (internal use). */

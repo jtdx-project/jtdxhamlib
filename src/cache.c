@@ -59,6 +59,7 @@ int rig_set_cache_mode(RIG *rig, vfo_t vfo, rmode_t mode, pbwidth_t width)
             break;
 
         case RIG_VFO_A:
+        case RIG_VFO_VFO:
         case RIG_VFO_MAIN:
         case RIG_VFO_MAIN_A:
             rig->state.cache.modeMainA = mode;
@@ -154,6 +155,7 @@ int rig_set_cache_freq(RIG *rig, vfo_t vfo, freq_t freq)
             break;
 
         case RIG_VFO_A:
+        case RIG_VFO_VFO:
         case RIG_VFO_MAIN:
         case RIG_VFO_MAIN_A:
             rig->state.cache.freqMainA = freq;
@@ -324,6 +326,7 @@ int rig_get_cache(RIG *rig, vfo_t vfo, freq_t *freq, int *cache_ms_freq,
             break;
 
         case RIG_VFO_A:
+        case RIG_VFO_VFO:
         case RIG_VFO_MAIN:
         case RIG_VFO_MAIN_A:
             *freq = rig->state.cache.freqMainA;

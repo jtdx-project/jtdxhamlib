@@ -8789,6 +8789,7 @@ int icom_process_async_frame(RIG *rig, size_t frame_length,
         // TODO: rig_set_cache_timeout_ms(rig, HAMLIB_CACHE_FREQ, HAMLIB_CACHE_ALWAYS);
         freq_t freq = (freq_t) from_bcd(frame + 5, (priv->civ_731_mode ? 4 : 5) * 2);
         rig_fire_freq_event(rig, RIG_VFO_CURR, freq);
+        rs->use_cached_freq = 1;
         break;
     }
 
@@ -8797,6 +8798,7 @@ int icom_process_async_frame(RIG *rig, size_t frame_length,
         // TODO: rig_set_cache_timeout_ms(rig, HAMLIB_CACHE_MODE, HAMLIB_CACHE_ALWAYS);
         icom2rig_mode(rig, frame[5], frame[6], &mode, &width);
         rig_fire_mode_event(rig, RIG_VFO_CURR, mode, width);
+        rs->use_cached_mode = 1;
         break;
 
     case C_CTL_SCP:

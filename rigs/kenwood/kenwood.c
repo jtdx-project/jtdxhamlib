@@ -661,10 +661,10 @@ rmode_t kenwood2rmode(unsigned char mode, const rmode_t mode_table[])
 
     if (mode >= KENWOOD_MODE_TABLE_MAX)
     {
-        RETURNFUNC(RIG_MODE_NONE);
+        return(RIG_MODE_NONE);
     }
 
-    RETURNFUNC(mode_table[mode]);
+    return(mode_table[mode]);
 }
 
 char rmode2kenwood(rmode_t mode, const rmode_t mode_table[])
@@ -681,12 +681,12 @@ char rmode2kenwood(rmode_t mode, const rmode_t mode_table[])
             if (mode_table[i] == mode)
             {
                 rig_debug(RIG_DEBUG_VERBOSE, "%s: returning %d\n", __func__, i);
-                RETURNFUNC(i);
+                return(i);
             }
         }
     }
 
-    RETURNFUNC(-1);
+    return(-1);
 }
 
 int kenwood_init(RIG *rig)
@@ -5494,12 +5494,12 @@ DECLARE_PROBERIG_BACKEND(kenwood)
 
     if (!port)
     {
-        RETURNFUNC(RIG_MODEL_NONE);
+        return(RIG_MODEL_NONE);
     }
 
     if (port->type.rig != RIG_PORT_SERIAL)
     {
-        RETURNFUNC(RIG_MODEL_NONE);
+        return(RIG_MODEL_NONE);
     }
 
     port->write_delay = port->post_write_delay = 0;
@@ -5520,7 +5520,7 @@ DECLARE_PROBERIG_BACKEND(kenwood)
         {
             port->write_delay = write_delay;
             port->retry = retry;
-            RETURNFUNC(RIG_MODEL_NONE);
+            return(RIG_MODEL_NONE);
         }
 
         retval = write_block(port, (unsigned char *) "ID;", 3);
@@ -5537,7 +5537,7 @@ DECLARE_PROBERIG_BACKEND(kenwood)
     {
         port->write_delay = write_delay;
         port->retry = retry;
-        RETURNFUNC(RIG_MODEL_NONE);
+        return(RIG_MODEL_NONE);
     }
 
     /*
@@ -5551,7 +5551,7 @@ DECLARE_PROBERIG_BACKEND(kenwood)
                   6, id_len, idbuf);
         port->write_delay = write_delay;
         port->retry = retry;
-        RETURNFUNC(RIG_MODEL_NONE);
+        return(RIG_MODEL_NONE);
     }
 
 
@@ -5570,7 +5570,7 @@ DECLARE_PROBERIG_BACKEND(kenwood)
 
             port->write_delay = write_delay;
             port->retry = retry;
-            RETURNFUNC(kenwood_id_string_list[i].model);
+            return(kenwood_id_string_list[i].model);
         }
     }
 
@@ -5587,7 +5587,7 @@ DECLARE_PROBERIG_BACKEND(kenwood)
 
         if (retval != RIG_OK)
         {
-            RETURNFUNC(RIG_MODEL_NONE);
+            return(RIG_MODEL_NONE);
         }
 
         retval = write_block(port, (unsigned char *) "K2;", 3);
@@ -5596,7 +5596,7 @@ DECLARE_PROBERIG_BACKEND(kenwood)
 
         if (retval != RIG_OK)
         {
-            RETURNFUNC(RIG_MODEL_NONE);
+            return(RIG_MODEL_NONE);
         }
 
         /*
@@ -5611,7 +5611,7 @@ DECLARE_PROBERIG_BACKEND(kenwood)
                 (*cfunc)(port, RIG_MODEL_K2, data);
             }
 
-            RETURNFUNC(RIG_MODEL_K2);
+            return(RIG_MODEL_K2);
         }
     }
 
@@ -5627,7 +5627,7 @@ DECLARE_PROBERIG_BACKEND(kenwood)
                 (*cfunc)(port, kenwood_id_list[i].model, data);
             }
 
-            RETURNFUNC(kenwood_id_list[i].model);
+            return(kenwood_id_list[i].model);
         }
     }
 
@@ -5641,7 +5641,7 @@ DECLARE_PROBERIG_BACKEND(kenwood)
 
     rig_debug(RIG_DEBUG_TRACE, "%s: post_write_delay=%d\n", __func__,
               port->post_write_delay);
-    RETURNFUNC(RIG_MODEL_NONE);
+    return(RIG_MODEL_NONE);
 }
 
 
@@ -5707,5 +5707,5 @@ DECLARE_INITRIG_BACKEND(kenwood)
     rig_register(&malachite_caps);
     rig_register(&tx500_caps);
 
-    RETURNFUNC(RIG_OK);
+    return(RIG_OK);
 }

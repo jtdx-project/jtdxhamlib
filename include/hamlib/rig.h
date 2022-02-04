@@ -35,9 +35,7 @@
 #include <inttypes.h>
 #include <time.h>
 #include <sys/time.h>
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
+#include <hamlib/config.h>
 #ifdef HAVE_PTHREAD
 #include <pthread.h>
 #endif
@@ -2552,12 +2550,12 @@ struct rig_state {
     void *async_data_handler_priv_data;
     volatile int poll_routine_thread_run;
     void *poll_routine_priv_data;
-#ifdef HAVE_PTHREAD
-    pthread_mutex_t mutex_set_transaction;
-#endif
     hamlib_port_t rigport;  /*!< Rig port (internal use). */
     hamlib_port_t pttport;  /*!< PTT port (internal use). */
     hamlib_port_t dcdport;  /*!< DCD port (internal use). */
+#ifdef HAVE_PTHREAD
+    pthread_mutex_t mutex_set_transaction;
+#endif
     /********* DO NOT ADD or CHANGE anything (or than to rename) ABOVE THIS LINE *********/
     /********* ENSURE ANY NEW ITEMS ARE ADDED AFTER HERE *********/
     /* flags instructing the rig_get routines to use cached values when asyncio is in use */

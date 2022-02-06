@@ -203,6 +203,7 @@ int main(int argc, char *argv[])
             }
 
             rig_file = optarg;
+            rig_debug(RIG_DEBUG_VERBOSE, "%s: rig_file=%s\n", __func__, rig_file);
             break;
 
         case 'p':
@@ -514,6 +515,7 @@ int main(int argc, char *argv[])
     if (serial_rate != 0)
     {
         my_rig->state.rigport.parm.serial.rate = serial_rate;
+        my_rig->state.rigport_deprecated.parm.serial.rate = serial_rate;
     }
 
     if (civaddr)

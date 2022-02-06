@@ -567,11 +567,13 @@ int main(int argc, char *argv[])
             }
 
             multicast_port = atoi(optarg);
+
             if (multicast_port == 0)
             {
                 fprintf(stderr, "Invalid multicast port: %s\n", optarg);
                 exit(1);
             }
+
             break;
 
         default:
@@ -639,27 +641,32 @@ int main(int argc, char *argv[])
     if (ptt_type != RIG_PTT_NONE)
     {
         my_rig->state.pttport.type.ptt = ptt_type;
+        my_rig->state.pttport_deprecated.type.ptt = ptt_type;
     }
 
     if (dcd_type != RIG_DCD_NONE)
     {
         my_rig->state.dcdport.type.dcd = dcd_type;
+        my_rig->state.dcdport_deprecated.type.dcd = dcd_type;
     }
 
     if (ptt_file)
     {
         strncpy(my_rig->state.pttport.pathname, ptt_file, HAMLIB_FILPATHLEN - 1);
+        strncpy(my_rig->state.pttport_deprecated.pathname, ptt_file, HAMLIB_FILPATHLEN - 1);
     }
 
     if (dcd_file)
     {
         strncpy(my_rig->state.dcdport.pathname, dcd_file, HAMLIB_FILPATHLEN - 1);
+        strncpy(my_rig->state.dcdport_deprecated.pathname, dcd_file, HAMLIB_FILPATHLEN - 1);
     }
 
     /* FIXME: bound checking and port type == serial */
     if (serial_rate != 0)
     {
         my_rig->state.rigport.parm.serial.rate = serial_rate;
+        my_rig->state.rigport_deprecated.parm.serial.rate = serial_rate;
     }
 
     if (civaddr)
@@ -773,8 +780,10 @@ int main(int argc, char *argv[])
 
     saved_result = result;
 
-    enum multicast_item_e items = RIG_MULTICAST_POLL | RIG_MULTICAST_TRANSCEIVE | RIG_MULTICAST_SPECTRUM;
-    retcode = network_multicast_publisher_start(my_rig, multicast_addr, multicast_port, items);
+    enum multicast_item_e items = RIG_MULTICAST_POLL | RIG_MULTICAST_TRANSCEIVE |
+                                  RIG_MULTICAST_SPECTRUM;
+    retcode = network_multicast_publisher_start(my_rig, multicast_addr,
+              multicast_port, items);
 
     if (retcode != RIG_OK)
     {
@@ -1134,6 +1143,7 @@ void *handle_socket(void *arg)
     do
     {
         mutex_rigctld(1);
+
         if (!rig_opened)
         {
             retcode = rig_open(my_rig);
@@ -1141,6 +1151,7 @@ void *handle_socket(void *arg)
             rig_debug(RIG_DEBUG_ERR, "%s: rig_open reopened retcode=%d\n", __func__,
                       retcode);
         }
+
         mutex_rigctld(0);
 
         if (rig_opened) // only do this if rig is open
@@ -1176,12 +1187,15 @@ void *handle_socket(void *arg)
                 hl_usleep(1000 * 1000);
 
                 mutex_rigctld(1);
-                if (!rig_opened) {
+
+                if (!rig_opened)
+                {
                     retcode = rig_open(my_rig);
                     rig_opened = retcode == RIG_OK ? 1 : 0;
                     rig_debug(RIG_DEBUG_ERR, "%s: rig_open retcode=%d, opened=%d\n", __func__,
-                            retcode, rig_opened);
+                              retcode, rig_opened);
                 }
+
                 mutex_rigctld(0);
             }
             while (!ctrl_c && !rig_opened && retry-- > 0 && retcode != RIG_OK);

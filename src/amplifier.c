@@ -412,10 +412,14 @@ int HAMLIB_API amp_open(AMP *amp)
 
         if (status != RIG_OK)
         {
+            memcpy(&amp->state.ampport_deprecated, &amp->state.ampport,
+                   sizeof(amp->state.ampport_deprecated));
             return status;
         }
     }
 
+    memcpy(&amp->state.ampport_deprecated, &amp->state.ampport,
+           sizeof(amp->state.ampport_deprecated));
 
     return RIG_OK;
 }
@@ -447,6 +451,8 @@ int HAMLIB_API amp_close(AMP *amp)
 
     if (!amp || !amp->caps)
     {
+        amp_debug(RIG_DEBUG_ERR, "%s: NULL ptr? amp=%p, amp->caps=%p\n", __func__, amp,
+                  amp->caps);
         return -RIG_EINVAL;
     }
 
@@ -455,6 +461,8 @@ int HAMLIB_API amp_close(AMP *amp)
 
     if (!rs->comm_state)
     {
+        amp_debug(RIG_DEBUG_ERR, "%s: comm_state=0? rs=%p, rs->comm_state=%d\n",
+                  __func__, rs, rs->comm_state);
         return -RIG_EINVAL;
     }
 

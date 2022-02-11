@@ -522,7 +522,7 @@ const struct rig_caps ft847_caps =
     .set_dcs_sql    = ft847_set_dcs_sql,
     .set_rptr_shift = ft847_set_rptr_shift,
     .set_rptr_offs  = ft847_set_rptr_offs,
-
+    .hamlib_check_rig_caps = HAMLIB_CHECK_RIG_CAPS
 };
 
 const struct rig_caps mchfqrp_caps =
@@ -672,7 +672,7 @@ const struct rig_caps mchfqrp_caps =
     .set_dcs_sql    = ft847_set_dcs_sql,
     .set_rptr_shift = ft847_set_rptr_shift,
     .set_rptr_offs  = ft847_set_rptr_offs,
-
+    .hamlib_check_rig_caps = HAMLIB_CHECK_RIG_CAPS
 };
 
 /*
@@ -826,7 +826,7 @@ const struct rig_caps ft847uni_caps =
     .set_dcs_sql    = ft847_set_dcs_sql,
     .set_rptr_shift = ft847_set_rptr_shift,
     .set_rptr_offs  = ft847_set_rptr_offs,
-
+    .hamlib_check_rig_caps = HAMLIB_CHECK_RIG_CAPS
 };
 
 /*

@@ -156,6 +156,7 @@ const char hamlib_copyright[231] = /* hamlib 1.2 ABI specifies 231 bytes */
 #define DEFAULT_GPIO_PORT "0"
 
 #define CHECK_RIG_ARG(r) (!(r) || !(r)->caps || !(r)->state.comm_state)
+#define CHECK_RIG_CAPS(r) (!(r) || !(r)->caps)
 
 #define LOCK \
 
@@ -4053,7 +4054,7 @@ int HAMLIB_API rig_set_split_mode(RIG *rig,
         RETURNFUNC(RIG_OK);
     }
 
-    if (tx_vfo & (RIG_VFO_CURR || RIG_VFO_TX))
+    if (tx_vfo & (RIG_VFO_CURR | RIG_VFO_TX))
     {
         rig_debug(RIG_DEBUG_WARN, "%s(%d): Unhandled TXVFO=%s, tx_mode=%s\n", __func__,
               __LINE__, rig_strvfo(tx_vfo), rig_strrmode(tx_mode));
@@ -6673,7 +6674,7 @@ int HAMLIB_API rig_get_vfo_list(RIG *rig, char *buf, int buflen)
 {
     ENTERFUNC;
 
-    if (CHECK_RIG_ARG(rig))
+    if (CHECK_RIG_CAPS(rig))
     {
         RETURNFUNC(-RIG_EINVAL);
     }
@@ -7096,4 +7097,16 @@ void *async_data_handler(void *arg)
 
     return NULL;
 }
+
+HAMLIB_EXPORT(int) rig_password(RIG *rig, const unsigned char *key1, const unsigned char *key2)
+{
+    int retval = -RIG_ENIMPL;
+    ENTERFUNC;
+    if (rig->caps->password != NULL)
+    {
+        retval = rig->caps->password(rig,key1,key2);
+    }
+    RETURNFUNC(retval);
+}
+
 #endif
